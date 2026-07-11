@@ -1,0 +1,163 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-blush-khaki: #BAAB94;
+  --color-blush-khaki-light: #CFC3B1;
+  --color-blush-khaki-dark: #A3937C;
+  
+  --color-blush-olivine: #9FAB7E;
+  --color-blush-olivine-light: #B5C099;
+  --color-blush-olivine-dark: #879264;
+  
+  --color-blush-palmLeaf: #748843;
+  --color-blush-palmLeaf-light: #8EAA52;
+  --color-blush-palmLeaf-dark: #5B6B35;
+  
+  --color-blush-darkKhaki: #CABF74;
+  --color-blush-darkKhaki-light: #DDD593;
+  --color-blush-darkKhaki-dark: #B0A558;
+  
+  --color-blush-seashell: #F5EBE6;
+  --color-blush-seashell-light: #FAF3EF;
+  --color-blush-seashell-dark: #E0D2CB;
+  
+  --color-blush-slate-800: #2E3532;
+  --color-blush-slate-900: #1C201E;
+
+  --font-sans: "Outfit", "Inter", sans-serif;
+  --font-display: "Playfair Display", serif;
+}
+
+@layer base {
+  body {
+    @apply bg-blush-seashell text-blush-slate-900 font-sans antialiased;
+    background-color: #FAF4F0; /* Ajuste premium del fondo Seashell para la calidez del local */
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-wide;
+  }
+}
+
+/* ============================================================================
+   DISEÑO ELEGANTE Y MICRO-ANIMACIONES DE SOPORTE
+   ============================================================================ */
+
+/* Transiciones elegantes */
+.transition-luxury {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Glassmorphism sutil para tarjetas y contenedores */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #BAAB94;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #748843;
+}
+
+/* Efecto de foco premium */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: #748843 !important;
+  box-shadow: 0 0 0 3px rgba(116, 136, 67, 0.15);
+}
+
+/* Animación de pulso lento para alertas */
+@keyframes soft-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.03);
+    opacity: 0.9;
+  }
+}
+
+.alert-pulse {
+  animation: soft-pulse 2s infinite ease-in-out;
+}
+
+/* Animación para toasts emergentes */
+@keyframes slide-in {
+  from {
+    transform: translateY(1rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ============================================================================
+   MEJORAS DE ACCESIBILIDAD PARA LA TERCERA EDAD
+   ============================================================================ */
+
+/* Entradas de formulario más grandes, con texto más grueso y bordes marcados */
+input[type="text"], 
+input[type="number"], 
+input[type="date"], 
+input[type="email"], 
+input[type="password"], 
+select, 
+textarea {
+  font-size: 0.9rem !important; /* Más legible */
+  font-weight: 700 !important;   /* Letra más gruesa */
+  border-width: 2px !important;  /* Borde más marcado */
+  border-color: #CBD5E1 !important; /* Contraste slate-300 */
+  padding: 0.75rem 1rem !important; /* Más espacio para clickear */
+  border-radius: 1rem !important;
+  color: #1E293B !important; /* Texto oscuro de alto contraste */
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #748843 !important; /* Verde Palm Leaf al enfocar */
+  background-color: #FFFFFF !important;
+}
+
+/* Botones con textos extremadamente legibles, en negrita y sin colores tenues */
+button, input[type="submit"] {
+  font-weight: 800 !important;
+  letter-spacing: 0.025em !important;
+}
+
+/* Tablas financieras y de directorio con tamaño de letra e interlineado cómodo */
+table th {
+  font-size: 0.75rem !important;
+  font-weight: 900 !important;
+  color: #475569 !important; /* Slate-600 */
+  text-transform: uppercase;
+}
+
+table td {
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  color: #1E293B !important; /* Slate-800 */
+}

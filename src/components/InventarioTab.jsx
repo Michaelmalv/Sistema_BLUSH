@@ -518,9 +518,9 @@ export default function InventarioTab({ activeTab, selectedBranchId }) {
                   placeholder="Buscar por producto o proveedor..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold focus:bg-white focus:border-blush-palmLeaf outline-none transition-all"
+                  className="w-full !pl-10 pr-4 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold focus:bg-white focus:border-blush-palmLeaf outline-none transition-all"
                 />
-                <Search className="absolute left-3.5 top-3 text-gray-400" size={14} />
+                <Search className="absolute left-3 top-2.5 text-gray-400" size={14} />
               </div>
               <button
                 onClick={handleExportExcel}

@@ -98,9 +98,9 @@ export default function SeguimientoTab({ activeTab, selectedBranchId }) {
             placeholder="Buscar por cliente o servicio..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+            className="w-full !pl-10 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
           />
-          <Search className="absolute left-3.5 top-3 text-gray-400" size={15} />
+          <Search className="absolute left-3 top-2.5 text-gray-400" size={15} />
         </div>
       </div>
 

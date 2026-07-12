@@ -366,7 +366,7 @@ export default function App() {
                   placeholder="ej. dueno"
                   value={usernameInput}
                   onChange={(e) => setUsernameInput(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border border-gray-150 focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none text-xs font-semibold text-gray-700 placeholder-gray-400 transition-all"
+                  className="w-full !pl-10 pr-4 py-3 rounded-2xl bg-white border border-gray-150 focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none text-xs font-semibold text-gray-700 placeholder-gray-400 transition-all"
                 />
               </div>
             </div>
@@ -383,7 +383,7 @@ export default function App() {
                   placeholder="••••••••"
                   value={passwordInput}
                   onChange={(e) => setPasswordInput(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border border-gray-150 focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none text-xs font-semibold text-gray-700 placeholder-gray-400 transition-all"
+                  className="w-full !pl-10 pr-4 py-3 rounded-2xl bg-white border border-gray-150 focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none text-xs font-semibold text-gray-700 placeholder-gray-400 transition-all"
                 />
               </div>
             </div>

@@ -121,13 +121,15 @@ input:focus, select:focus, textarea:focus {
    ============================================================================ */
 
 /* Entradas de formulario más grandes, con texto más grueso y bordes marcados */
-input[type="text"], 
-input[type="number"], 
-input[type="date"], 
-input[type="email"], 
-input[type="password"], 
-select, 
-textarea {
+:where(
+  input[type="text"], 
+  input[type="number"], 
+  input[type="date"], 
+  input[type="email"], 
+  input[type="password"], 
+  select, 
+  textarea
+) {
   font-size: 0.9rem; /* Más legible */
   font-weight: 700;   /* Letra más gruesa */
   border-width: 2px;  /* Borde más marcado */

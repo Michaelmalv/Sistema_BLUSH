@@ -128,13 +128,13 @@ input[type="email"],
 input[type="password"], 
 select, 
 textarea {
-  font-size: 0.9rem !important; /* Más legible */
-  font-weight: 700 !important;   /* Letra más gruesa */
-  border-width: 2px !important;  /* Borde más marcado */
-  border-color: #CBD5E1 !important; /* Contraste slate-300 */
-  padding: 0.75rem 1rem !important; /* Más espacio para clickear */
-  border-radius: 1rem !important;
-  color: #1E293B !important; /* Texto oscuro de alto contraste */
+  font-size: 0.9rem; /* Más legible */
+  font-weight: 700;   /* Letra más gruesa */
+  border-width: 2px;  /* Borde más marcado */
+  border-color: #CBD5E1; /* Contraste slate-300 */
+  padding: 0.75rem 1rem; /* Más espacio para clickear */
+  border-radius: 1rem;
+  color: #1E293B; /* Texto oscuro de alto contraste */
 }
 
 input:focus, select:focus, textarea:focus {

@@ -211,6 +211,23 @@ export const dataService = {
     return nuevo
   },
 
+  async actualizarCliente(id, cliente) {
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase.from('clientes').update(cliente).eq('id', id).select()
+      if (error) throw error
+      this.clearCache('clientes')
+      return data[0]
+    }
+    const list = getLocal('blush_clientes')
+    const index = list.findIndex(c => c.id === id)
+    if (index !== -1) {
+      list[index] = { ...list[index], ...cliente }
+      setLocal('blush_clientes', list)
+      this.clearCache('clientes')
+      return list[index]
+    }
+  },
+
   // --- CITAS / VENTAS ---
   async getCitasVentas() {
     const branchId = this.getSelectedBranchId()

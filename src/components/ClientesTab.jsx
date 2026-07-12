@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Search, Phone, Mail, UserPlus, Users, BellRing, ExternalLink, Cake } from 'lucide-react'
+import { Search, Phone, Mail, UserPlus, Users, BellRing, ExternalLink, Cake, Edit3 } from 'lucide-react'
 import { dataService } from '../dataService'
 
 export default function ClientesTab({ activeTab }) {
@@ -7,6 +7,7 @@ export default function ClientesTab({ activeTab }) {
   const [recontactar, setRecontactar] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [editingId, setEditingId] = useState(null)
 
   // Formulario de Cliente
   const [form, setForm] = useState({
@@ -82,21 +83,46 @@ export default function ClientesTab({ activeTab }) {
         }
       }
 
-      await dataService.registrarCliente({
+      const clientData = {
         nombre: nombreLimpio,
         cedula: cedulaLimpia || null,
         celular: celularLimpia || null,
         correo: form.correo.trim() || null,
         medio_contacto: form.medio_contacto === 'Otro' ? (form.medio_contacto_otro.trim() || 'Otro') : form.medio_contacto,
         fecha_nacimiento: form.fecha_nacimiento || null
-      })
+      }
 
-      setMsg('✅ Cliente registrado con éxito.')
+      if (editingId) {
+        await dataService.actualizarCliente(editingId, clientData)
+        setMsg('✅ Cliente actualizado con éxito.')
+      } else {
+        await dataService.registrarCliente(clientData)
+        setMsg('✅ Cliente registrado con éxito.')
+      }
+
       setForm({ nombre: '', cedula: '', celular: '', correo: '', medio_contacto: 'WhatsApp', medio_contacto_otro: '', fecha_nacimiento: '' })
+      setEditingId(null)
       loadData()
     } catch (err) {
       setMsg(`⚠️ ${err.message}`)
     }
+  }
+
+  const handleEdit = (c) => {
+    setEditingId(c.id)
+    const presetMedios = ['WhatsApp', 'Instagram', 'Facebook', 'TikTok', 'Recomendación']
+    const isPreset = presetMedios.includes(c.medio_contacto)
+    
+    setForm({
+      nombre: c.nombre || '',
+      cedula: c.cedula || '',
+      celular: c.celular || '',
+      correo: c.correo || '',
+      medio_contacto: isPreset ? c.medio_contacto : 'Otro',
+      medio_contacto_otro: isPreset ? '' : (c.medio_contacto || ''),
+      fecha_nacimiento: c.fecha_nacimiento || ''
+    })
+    setMsg('')
   }
 
   // Filtrado de clientes
@@ -111,15 +137,17 @@ export default function ClientesTab({ activeTab }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Columna Izquierda: Registro */}
+      {/* Columna Izquierda: Registro/Edición */}
       <div className="lg:col-span-1">
-        {/* Registrar Cliente */}
+        {/* Registrar/Editar Cliente */}
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-bold text-blush-palmLeaf mb-1 flex items-center gap-2">
             <UserPlus size={18} />
-            Crear Ficha de Cliente
+            {editingId ? 'Editar Ficha de Cliente' : 'Crear Ficha de Cliente'}
           </h3>
-          <p className="text-xs text-gray-400 mb-6">Agrega una nueva ficha de cliente en el directorio de Blush</p>
+          <p className="text-xs text-gray-400 mb-6">
+            {editingId ? 'Modifica los datos de la ficha del cliente' : 'Agrega una nueva ficha de cliente en el directorio de Blush'}
+          </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -209,12 +237,27 @@ export default function ClientesTab({ activeTab }) {
 
             {msg && <div className="p-2 bg-gray-50 border border-gray-100 text-xs rounded-xl font-bold">{msg}</div>}
 
-            <button
-              type="submit"
-              className="w-full bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2 px-4 rounded-xl transition-colors text-sm"
-            >
-              Registrar Cliente
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="flex-1 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2 px-4 rounded-xl transition-colors text-sm cursor-pointer"
+              >
+                {editingId ? 'Guardar Cambios' : 'Registrar Cliente'}
+              </button>
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingId(null)
+                    setForm({ nombre: '', cedula: '', celular: '', correo: '', medio_contacto: 'WhatsApp', medio_contacto_otro: '', fecha_nacimiento: '' })
+                    setMsg('')
+                  }}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-xl transition-colors text-sm cursor-pointer"
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
           </form>
         </div>
       </div>
@@ -254,8 +297,19 @@ export default function ClientesTab({ activeTab }) {
                 className="p-4 bg-gray-50/40 border border-gray-100 rounded-2xl hover:bg-gray-50 transition-luxury flex flex-col justify-between"
               >
                 <div>
-                  <h4 className="text-sm font-bold text-gray-800">{c.nombre}</h4>
-                  <div className="text-xxs text-gray-400 mt-0.5">Cédula: {c.cedula || 'N/A'}</div>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-800">{c.nombre}</h4>
+                      <div className="text-xxs text-gray-400 mt-0.5">Cédula: {c.cedula || 'N/A'}</div>
+                    </div>
+                    <button
+                      onClick={() => handleEdit(c)}
+                      className="p-1.5 hover:bg-gray-200/50 rounded-lg text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
+                      title="Editar Cliente"
+                    >
+                      <Edit3 size={14} />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-gray-100 flex flex-col gap-1.5 text-xs text-gray-600">

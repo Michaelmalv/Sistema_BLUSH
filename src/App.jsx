@@ -428,6 +428,7 @@ export default function App() {
   }
 
   // Encontrar nombre de la sucursal actual si está asignada
+  const supabaseActive = isSupabaseConfigured && !dataService.isDemoMode()
   const assignedBranch = sucursales.find(s => s.id === currentUser.sucursal_id)
 
   return (
@@ -495,6 +496,20 @@ export default function App() {
 
       {/* RIGHT SIDE MAIN CONTAINER */}
       <div className="flex-1 flex flex-col min-w-0 md:max-h-screen md:overflow-y-auto">
+        {dataService.isDemoMode() && (
+          <div className="bg-amber-600 text-white text-center py-2.5 px-4 text-xs font-black tracking-wider flex items-center justify-center gap-2 shadow-sm animate-pulse z-50">
+            <span>⚠️ MODO ENTRENAMIENTO Y CAPACITACIÓN ACTIVO: Los datos ingresados aquí son temporales y NO afectan a la base de datos real.</span>
+            <button 
+              onClick={() => {
+                dataService.setDemoMode(false);
+                window.location.reload();
+              }}
+              className="bg-white/20 hover:bg-white/30 text-white text-[10px] uppercase px-2 py-0.5 rounded-lg border border-white/40 transition-colors ml-2 cursor-pointer font-extrabold"
+            >
+              Volver a Producción
+            </button>
+          </div>
+        )}
         
         {/* TOP BAR BAR */}
         <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
@@ -603,6 +618,26 @@ export default function App() {
               )}
             </div>
 
+            {/* Selector de Entorno (Producción / Capacitación) */}
+            <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-2xl shadow-sm">
+              <span className="text-[10px] font-black text-gray-400 uppercase">Entorno:</span>
+              <button
+                onClick={() => {
+                  const currentDemo = dataService.isDemoMode();
+                  dataService.setDemoMode(!currentDemo);
+                  window.location.reload();
+                }}
+                className={`px-2.5 py-0.5 rounded-xl text-[10px] font-black transition-all cursor-pointer ${
+                  dataService.isDemoMode()
+                    ? 'bg-amber-600 text-white hover:bg-amber-700'
+                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                }`}
+                title="Haz clic para alternar entre el entorno de producción (real) y de entrenamiento (pruebas)"
+              >
+                {dataService.isDemoMode() ? '⚠️ CAPACITACIÓN / PRUEBAS' : '💼 PRODUCCIÓN'}
+              </button>
+            </div>
+
             {/* Database Connection Badge */}
             <div className="relative">
               <button 
@@ -611,13 +646,13 @@ export default function App() {
                   setShowNotifications(false)
                 }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-black transition-all border shadow-sm cursor-pointer ${
-                  isSupabaseConfigured 
+                  supabaseActive 
                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                    : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 animate-pulse'
+                    : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
                 }`}
               >
                 <Database size={13} />
-                {isSupabaseConfigured ? 'Supabase Activa' : 'Modo Demo (Local)'}
+                {supabaseActive ? 'Supabase Activa' : 'Modo Demo (Local)'}
                 <Info size={12} className="opacity-75" />
               </button>
 
@@ -628,12 +663,24 @@ export default function App() {
                     <Database size={12} className="text-blush-palmLeaf" />
                     Estado del Servidor
                   </h4>
-                  {isSupabaseConfigured ? (
-                    <p>El sistema está conectado a PostgreSQL de Supabase. Datos sincronizados en la nube.</p>
+                  {supabaseActive ? (
+                    <p>El sistema está conectado a PostgreSQL de Supabase. Datos sincronizados en la nube de forma segura.</p>
                   ) : (
-                    <>
-                      <p>El sistema está ejecutándose con la base de datos local temporal (localStorage).</p>
-                    </>
+                    <p>El sistema está ejecutándose con la base de datos local temporal (localStorage). Ideal para realizar pruebas sin afectar la base de datos de producción.</p>
+                  )}
+                  {dataService.isDemoMode() && (
+                    <button 
+                      onClick={() => {
+                        if (window.confirm("¿Estás seguro de que deseas restablecer los datos de prueba? Esto eliminará todos los clientes, ventas y gastos que hayas creado en este modo de capacitación y los restaurará a los valores iniciales.")) {
+                          dataService.restablecerBaseDemo();
+                          alert("Base de datos de entrenamiento restablecida con éxito.");
+                          window.location.reload();
+                        }
+                      }}
+                      className="w-full text-center bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 font-bold py-2 rounded-xl mt-2 transition-all cursor-pointer animate-pulse"
+                    >
+                      Restablecer Base de Pruebas
+                    </button>
                   )}
                   <button 
                     onClick={() => setShowConfigInfo(false)}

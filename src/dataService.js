@@ -1,4 +1,15 @@
-import { supabase, isSupabaseConfigured } from './supabaseClient'
+import { supabase, isSupabaseConfigured as originalIsSupabaseConfigured } from './supabaseClient'
+
+let isSupabaseConfigured = originalIsSupabaseConfigured;
+
+const updateSupabaseConfigState = () => {
+  const isDemo = sessionStorage.getItem('blush_demo_mode') === 'true'
+  isSupabaseConfigured = isDemo ? false : originalIsSupabaseConfigured
+}
+
+// Inicializar el estado al cargar la app
+updateSupabaseConfigState();
+
 
 // ============================================================================
 // DATOS DE PRUEBA (MOCK DATA) PARA MODO LOCAL/DEMO
@@ -106,6 +117,30 @@ export const dataService = {
         this._cache[k] = null
       })
     }
+  },
+
+  isDemoMode() {
+    return sessionStorage.getItem('blush_demo_mode') === 'true'
+  },
+
+  setDemoMode(active) {
+    sessionStorage.setItem('blush_demo_mode', active ? 'true' : 'false')
+    updateSupabaseConfigState()
+    this.clearCache()
+  },
+
+  restablecerBaseDemo() {
+    localStorage.removeItem('blush_personal')
+    localStorage.removeItem('blush_servicios')
+    localStorage.removeItem('blush_clientes')
+    localStorage.removeItem('blush_citas')
+    localStorage.removeItem('blush_gastos')
+    localStorage.removeItem('blush_productos')
+    localStorage.removeItem('blush_sucursales')
+    localStorage.removeItem('blush_usuarios')
+    localStorage.removeItem('blush_reposiciones')
+    initLocalStorage()
+    this.clearCache()
   },
 
   // --- PERSONAL ---

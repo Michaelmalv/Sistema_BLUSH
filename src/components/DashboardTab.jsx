@@ -18,36 +18,47 @@ export default function DashboardTab({ onNavigate, activeTab, selectedBranchId }
 
   const [rango, setRango] = useState({ inicio: firstDay, fin: lastDay })
 
-  const loadData = async () => {
-    try {
-      setLoading(true)
-      const [finInfo, pagosInfo, prods, crmList] = await Promise.all([
-        dataService.getConciliacionFinanciera(rango.inicio, rango.fin),
-        dataService.getIngresosAgrupados(rango.inicio, rango.fin),
-        dataService.getProductos(),
-        dataService.getClientesPorRecontactar()
-      ])
-      
-      const stockLow = prods.filter(p => p.stock_actual <= p.stock_minimo)
-      
-      setFinancials(finInfo)
-      setPagos(pagosInfo)
-      setAlertasStock(stockLow)
-      setAlertasCRM(crmList.filter(crm => crm.dias_retraso >= -1))
-    } catch (err) {
-      console.error('Error al cargar dashboard:', err)
-      // Resetear estados contables en caso de error para evitar mostrar datos incorrectos/filtraciones
-      setFinancials({ total_ingresos: 0, total_egresos: 0, utilidad_neta: 0 })
-      setPagos([])
-      setAlertasStock([])
-      setAlertasCRM([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
+    let active = true
+
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        const [finInfo, pagosInfo, prods, crmList] = await Promise.all([
+          dataService.getConciliacionFinanciera(rango.inicio, rango.fin),
+          dataService.getIngresosAgrupados(rango.inicio, rango.fin),
+          dataService.getProductos(),
+          dataService.getClientesPorRecontactar()
+        ])
+        
+        const stockLow = prods.filter(p => p.stock_actual <= p.stock_minimo)
+        
+        if (active) {
+          setFinancials(finInfo)
+          setPagos(pagosInfo)
+          setAlertasStock(stockLow)
+          setAlertasCRM(crmList.filter(crm => crm.dias_retraso >= -1))
+        }
+      } catch (err) {
+        console.error('Error al cargar dashboard:', err)
+        if (active) {
+          setFinancials({ total_ingresos: 0, total_egresos: 0, utilidad_neta: 0 })
+          setPagos([])
+          setAlertasStock([])
+          setAlertasCRM([])
+        }
+      } finally {
+        if (active) {
+          setLoading(false)
+        }
+      }
+    }
+
     loadData()
+
+    return () => {
+      active = false
+    }
   }, [rango, selectedBranchId])
 
   // Cálculos para gráfico circular SVG

@@ -12,7 +12,8 @@ import {
   ArrowRight,
   TrendingDown,
   Info,
-  Scale
+  Scale,
+  Edit3
 } from 'lucide-react'
 import { dataService } from '../dataService'
 import * as XLSX from 'xlsx-js-style'
@@ -41,7 +42,8 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
     valor_unitario: '',
     total: '',
     forma_pago: 'Efectivo',
-    cuenta: 'Caja Principal'
+    cuenta: 'Caja Principal',
+    producto_id: ''
   })
 
   // Estados de Retenciones (Manuales)
@@ -59,6 +61,18 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
 
   const [msg, setMsg] = useState({ type: '', text: '' })
   const [msgRet, setMsgRet] = useState({ type: '', text: '' })
+
+  const [editingProduct, setEditingProduct] = useState(null)
+  const [editProductForm, setEditProductForm] = useState({
+    nombre: '',
+    tipo: 'insumo',
+    proveedor: '',
+    proveedor_ruc: '',
+    precio_costo: '',
+    precio_venta: '',
+    fecha_compra: ''
+  })
+  const [editProductMsg, setEditProductMsg] = useState('')
 
   const loadData = async () => {
     try {
@@ -89,6 +103,74 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
     loadData()
   }, [selectedBranchId])
 
+  const handleSelectProduct = (e) => {
+    const prodId = e.target.value
+    if (!prodId) {
+      setForm(prev => ({
+        ...prev,
+        producto_id: '',
+        concepto: '',
+        valor_unitario: '',
+        total: ''
+      }))
+      return
+    }
+    const prod = productos.find(p => p.id === prodId)
+    if (prod) {
+      const vUnit = prod.precio_costo ? Number(prod.precio_costo).toFixed(2) : ''
+      const tot = vUnit ? (Number(form.cantidad) * Number(vUnit)).toFixed(2) : ''
+      setForm(prev => ({
+        ...prev,
+        producto_id: prodId,
+        concepto: `Compra de: ${prod.nombre}`,
+        valor_unitario: vUnit,
+        total: tot
+      }))
+    }
+  }
+
+  const handleStartEditProduct = (prod) => {
+    setEditingProduct(prod)
+    setEditProductForm({
+      nombre: prod.nombre || '',
+      tipo: prod.tipo || 'insumo',
+      proveedor: prod.proveedor || '',
+      proveedor_ruc: prod.proveedor_ruc || '',
+      precio_costo: prod.precio_costo || '',
+      precio_venta: prod.precio_venta || '',
+      fecha_compra: prod.fecha_compra || ''
+    })
+    setEditProductMsg('')
+  }
+
+  const handleSaveProductEdit = async (e) => {
+    e.preventDefault()
+    setEditProductMsg('')
+    try {
+      if (!editProductForm.nombre.trim()) throw new Error('El nombre del producto es obligatorio.')
+      
+      const payload = {
+        nombre: editProductForm.nombre.trim(),
+        tipo: editProductForm.tipo,
+        proveedor: editProductForm.proveedor.trim() || null,
+        proveedor_ruc: editProductForm.proveedor_ruc.trim() || null,
+        precio_costo: editProductForm.precio_costo ? Number(editProductForm.precio_costo) : null,
+        precio_venta: editProductForm.precio_venta ? Number(editProductForm.precio_venta) : null,
+        fecha_compra: editProductForm.fecha_compra || null
+      }
+
+      await dataService.actualizarProducto(editingProduct.id, payload)
+      
+      // Actualizar el estado de productos local para reflejar el cambio inmediato
+      setProductos(prev => prev.map(p => p.id === editingProduct.id ? { ...p, ...payload } : p))
+      
+      setEditingProduct(null)
+      loadData()
+    } catch (err) {
+      setEditProductMsg(err.message || 'Error al guardar cambios.')
+    }
+  }
+
   // Auto-calcular total de egreso
   useEffect(() => {
     if (form.cantidad && form.valor_unitario) {
@@ -115,6 +197,7 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
       if (!form.concepto) throw new Error('El concepto del gasto es requerido.')
       if (!form.total || Number(form.total) <= 0) throw new Error('El total del gasto debe ser mayor a 0.')
 
+      // A. Registrar el gasto contable
       await dataService.registrarGasto({
         fecha: form.fecha,
         factura: form.factura || null,
@@ -128,7 +211,25 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
         sucursal_id: selectedBranchId || '11111111-1111-1111-1111-111111111111'
       })
 
-      setMsg({ type: 'success', text: '✅ Egreso registrado con éxito.' })
+      // B. Si es un producto del inventario, reponer el stock de forma automática
+      if (form.producto_id) {
+        await dataService.registrarReposicion(
+          form.producto_id,
+          Number(form.cantidad),
+          form.fecha
+        )
+
+        // C. Si el precio unitario ingresado varía, actualizar el precio de costo del catálogo
+        const prod = productos.find(p => p.id === form.producto_id)
+        if (prod && form.valor_unitario && Number(form.valor_unitario) !== Number(prod.precio_costo)) {
+          await dataService.actualizarProducto(form.producto_id, {
+            precio_costo: Number(form.valor_unitario),
+            fecha_compra: form.fecha
+          })
+        }
+      }
+
+      setMsg({ type: 'success', text: '✅ Egreso registrado con éxito y stock del inventario actualizado.' })
       setForm({
         fecha: new Date().toISOString().split('T')[0],
         factura: '',
@@ -138,7 +239,8 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
         valor_unitario: '',
         total: '',
         forma_pago: 'Efectivo',
-        cuenta: 'Caja Principal'
+        cuenta: 'Caja Principal',
+        producto_id: ''
       })
       loadData()
     } catch (err) {
@@ -396,7 +498,14 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                 <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Categoría del Gasto</label>
                 <select
                   value={form.categoria}
-                  onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+                  onChange={(e) => {
+                    const cat = e.target.value
+                    setForm(prev => ({
+                      ...prev,
+                      categoria: cat,
+                      ...(cat !== 'Insumos' ? { producto_id: '' } : {})
+                    }))
+                  }}
                   className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-2xl outline-none transition-all text-sm font-black text-gray-700 cursor-pointer"
                 >
                   <option value="Insumos">Insumos (Uñas, Cremas, Algodón)</option>
@@ -408,6 +517,24 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                   <option value="Otros">Otros Egresos</option>
                 </select>
               </div>
+
+              {form.categoria === 'Insumos' && (
+                <div className="animate-fade-in">
+                  <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">¿Asociar a un Insumo / Producto?</label>
+                  <select
+                    value={form.producto_id || ''}
+                    onChange={handleSelectProduct}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-2xl outline-none transition-all text-sm font-black text-gray-700 cursor-pointer"
+                  >
+                    <option value="">-- No asociar (Gasto General) --</option>
+                    {productos.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre} {p.precio_costo ? `(Costo actual: $${Number(p.precio_costo).toFixed(2)})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -635,6 +762,7 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                   <th className="py-3 px-2 text-right">Precio Costo ($)</th>
                   <th className="py-3 px-2 text-right">Precio Venta ($)</th>
                   <th className="py-3 px-3 text-center">F. Compra</th>
+                  <th className="py-3 px-3 text-center">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 text-gray-700 font-bold text-xs">
@@ -657,11 +785,21 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                       {p.precio_venta ? `$${Number(p.precio_venta).toFixed(2)}` : 'N/A'}
                     </td>
                     <td className="py-3 px-3 text-center text-gray-400 font-medium">{p.fecha_compra || 'N/A'}</td>
+                    <td className="py-3 px-3 text-center">
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditProduct(p)}
+                        className="p-1.5 text-blush-palmLeaf hover:bg-blush-seashell/60 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                        title="Editar Ficha del Insumo / Producto"
+                      >
+                        <Edit3 size={14} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {filteredProducts.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-xs text-gray-400 font-bold bg-white">
+                    <td colSpan={8} className="py-12 text-center text-xs text-gray-400 font-bold bg-white">
                       No se encontraron productos registrados en el inventario para comparar.
                     </td>
                   </tr>
@@ -886,6 +1024,138 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL DE EDICIÓN DE PRODUCTO / INSUMO */}
+      {editingProduct && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white w-full max-w-lg rounded-3xl p-6 shadow-2xl border border-gray-150 relative animate-slide-in my-8">
+            <button
+              onClick={() => setEditingProduct(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 cursor-pointer"
+            >
+              <Plus className="rotate-45" size={24} />
+            </button>
+
+            <div className="mb-4">
+              <h3 className="text-lg font-black text-blush-palmLeaf flex items-center gap-2 uppercase tracking-wide">
+                <Edit3 size={18} />
+                Editar Ficha del Producto
+              </h3>
+              <p className="text-xs text-gray-400 font-medium">Modifica los detalles del producto para normalizar su nombre o precios.</p>
+            </div>
+
+            <form onSubmit={handleSaveProductEdit} className="space-y-4 text-xs font-bold text-gray-700">
+              <div>
+                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Nombre Completo del Producto</label>
+                <input
+                  type="text"
+                  value={editProductForm.nombre}
+                  onChange={(e) => setEditProductForm({ ...editProductForm, nombre: e.target.value })}
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-250 rounded-xl outline-none focus:border-blush-palmLeaf focus:bg-white text-xs font-black text-gray-850"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Tipo de Producto</label>
+                  <select
+                    value={editProductForm.tipo}
+                    onChange={(e) => setEditProductForm({ ...editProductForm, tipo: e.target.value })}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-250 rounded-xl outline-none text-xs text-gray-700 cursor-pointer"
+                  >
+                    <option value="insumo">Insumo (Uso interno)</option>
+                    <option value="reventa">Reventa (Venta a clientes)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Fecha de Compra</label>
+                  <input
+                    type="date"
+                    value={editProductForm.fecha_compra}
+                    onChange={(e) => setEditProductForm({ ...editProductForm, fecha_compra: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl outline-none text-xs text-gray-700"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Proveedor / Distribuidor</label>
+                  <input
+                    type="text"
+                    placeholder="Ej. OPI Distribuidor"
+                    value={editProductForm.proveedor}
+                    onChange={(e) => setEditProductForm({ ...editProductForm, proveedor: e.target.value })}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-250 rounded-xl outline-none text-xs text-gray-700"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">RUC Proveedor</label>
+                  <input
+                    type="text"
+                    placeholder="Ej. 1792938475001"
+                    value={editProductForm.proveedor_ruc}
+                    onChange={(e) => setEditProductForm({ ...editProductForm, proveedor_ruc: e.target.value })}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-250 rounded-xl outline-none text-xs text-gray-700"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Precio Costo ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={editProductForm.precio_costo}
+                    onChange={(e) => setEditProductForm({ ...editProductForm, precio_costo: e.target.value.replace(/-/g, '') })}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-250 rounded-xl outline-none text-xs text-gray-700 font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Precio Venta ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={editProductForm.precio_venta}
+                    onChange={(e) => setEditProductForm({ ...editProductForm, precio_venta: e.target.value.replace(/-/g, '') })}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-250 rounded-xl outline-none text-xs text-gray-700 font-bold"
+                  />
+                </div>
+              </div>
+
+              {editProductMsg && (
+                <div className="p-3 bg-red-50 text-red-800 border border-red-200 text-xs rounded-xl font-bold text-center">
+                  {editProductMsg}
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm text-center"
+                >
+                  Guardar Cambios
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingProduct(null)}
+                  className="py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { 
   LayoutDashboard, 
   Calendar, 
@@ -48,6 +48,24 @@ export default function App() {
   const [showNotifications, setShowNotifications] = useState(false)
   const [notificaciones, setNotificaciones] = useState([])
   const [toasts, setToasts] = useState([])
+
+  const notificationsRef = useRef(null)
+  const configInfoRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
+        setShowNotifications(false)
+      }
+      if (configInfoRef.current && !configInfoRef.current.contains(event.target)) {
+        setShowConfigInfo(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
 
   // Login form state
   const [usernameInput, setUsernameInput] = useState('')
@@ -544,7 +562,7 @@ export default function App() {
             )}
 
             {/* Campana de Notificaciones */}
-            <div className="relative">
+            <div className="relative" ref={notificationsRef}>
               <button
                 onClick={() => {
                   setShowNotifications(!showNotifications)
@@ -639,7 +657,7 @@ export default function App() {
             </div>
 
             {/* Database Connection Badge */}
-            <div className="relative">
+            <div className="relative" ref={configInfoRef}>
               <button 
                 onClick={() => {
                   setShowConfigInfo(!showConfigInfo)

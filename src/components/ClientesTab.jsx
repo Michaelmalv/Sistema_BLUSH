@@ -321,27 +321,25 @@ export default function ClientesTab({ activeTab }) {
                 />
               </div>
             )}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Correo Electrónico</label>
-                <input
-                  type="email"
-                  placeholder="correo@ejemplo.com"
-                  value={form.correo}
-                  onChange={(e) => setForm({ ...form, correo: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-blush-palmLeaf outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Cumpleaños</label>
-                <input
-                  type="date"
-                  value={form.fecha_nacimiento}
-                  onChange={(e) => setForm({ ...form, fecha_nacimiento: e.target.value })}
-                  max={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-blush-palmLeaf outline-none"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1">Correo Electrónico</label>
+              <input
+                type="email"
+                placeholder="correo@ejemplo.com"
+                value={form.correo}
+                onChange={(e) => setForm({ ...form, correo: e.target.value })}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-blush-palmLeaf outline-none font-semibold text-gray-700"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1">Cumpleaños</label>
+              <input
+                type="date"
+                value={form.fecha_nacimiento}
+                onChange={(e) => setForm({ ...form, fecha_nacimiento: e.target.value })}
+                max={new Date().toISOString().split('T')[0]}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-blush-palmLeaf outline-none font-semibold text-gray-700"
+              />
             </div>
 
             {msg && <div className="p-2 bg-gray-50 border border-gray-100 text-xs rounded-xl font-bold">{msg}</div>}

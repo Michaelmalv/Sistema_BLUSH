@@ -43,7 +43,10 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
     total: '',
     forma_pago: 'Efectivo',
     cuenta: 'Caja Principal',
-    producto_id: ''
+    producto_id: '',
+    items: [
+      { producto_id: '', concepto: '', cantidad: 1, valor_unitario: '', total: '' }
+    ]
   })
 
   // Estados de Retenciones (Manuales)
@@ -129,6 +132,73 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
     }
   }
 
+  const handleAddItem = () => {
+    setForm(prev => ({
+      ...prev,
+      items: [
+        ...prev.items,
+        { producto_id: '', concepto: '', cantidad: 1, valor_unitario: '', total: '' }
+      ]
+    }))
+  }
+
+  const handleRemoveItem = (index) => {
+    setForm(prev => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index)
+    }))
+  }
+
+  const handleItemFieldChange = (index, field, value) => {
+    setForm(prev => {
+      const newItems = [...prev.items]
+      newItems[index] = {
+        ...newItems[index],
+        [field]: value
+      }
+      if (field === 'cantidad' || field === 'valor_unitario') {
+        const qty = Number(newItems[index].cantidad || 0)
+        const vu = Number(newItems[index].valor_unitario || 0)
+        newItems[index].total = (qty * vu).toFixed(2)
+      }
+      return { ...prev, items: newItems }
+    })
+  }
+
+  const handleItemProductChange = (index, prodId) => {
+    setForm(prev => {
+      const newItems = [...prev.items]
+      if (!prodId) {
+        newItems[index] = {
+          ...newItems[index],
+          producto_id: '',
+          concepto: '',
+          valor_unitario: '',
+          total: ''
+        }
+      } else {
+        const prod = productos.find(p => p.id === prodId)
+        if (prod) {
+          const vUnit = prod.precio_costo ? Number(prod.precio_costo).toFixed(2) : ''
+          const qty = Number(newItems[index].cantidad || 1)
+          const tot = vUnit ? (qty * Number(vUnit)).toFixed(2) : ''
+          newItems[index] = {
+            ...newItems[index],
+            producto_id: prodId,
+            concepto: `Compra de: ${prod.nombre}`,
+            valor_unitario: vUnit,
+            total: tot
+          }
+        }
+      }
+      return { ...prev, items: newItems }
+    })
+  }
+
+  const calculateInvoiceTotal = () => {
+    return form.items.reduce((sum, item) => sum + (Number(item.cantidad || 0) * Number(item.valor_unitario || 0)), 0).toFixed(2)
+  }
+
   const handleStartEditProduct = (prod) => {
     setEditingProduct(prod)
     setEditProductForm({
@@ -194,42 +264,81 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
 
     try {
       if (!form.fecha) throw new Error('La fecha es requerida.')
-      if (!form.concepto) throw new Error('El concepto del gasto es requerido.')
-      if (!form.total || Number(form.total) <= 0) throw new Error('El total del gasto debe ser mayor a 0.')
 
-      // A. Registrar el gasto contable
-      await dataService.registrarGasto({
-        fecha: form.fecha,
-        factura: form.factura || null,
-        cantidad: Number(form.cantidad),
-        concepto: form.concepto,
-        categoria: form.categoria,
-        valor_unitario: Number(form.valor_unitario || form.total),
-        total: Number(form.total),
-        forma_pago: form.forma_pago,
-        cuenta: form.cuenta,
-        sucursal_id: selectedBranchId || '11111111-1111-1111-1111-111111111111'
-      })
+      if (form.categoria === 'Insumos') {
+        if (!form.items || form.items.length === 0) throw new Error('Debe agregar al menos un producto.')
 
-      // B. Si es un producto del inventario, reponer el stock de forma automática
-      if (form.producto_id) {
-        await dataService.registrarReposicion(
-          form.producto_id,
-          Number(form.cantidad),
-          form.fecha
-        )
-
-        // C. Si el precio unitario ingresado varía, actualizar el precio de costo del catálogo
-        const prod = productos.find(p => p.id === form.producto_id)
-        if (prod && form.valor_unitario && Number(form.valor_unitario) !== Number(prod.precio_costo)) {
-          await dataService.actualizarProducto(form.producto_id, {
-            precio_costo: Number(form.valor_unitario),
-            fecha_compra: form.fecha
-          })
+        // Validar ítems
+        for (const item of form.items) {
+          if (!item.concepto.trim()) throw new Error('El concepto / detalle es requerido para todos los productos.')
+          if (!item.valor_unitario || Number(item.valor_unitario) <= 0) {
+            throw new Error(`El valor unitario del producto "${item.concepto}" debe ser mayor a 0.`)
+          }
+          if (!item.cantidad || Number(item.cantidad) <= 0) {
+            throw new Error(`La cantidad del producto "${item.concepto}" debe ser al menos 1.`)
+          }
         }
+
+        // Registrar cada producto como un egreso individual agrupado por la misma factura
+        await Promise.all(form.items.map(async (item) => {
+          const itemTotal = Number(item.cantidad) * Number(item.valor_unitario)
+
+          // 1. Registrar gasto
+          await dataService.registrarGasto({
+            fecha: form.fecha,
+            factura: form.factura || null,
+            cantidad: Number(item.cantidad),
+            concepto: item.concepto,
+            categoria: form.categoria,
+            valor_unitario: Number(item.valor_unitario),
+            total: itemTotal,
+            forma_pago: form.forma_pago,
+            cuenta: form.cuenta,
+            sucursal_id: selectedBranchId || '11111111-1111-1111-1111-111111111111'
+          })
+
+          // 2. Incrementar stock de inventario
+          if (item.producto_id) {
+            await dataService.registrarReposicion(
+              item.producto_id,
+              Number(item.cantidad),
+              form.fecha
+            )
+
+            // 3. Actualizar precio de costo si varía
+            const prod = productos.find(p => p.id === item.producto_id)
+            if (prod && Number(item.valor_unitario) !== Number(prod.precio_costo)) {
+              await dataService.actualizarProducto(item.producto_id, {
+                precio_costo: Number(item.valor_unitario),
+                fecha_compra: form.fecha
+              })
+            }
+          }
+        }))
+
+        setMsg({ type: 'success', text: `✅ Factura registrada con éxito. Se actualizaron ${form.items.filter(i => i.producto_id).length} productos en el inventario.` })
+      } else {
+        // Gasto simple general
+        if (!form.concepto) throw new Error('El concepto del gasto es requerido.')
+        if (!form.total || Number(form.total) <= 0) throw new Error('El total del gasto debe ser mayor a 0.')
+
+        await dataService.registrarGasto({
+          fecha: form.fecha,
+          factura: form.factura || null,
+          cantidad: Number(form.cantidad),
+          concepto: form.concepto,
+          categoria: form.categoria,
+          valor_unitario: Number(form.valor_unitario || form.total),
+          total: Number(form.total),
+          forma_pago: form.forma_pago,
+          cuenta: form.cuenta,
+          sucursal_id: selectedBranchId || '11111111-1111-1111-1111-111111111111'
+        })
+
+        setMsg({ type: 'success', text: '✅ Egreso registrado con éxito.' })
       }
 
-      setMsg({ type: 'success', text: '✅ Egreso registrado con éxito y stock del inventario actualizado.' })
+      // Resetear formulario
       setForm({
         fecha: new Date().toISOString().split('T')[0],
         factura: '',
@@ -240,7 +349,10 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
         total: '',
         forma_pago: 'Efectivo',
         cuenta: 'Caja Principal',
-        producto_id: ''
+        producto_id: '',
+        items: [
+          { producto_id: '', concepto: '', cantidad: 1, valor_unitario: '', total: '' }
+        ]
       })
       loadData()
     } catch (err) {
@@ -482,17 +594,19 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Concepto del Egreso</label>
-                <input
-                  type="text"
-                  placeholder="Ej. Esmaltes OPI, Pinceles, Arriendo"
-                  value={form.concepto}
-                  onChange={(e) => setForm({ ...form, concepto: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-2xl outline-none transition-all text-sm font-bold text-gray-700"
-                  required
-                />
-              </div>
+              {form.categoria !== 'Insumos' && (
+                <div>
+                  <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Concepto del Egreso</label>
+                  <input
+                    type="text"
+                    placeholder="Ej. Esmaltes OPI, Pinceles, Arriendo"
+                    value={form.concepto}
+                    onChange={(e) => setForm({ ...form, concepto: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-2xl outline-none transition-all text-sm font-bold text-gray-700"
+                    required={form.categoria !== 'Insumos'}
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Categoría del Gasto</label>
@@ -518,63 +632,148 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                 </select>
               </div>
 
-              {form.categoria === 'Insumos' && (
-                <div className="animate-fade-in">
-                  <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">¿Asociar a un Insumo / Producto?</label>
-                  <select
-                    value={form.producto_id || ''}
-                    onChange={handleSelectProduct}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-2xl outline-none transition-all text-sm font-black text-gray-700 cursor-pointer"
-                  >
-                    <option value="">-- No asociar (Gasto General) --</option>
-                    {productos.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.nombre} {p.precio_costo ? `(Costo actual: $${Number(p.precio_costo).toFixed(2)})` : ''}
-                      </option>
+              {form.categoria === 'Insumos' ? (
+                // EDITOR MULTIPRODUCTO DINÁMICO
+                <div className="space-y-4 border border-gray-150 p-4 rounded-2xl bg-gray-50/50">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-black text-blush-palmLeaf uppercase tracking-wide">Productos en Factura</span>
+                    <button
+                      type="button"
+                      onClick={handleAddItem}
+                      className="px-2.5 py-1 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white rounded-lg text-xxs font-black uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <Plus size={11} />
+                      Agregar
+                    </button>
+                  </div>
+
+                  <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                    {form.items.map((item, idx) => (
+                      <div key={idx} className="p-3 bg-white border border-gray-200 rounded-xl space-y-2 relative animate-fade-in">
+                        {form.items.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(idx)}
+                            className="absolute top-2 right-2 p-1 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-all cursor-pointer"
+                            title="Quitar producto"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+
+                        <div>
+                          <label className="block text-[9px] font-black text-gray-400 uppercase tracking-wide mb-0.5">Producto en Inventario</label>
+                          <select
+                            value={item.producto_id || ''}
+                            onChange={(e) => handleItemProductChange(idx, e.target.value)}
+                            className="w-full px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-700 outline-none cursor-pointer"
+                          >
+                            <option value="">-- No asociar (Detalle Manual) --</option>
+                            {productos.map(p => (
+                              <option key={p.id} value={p.id}>
+                                {p.nombre} {p.precio_costo ? `($${Number(p.precio_costo).toFixed(2)})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[9px] font-black text-gray-400 uppercase tracking-wide mb-0.5">Concepto / Detalle</label>
+                          <input
+                            type="text"
+                            placeholder="Ej. Esmaltes de Uñas, Algodón"
+                            value={item.concepto}
+                            onChange={(e) => handleItemFieldChange(idx, 'concepto', e.target.value)}
+                            className="w-full px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-700 outline-none"
+                            required
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-[9px] font-black text-gray-400 uppercase tracking-wide mb-0.5">Cant.</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.cantidad}
+                              onChange={(e) => handleItemFieldChange(idx, 'cantidad', e.target.value.replace(/-/g, ''))}
+                              className="w-full px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-700 outline-none"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-black text-gray-400 uppercase tracking-wide mb-0.5">U. Costo ($)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={item.valor_unitario}
+                              onChange={(e) => handleItemFieldChange(idx, 'valor_unitario', e.target.value.replace(/-/g, ''))}
+                              className="w-full px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-700 outline-none"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-black text-gray-400 uppercase tracking-wide mb-0.5">Total ($)</label>
+                            <div className="w-full px-2 py-1.5 bg-gray-100 rounded-lg text-xs font-black text-gray-600 border border-gray-150">
+                              ${((Number(item.cantidad || 0) * Number(item.valor_unitario || 0)) || 0).toFixed(2)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     ))}
-                  </select>
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-150 flex justify-between items-center text-xs">
+                    <span className="font-bold text-gray-500 uppercase">Monto Total Factura:</span>
+                    <span className="text-sm font-black text-rose-600">${calculateInvoiceTotal()}</span>
+                  </div>
                 </div>
+              ) : (
+                // SIMPLE FORM FIELDS
+                <React.Fragment>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Cantidad</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={form.cantidad}
+                        onChange={(e) => setForm({ ...form, cantidad: e.target.value.replace(/-/g, '') })}
+                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-2xl outline-none transition-all text-sm font-black text-gray-700"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Valor Unitario ($)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={form.valor_unitario}
+                        onChange={(e) => setForm({ ...form, valor_unitario: e.target.value.replace(/-/g, '') })}
+                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-2xl outline-none transition-all text-sm font-black text-gray-700"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Total a Pagar ($)</label>
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={form.total}
+                      onChange={(e) => setForm({ ...form, total: e.target.value.replace(/-/g, '') })}
+                      className="w-full px-4 py-3 bg-rose-50/70 border-2 border-rose-250 rounded-2xl outline-none text-sm font-black text-rose-700"
+                      required
+                    />
+                  </div>
+                </React.Fragment>
               )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Cantidad</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={form.cantidad}
-                    onChange={(e) => setForm({ ...form, cantidad: e.target.value.replace(/-/g, '') })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-2xl outline-none transition-all text-sm font-black text-gray-700"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Valor Unitario ($)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={form.valor_unitario}
-                    onChange={(e) => setForm({ ...form, valor_unitario: e.target.value.replace(/-/g, '') })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-2xl outline-none transition-all text-sm font-black text-gray-700"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Total a Pagar ($)</label>
-                <input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={form.total}
-                  onChange={(e) => setForm({ ...form, total: e.target.value.replace(/-/g, '') })}
-                  className="w-full px-4 py-3 bg-rose-50/70 border-2 border-rose-250 rounded-2xl outline-none text-sm font-black text-rose-700"
-                  required
-                />
-              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>

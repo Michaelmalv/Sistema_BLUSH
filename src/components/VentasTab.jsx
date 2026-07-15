@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { Plus, Calendar, DollarSign, CreditCard, User, Sparkles, Receipt, X, Edit3, Trash2, Search } from 'lucide-react'
 import { dataService } from '../dataService'
 
@@ -87,6 +87,82 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
       }
     }
   }, [form.servicio_id, servicios])
+
+  const filteredClientSuggestions = useMemo(() => {
+    const term = clientSearchText.toLowerCase().trim()
+    if (!term) return []
+    return clientes.filter(c => 
+      c.nombre.toLowerCase().includes(term) || (c.cedula && c.cedula.includes(term))
+    ).slice(0, 8)
+  }, [clientes, clientSearchText])
+
+  const groupedCitas = useMemo(() => {
+    const groups = {}
+    citas.forEach(c => {
+      const clientKey = c.cliente_id || 'anonymous'
+      const dateKey = new Date(c.fecha_hora).toISOString()
+      const groupKey = `${clientKey}_${dateKey}`
+      
+      if (!groups[groupKey]) {
+        groups[groupKey] = {
+          key: groupKey,
+          cliente_id: c.cliente_id,
+          cliente: c.clientes || { nombre: 'S/N' },
+          fecha_hora: c.fecha_hora,
+          forma_pago: c.forma_pago,
+          no_transferencia: c.no_transferencia,
+          servicios: [],
+          total: 0
+        }
+      }
+      
+      groups[groupKey].servicios.push({
+        id: c.id,
+        servicio_id: c.servicio_id,
+        nombre_servicio: c.servicios?.nombre || 'S/N',
+        personal_id: c.personal_id,
+        nombre_personal: c.personal?.nombre || 'Sin asignar',
+        valor_pagado: Number(c.valor_pagado)
+      })
+      groups[groupKey].total += Number(c.valor_pagado)
+    })
+    return Object.values(groups).sort((a, b) => new Date(b.fecha_hora) - new Date(a.fecha_hora))
+  }, [citas])
+
+  const filteredGroupedCitas = useMemo(() => {
+    return groupedCitas.filter(group => {
+      const clientName = group.cliente?.nombre?.toLowerCase() || ''
+      if (historySearch && !clientName.includes(historySearch.toLowerCase())) {
+        return false
+      }
+      const groupDate = new Date(group.fecha_hora)
+      if (filterStartDate) {
+        const start = new Date(filterStartDate + 'T00:00:00')
+        if (groupDate < start) return false
+      }
+      if (filterEndDate) {
+        const end = new Date(filterEndDate + 'T23:59:59')
+        if (groupDate > end) return false
+      }
+      return true
+    })
+  }, [groupedCitas, historySearch, filterStartDate, filterEndDate])
+
+  const cashCitas = useMemo(() => {
+    return citas.filter(c => {
+      if (c.forma_pago !== 'Efectivo') return false
+      const groupDate = new Date(c.fecha_hora)
+      if (filterStartDate) {
+        const start = new Date(filterStartDate + 'T00:00:00')
+        if (groupDate < start) return false
+      }
+      if (filterEndDate) {
+        const end = new Date(filterEndDate + 'T23:59:59')
+        if (groupDate > end) return false
+      }
+      return true
+    })
+  }, [citas, filterStartDate, filterEndDate])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -397,33 +473,24 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
                     />
                     <Search className="absolute left-3 top-2.5 text-gray-400" size={15} />
                     {showClientSuggestions && clientSearchText.trim() !== '' && (
-                      <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto z-50">
-                        {clientes
-                          .filter(c => {
-                            const term = clientSearchText.toLowerCase()
-                            return c.nombre.toLowerCase().includes(term) || (c.cedula && c.cedula.includes(term))
-                          })
-                          .slice(0, 8)
-                          .map(c => (
-                            <button
-                              key={c.id}
-                              type="button"
-                              onClick={() => {
-                                setForm(prev => ({ ...prev, cliente_id: c.id }))
-                                setShowClientSuggestions(false)
-                              }}
-                              className="w-full text-left px-3 py-2 hover:bg-gray-50 text-xs border-b border-gray-100 last:border-0 flex flex-col cursor-pointer"
-                            >
-                              <span className="font-bold text-gray-800">{c.nombre}</span>
-                              <span className="text-[10px] text-gray-400">
-                                Cédula: {c.cedula || 'N/A'} | Cel: {c.celular || 'N/A'}
-                              </span>
-                            </button>
-                          ))}
-                        {clientes.filter(c => {
-                          const term = clientSearchText.toLowerCase()
-                          return c.nombre.toLowerCase().includes(term) || (c.cedula && c.cedula.includes(term))
-                        }).length === 0 && (
+                      <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-250 rounded-xl shadow-lg max-h-48 overflow-y-auto z-50">
+                        {filteredClientSuggestions.map(c => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => {
+                              setForm(prev => ({ ...prev, cliente_id: c.id }))
+                              setShowClientSuggestions(false)
+                            }}
+                            className="w-full text-left px-3 py-2 hover:bg-gray-50 text-xs border-b border-gray-100 last:border-0 flex flex-col cursor-pointer"
+                          >
+                            <span className="font-bold text-gray-800">{c.nombre}</span>
+                            <span className="text-[10px] text-gray-400">
+                              Cédula: {c.cedula || 'N/A'} | Cel: {c.celular || 'N/A'}
+                            </span>
+                          </button>
+                        ))}
+                        {filteredClientSuggestions.length === 0 && (
                           <div className="p-3 text-center text-xs text-gray-400 font-bold">
                             Ningún cliente coincide. ¿Deseas crearlo?
                           </div>
@@ -626,384 +693,308 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
         </form>
       </div>
 
-      {/* Historial de Citas/Ventas */}
-      <div className="lg:col-span-2 bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col">
-        {/* Filtros e Historial */}
-        <div className="mb-6 space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-            <div>
-              <h3 className="text-lg font-bold text-blush-palmLeaf flex items-center gap-2">
-                <Receipt size={18} />
-                Historial de Transacciones
-              </h3>
-              <p className="text-xs text-gray-400">Auditoría, filtros avanzados y control de caja</p>
-            </div>
-            
-            <button
-              onClick={() => {
-                setShowConciliacionModal(!showConciliacionModal)
-                setSelectedCashIds([])
-                setDepositVoucher('')
-              }}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm ${
-                showConciliacionModal 
-                  ? 'bg-amber-100 text-amber-800 border border-amber-200' 
-                  : 'bg-blush-seashell text-blush-palmLeaf hover:bg-blush-seashell/80 border border-blush-seashell-dark/10'
-              }`}
-            >
-              <DollarSign size={14} />
-              {showConciliacionModal ? 'Ver Historial' : 'Depósitos de Efectivo'}
-            </button>
-          </div>
-
-          {/* Panel de Filtros */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50/50 p-3.5 rounded-2xl border border-gray-150">
-            <div>
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Buscar por Cliente</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Ej. Mayra Lojano..."
-                  value={historySearch}
-                  onChange={(e) => setHistorySearch(e.target.value)}
-                  className="w-full !pl-9 pr-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-blush-palmLeaf"
-                />
-                <Search className="absolute left-2.5 top-2.5 text-gray-400" size={13} />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Desde</label>
-              <input
-                type="date"
-                value={filterStartDate}
-                onChange={(e) => setFilterStartDate(e.target.value)}
-                className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-blush-palmLeaf text-gray-600 font-semibold"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Hasta</label>
-              <input
-                type="date"
-                value={filterEndDate}
-                onChange={(e) => setFilterEndDate(e.target.value)}
-                className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-blush-palmLeaf text-gray-600 font-semibold"
-              />
-            </div>
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-20 text-gray-400">Cargando registros...</div>
-        ) : (
-          (() => {
-            // Agrupación en el frontend
-            const groupCitas = (citasList) => {
-              const groups = {}
-              citasList.forEach(c => {
-                const clientKey = c.cliente_id || 'anonymous'
-                const dateKey = new Date(c.fecha_hora).toISOString()
-                const groupKey = `${clientKey}_${dateKey}`
-                
-                if (!groups[groupKey]) {
-                  groups[groupKey] = {
-                    key: groupKey,
-                    cliente_id: c.cliente_id,
-                    cliente: c.clientes || { nombre: 'S/N' },
-                    fecha_hora: c.fecha_hora,
-                    forma_pago: c.forma_pago,
-                    no_transferencia: c.no_transferencia,
-                    servicios: [],
-                    total: 0
-                  }
-                }
-                
-                groups[groupKey].servicios.push({
-                  id: c.id,
-                  servicio_id: c.servicio_id,
-                  nombre_servicio: c.servicios?.nombre || 'S/N',
-                  personal_id: c.personal_id,
-                  nombre_personal: c.personal?.nombre || 'Sin asignar',
-                  valor_pagado: Number(c.valor_pagado)
-                })
-                groups[groupKey].total += Number(c.valor_pagado)
-              })
-              
-              return Object.values(groups).sort((a, b) => new Date(b.fecha_hora) - new Date(a.fecha_hora))
-            }
-
-            const groupedCitas = groupCitas(citas)
-
-            // Filtrado del historial agrupado
-            const filteredGroupedCitas = groupedCitas.filter(group => {
-              const clientName = group.cliente?.nombre?.toLowerCase() || ''
-              if (historySearch && !clientName.includes(historySearch.toLowerCase())) {
-                return false
-              }
-              
-              const groupDate = new Date(group.fecha_hora)
-              if (filterStartDate) {
-                const start = new Date(filterStartDate + 'T00:00:00')
-                if (groupDate < start) return false
-              }
-              if (filterEndDate) {
-                const end = new Date(filterEndDate + 'T23:59:59')
-                if (groupDate > end) return false
-              }
-              
-              return true
-            })
-
-            // Filtrado de citas en efectivo para conciliación
-            const cashCitas = citas.filter(c => {
-              if (c.forma_pago !== 'Efectivo') return false
-              
-              const groupDate = new Date(c.fecha_hora)
-              if (filterStartDate) {
-                const start = new Date(filterStartDate + 'T00:00:00')
-                if (groupDate < start) return false
-              }
-              if (filterEndDate) {
-                const end = new Date(filterEndDate + 'T23:59:59')
-                if (groupDate > end) return false
-              }
-              return true
-            })
-
-            const handleDeleteGroup = async (group) => {
-              if (window.confirm('¿Estás seguro de que deseas eliminar este registro de venta/cita completo?')) {
-                try {
-                  await dataService.eliminarGrupoCitas(group.cliente_id, group.fecha_hora)
-                  loadData()
-                } catch (err) {
-                  alert(`Error al eliminar: ${err.message}`)
-                }
-              }
-            }
-
-            const handleEditGroup = (group) => {
-              setEditingOriginalGroup({ cliente_id: group.cliente_id, fecha_hora: group.fecha_hora })
-              setEsNuevoCliente(false)
-              setForm({
-                cliente_id: group.cliente_id,
-                nuevo_nombre: '',
-                nuevo_cedula: '',
-                nuevo_celular: '',
-                nuevo_correo: '',
-                nuevo_medio: 'WhatsApp',
-                nuevo_medio_otro: '',
-                nuevo_fecha_nacimiento: '',
-                servicio_id: '',
-                personal_id: '',
-                fecha_hora: new Date(new Date(group.fecha_hora).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16),
-                valor_pagado: '',
-                forma_pago: group.forma_pago,
-                no_transferencia: group.no_transferencia || ''
-              })
-              setServiciosAgregados(group.servicios.map(s => ({
-                id: s.id,
-                servicio_id: s.servicio_id,
-                nombre_servicio: s.nombre_servicio,
-                personal_id: s.personal_id,
-                nombre_personal: s.nombre_personal,
-                valor_pagado: s.valor_pagado
-              })))
-              setClientSearchText(group.cliente?.nombre || '')
-              window.scrollTo({ top: 0, behavior: 'smooth' })
-            }
-
-            if (showConciliacionModal) {
-              return (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center pb-3 border-b border-gray-150">
-                    <h4 className="font-bold text-sm text-blush-palmLeaf flex items-center gap-1.5">
-                      <DollarSign size={16} />
-                      Depósito Masivo de Efectivo
-                    </h4>
-                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                      {cashCitas.length} Ventas en Efectivo
-                    </span>
-                  </div>
-                  
-                  {/* Controles de Depósito */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-200 shadow-xxs">
-                    <div>
-                      <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">
-                        Nro. Comprobante de Depósito Bancario
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Ej. DEP-109248"
-                        value={depositVoucher}
-                        onChange={(e) => setDepositVoucher(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-blush-palmLeaf"
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <button
-                        onClick={handleApplyMassVoucher}
-                        className="w-full bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-black py-2.5 rounded-xl transition-all text-xs uppercase tracking-wider cursor-pointer shadow-sm"
-                      >
-                        Asignar a seleccionadas ({selectedCashIds.length})
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Lista de Transacciones en Efectivo */}
-                  <div className="overflow-x-auto max-h-[400px] border border-gray-100 rounded-2xl">
-                    <table className="w-full text-left text-sm border-collapse">
-                      <thead>
-                        <tr className="border-b border-gray-150 text-gray-400 text-xxs font-black uppercase tracking-wider bg-gray-50/50">
-                          <th className="py-2.5 px-3 w-10">
-                            <input
-                              type="checkbox"
-                              checked={selectedCashIds.length === cashCitas.length && cashCitas.length > 0}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedCashIds(cashCitas.map(c => c.id))
-                                } else {
-                                  setSelectedCashIds([])
-                                }
-                              }}
-                              className="cursor-pointer rounded border-gray-300 text-blush-palmLeaf focus:ring-blush-palmLeaf"
-                            />
-                          </th>
-                          <th className="py-2.5 px-2">Fecha</th>
-                          <th className="py-2.5 px-2">Cliente</th>
-                          <th className="py-2.5 px-2">Servicio</th>
-                          <th className="py-2.5 px-2">Monto</th>
-                          <th className="py-2.5 px-3">Comprobante Actual</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-50">
-                        {cashCitas.map(c => (
-                          <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
-                            <td className="py-2.5 px-3">
-                              <input
-                                type="checkbox"
-                                checked={selectedCashIds.includes(c.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedCashIds([...selectedCashIds, c.id])
-                                  } else {
-                                    setSelectedCashIds(selectedCashIds.filter(id => id !== c.id))
-                                  }
-                                }}
-                                className="cursor-pointer rounded border-gray-300 text-blush-palmLeaf focus:ring-blush-palmLeaf"
-                              />
-                            </td>
-                            <td className="py-2.5 px-2 text-xs font-semibold text-gray-600">
-                              {new Date(c.fecha_hora).toLocaleDateString()}
-                            </td>
-                            <td className="py-2.5 px-2 font-bold text-gray-800 text-xs">{c.clientes?.nombre || 'S/N'}</td>
-                            <td className="py-2.5 px-2 text-xs font-semibold text-gray-700">{c.servicios?.nombre || 'S/N'}</td>
-                            <td className="py-2.5 px-2 font-black text-blush-palmLeaf text-xs">${Number(c.valor_pagado).toFixed(2)}</td>
-                            <td className="py-2.5 px-3 text-xxs font-mono text-gray-500 font-bold">{c.no_transferencia || 'Ninguno'}</td>
-                          </tr>
-                        ))}
-                        {cashCitas.length === 0 && (
-                          <tr>
-                            <td colSpan={6} className="py-12 text-center text-xs text-gray-400 font-bold bg-white">
-                              No hay ventas en efectivo pendientes de depósito.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )
-            }
-
-            return (
-              <div className="overflow-x-auto flex-1">
-                <table className="w-full text-left text-sm border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-100 text-gray-400 text-xs font-bold">
-                      <th className="py-3 px-2">Fecha / Hora</th>
-                      <th className="py-3 px-2">Cliente</th>
-                      <th className="py-3 px-2">Servicios Asignados</th>
-                      <th className="py-3 px-2">Detalles Pago</th>
-                      <th className="py-3 px-2 text-right">Valor Total</th>
-                      <th className="py-3 px-2 text-center">Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {filteredGroupedCitas.map((group) => (
-                      <tr key={group.key} className="hover:bg-gray-50/50 transition-colors align-top">
-                        <td className="py-3.5 px-2 font-medium text-gray-600 text-xs">
-                          <span className="block font-bold">{new Date(group.fecha_hora).toLocaleDateString()}</span>
-                          <span className="text-xxs text-gray-400">{new Date(group.fecha_hora).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        </td>
-                        <td className="py-3.5 px-2">
-                          <div className="font-bold text-gray-800 text-xs">{group.cliente?.nombre || 'S/N'}</div>
-                          {group.cliente?.cedula && <div className="text-[10px] text-gray-400">Ced: {group.cliente.cedula}</div>}
-                        </td>
-                        <td className="py-3.5 px-2">
-                          <div className="space-y-1">
-                            {group.servicios.map((s, sIdx) => (
-                              <div key={sIdx} className="text-xs text-gray-700 bg-gray-50 p-1.5 rounded-lg border border-gray-100 max-w-[200px]">
-                                <span className="font-bold text-gray-800 block truncate">{s.nombre_servicio}</span>
-                                <span className="text-[10px] text-gray-400 block truncate">Téc: {s.nombre_personal}</span>
-                                <span className="text-[10px] font-black text-blush-palmLeaf">${s.valor_pagado.toFixed(2)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-2">
-                          <span className="inline-flex flex-col items-start">
-                            <span className={`text-xs font-bold ${
-                              group.forma_pago === 'Efectivo' ? 'text-green-700' :
-                              group.forma_pago === 'Tarjeta' ? 'text-blue-700' :
-                              'text-amber-800 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-md'
-                            }`}>
-                              {group.forma_pago}
-                            </span>
-                            {group.no_transferencia && (
-                              <span className="text-xxs font-mono text-amber-700 font-semibold max-w-[120px] truncate" title={group.no_transferencia}>
-                                Ref: {group.no_transferencia}
-                              </span>
-                            )}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-2 text-right font-black text-blush-palmLeaf text-sm">
-                          ${group.total.toFixed(2)}
-                        </td>
-                        <td className="py-3.5 px-2">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={() => handleEditGroup(group)}
-                              className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
-                              title="Editar Cita"
-                            >
-                              <Edit3 size={14} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteGroup(group)}
-                              className="p-1 hover:bg-rose-50 rounded-lg text-gray-400 hover:text-rose-600 transition-colors cursor-pointer"
-                              title="Eliminar Cita"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredGroupedCitas.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="py-20 text-center text-gray-400 font-bold bg-white">
-                          No se encontraron transacciones con los filtros actuales.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )
-          })()
-        )}
-      </div>
+      <TransactionHistory
+        loading={loading}
+        filteredGroupedCitas={filteredGroupedCitas}
+        cashCitas={cashCitas}
+        showConciliacionModal={showConciliacionModal}
+        setShowConciliacionModal={setShowConciliacionModal}
+        depositVoucher={depositVoucher}
+        setDepositVoucher={setDepositVoucher}
+        selectedCashIds={selectedCashIds}
+        setSelectedCashIds={setSelectedCashIds}
+        handleApplyMassVoucher={handleApplyMassVoucher}
+        handleEditGroup={handleEditGroup}
+        handleDeleteGroup={handleDeleteGroup}
+        historySearch={historySearch}
+        setHistorySearch={setHistorySearch}
+        filterStartDate={filterStartDate}
+        setFilterStartDate={setFilterStartDate}
+        filterEndDate={filterEndDate}
+        setFilterEndDate={setFilterEndDate}
+      />
     </div>
   )
 }
+
+const TransactionHistory = React.memo(({
+  loading,
+  filteredGroupedCitas,
+  cashCitas,
+  showConciliacionModal,
+  setShowConciliacionModal,
+  depositVoucher,
+  setDepositVoucher,
+  selectedCashIds,
+  setSelectedCashIds,
+  handleApplyMassVoucher,
+  handleEditGroup,
+  handleDeleteGroup,
+  historySearch,
+  setHistorySearch,
+  filterStartDate,
+  setFilterStartDate,
+  filterEndDate,
+  setFilterEndDate
+}) => {
+  return (
+    <div className="lg:col-span-2 bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col">
+      {/* Filtros e Historial */}
+      <div className="mb-6 space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div>
+            <h3 className="text-lg font-bold text-blush-palmLeaf flex items-center gap-2">
+              <Receipt size={18} />
+              Historial de Transacciones
+            </h3>
+            <p className="text-xs text-gray-400">Auditoría, filtros avanzados y control de caja</p>
+          </div>
+          
+          <button
+            type="button"
+            onClick={() => {
+              setShowConciliacionModal(!showConciliacionModal)
+              setSelectedCashIds([])
+              setDepositVoucher('')
+            }}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm ${
+              showConciliacionModal 
+                ? 'bg-amber-100 text-amber-800 border border-amber-200' 
+                : 'bg-blush-seashell text-blush-palmLeaf hover:bg-blush-seashell/80 border border-blush-seashell-dark/10'
+            }`}
+          >
+            <DollarSign size={14} />
+            {showConciliacionModal ? 'Ver Historial' : 'Depósitos de Efectivo'}
+          </button>
+        </div>
+
+        {/* Panel de Filtros */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50/50 p-3.5 rounded-2xl border border-gray-150">
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Buscar por Cliente</label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Ej. Mayra Lojano..."
+                value={historySearch}
+                onChange={(e) => setHistorySearch(e.target.value)}
+                className="w-full !pl-9 pr-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-blush-palmLeaf"
+              />
+              <Search className="absolute left-2.5 top-2.5 text-gray-400" size={13} />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Desde</label>
+            <input
+              type="date"
+              value={filterStartDate}
+              onChange={(e) => setFilterStartDate(e.target.value)}
+              className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-blush-palmLeaf text-gray-600 font-semibold"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Hasta</label>
+            <input
+              type="date"
+              value={filterEndDate}
+              onChange={(e) => setFilterEndDate(e.target.value)}
+              className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-blush-palmLeaf text-gray-600 font-semibold"
+            />
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20 text-gray-400">Cargando registros...</div>
+      ) : showConciliacionModal ? (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center pb-3 border-b border-gray-150">
+            <h4 className="font-bold text-sm text-blush-palmLeaf flex items-center gap-1.5">
+              <DollarSign size={16} />
+              Depósito Masivo de Efectivo
+            </h4>
+            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+              {cashCitas.length} Ventas en Efectivo
+            </span>
+          </div>
+          
+          {/* Controles de Depósito */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-200 shadow-xxs">
+            <div>
+              <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">
+                Nro. Comprobante de Depósito Bancario
+              </label>
+              <input
+                type="text"
+                placeholder="Ej. DEP-109248"
+                value={depositVoucher}
+                onChange={(e) => setDepositVoucher(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-blush-palmLeaf"
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={handleApplyMassVoucher}
+                className="w-full bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-black py-2.5 rounded-xl transition-all text-xs uppercase tracking-wider cursor-pointer shadow-sm"
+              >
+                Asignar a seleccionadas ({selectedCashIds.length})
+              </button>
+            </div>
+          </div>
+
+          {/* Lista de Transacciones en Efectivo */}
+          <div className="overflow-x-auto max-h-[400px] border border-gray-100 rounded-2xl">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-gray-150 text-gray-400 text-xxs font-black uppercase tracking-wider bg-gray-50/50">
+                  <th className="py-2.5 px-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedCashIds.length === cashCitas.length && cashCitas.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedCashIds(cashCitas.map(c => c.id))
+                        } else {
+                          setSelectedCashIds([])
+                        }
+                      }}
+                      className="cursor-pointer rounded border-gray-300 text-blush-palmLeaf focus:ring-blush-palmLeaf"
+                    />
+                  </th>
+                  <th className="py-2.5 px-2">Fecha</th>
+                  <th className="py-2.5 px-2">Cliente</th>
+                  <th className="py-2.5 px-2">Servicio</th>
+                  <th className="py-2.5 px-2">Monto</th>
+                  <th className="py-2.5 px-3">Comprobante Actual</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {cashCitas.map(c => (
+                  <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="py-2.5 px-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedCashIds.includes(c.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedCashIds([...selectedCashIds, c.id])
+                          } else {
+                            setSelectedCashIds(selectedCashIds.filter(id => id !== c.id))
+                          }
+                        }}
+                        className="cursor-pointer rounded border-gray-300 text-blush-palmLeaf focus:ring-blush-palmLeaf"
+                      />
+                    </td>
+                    <td className="py-2.5 px-2 text-xs font-semibold text-gray-600">
+                      {new Date(c.fecha_hora).toLocaleDateString()}
+                    </td>
+                    <td className="py-2.5 px-2 font-bold text-gray-800 text-xs">{c.clientes?.nombre || 'S/N'}</td>
+                    <td className="py-2.5 px-2 text-xs font-semibold text-gray-700">{c.servicios?.nombre || 'S/N'}</td>
+                    <td className="py-2.5 px-2 font-black text-blush-palmLeaf text-xs">${Number(c.valor_pagado).toFixed(2)}</td>
+                    <td className="py-2.5 px-3 text-xxs font-mono text-gray-500 font-bold">{c.no_transferencia || 'Ninguno'}</td>
+                  </tr>
+                ))}
+                {cashCitas.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-xs text-gray-400 font-bold bg-white">
+                      No hay ventas en efectivo pendientes de depósito.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className="overflow-x-auto flex-1">
+          <table className="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-gray-100 text-gray-400 text-xs font-bold">
+                <th className="py-3 px-2">Fecha / Hora</th>
+                <th className="py-3 px-2">Cliente</th>
+                <th className="py-3 px-2">Servicios Asignados</th>
+                <th className="py-3 px-2">Detalles Pago</th>
+                <th className="py-3 px-2 text-right">Valor Total</th>
+                <th className="py-3 px-2 text-center">Acción</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filteredGroupedCitas.map((group) => (
+                <tr key={group.key} className="hover:bg-gray-50/50 transition-colors align-top">
+                  <td className="py-3.5 px-2 font-medium text-gray-600 text-xs">
+                    <span className="block font-bold">{new Date(group.fecha_hora).toLocaleDateString()}</span>
+                    <span className="text-xxs text-gray-400">{new Date(group.fecha_hora).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </td>
+                  <td className="py-3.5 px-2">
+                    <div className="font-bold text-gray-800 text-xs">{group.cliente?.nombre || 'S/N'}</div>
+                    {group.cliente?.cedula && <div className="text-[10px] text-gray-400">Ced: {group.cliente.cedula}</div>}
+                  </td>
+                  <td className="py-3.5 px-2">
+                    <div className="space-y-1">
+                      {group.servicios.map((s, sIdx) => (
+                        <div key={sIdx} className="text-xs text-gray-700 bg-gray-50 p-1.5 rounded-lg border border-gray-100 max-w-[200px]">
+                          <span className="font-bold text-gray-800 block truncate">{s.nombre_servicio}</span>
+                          <span className="text-[10px] text-gray-400 block truncate">Téc: {s.nombre_personal}</span>
+                          <span className="text-[10px] font-black text-blush-palmLeaf">${s.valor_pagado.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="py-3.5 px-2">
+                    <span className="inline-flex flex-col items-start">
+                      <span className={`text-xs font-bold ${
+                        group.forma_pago === 'Efectivo' ? 'text-green-700' :
+                        group.forma_pago === 'Tarjeta' ? 'text-blue-700' :
+                        'text-amber-800 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-md'
+                      }`}>
+                        {group.forma_pago}
+                      </span>
+                      {group.no_transferencia && (
+                        <span className="text-xxs font-mono text-amber-700 font-semibold max-w-[120px] truncate" title={group.no_transferencia}>
+                          Ref: {group.no_transferencia}
+                        </span>
+                      )}
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-2 text-right font-black text-blush-palmLeaf text-sm">
+                    ${group.total.toFixed(2)}
+                  </td>
+                  <td className="py-3.5 px-2">
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleEditGroup(group)}
+                        className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
+                        title="Editar Cita"
+                      >
+                        <Edit3 size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteGroup(group)}
+                        className="p-1 hover:bg-rose-50 rounded-lg text-gray-400 hover:text-rose-600 transition-colors cursor-pointer"
+                        title="Eliminar Cita"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredGroupedCitas.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-20 text-center text-gray-400 font-bold bg-white">
+                    No se encontraron transacciones con los filtros actuales.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+})

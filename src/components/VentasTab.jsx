@@ -336,6 +336,48 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
     }
   }
 
+  const handleDeleteGroup = async (group) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar este registro de venta/cita completo?')) {
+      try {
+        await dataService.eliminarGrupoCitas(group.cliente_id, group.fecha_hora)
+        loadData()
+      } catch (err) {
+        alert(`Error al eliminar: ${err.message}`)
+      }
+    }
+  }
+
+  const handleEditGroup = (group) => {
+    setEditingOriginalGroup({ cliente_id: group.cliente_id, fecha_hora: group.fecha_hora })
+    setEsNuevoCliente(false)
+    setForm({
+      cliente_id: group.cliente_id,
+      nuevo_nombre: '',
+      nuevo_cedula: '',
+      nuevo_celular: '',
+      nuevo_correo: '',
+      nuevo_medio: 'WhatsApp',
+      nuevo_medio_otro: '',
+      nuevo_fecha_nacimiento: '',
+      servicio_id: '',
+      personal_id: '',
+      fecha_hora: new Date(new Date(group.fecha_hora).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16),
+      valor_pagado: '',
+      forma_pago: group.forma_pago,
+      no_transferencia: group.no_transferencia || ''
+    })
+    setServiciosAgregados(group.servicios.map(s => ({
+      id: s.id,
+      servicio_id: s.servicio_id,
+      nombre_servicio: s.nombre_servicio,
+      personal_id: s.personal_id,
+      nombre_personal: s.nombre_personal,
+      valor_pagado: s.valor_pagado
+    })))
+    setClientSearchText(group.cliente?.nombre || '')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Formulario de registro */}

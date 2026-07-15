@@ -19,6 +19,10 @@ He creado los siguientes recursos en la raíz de tu espacio de trabajo:
 
 2.  **[migrate.py](file:///C:/Users/User/Desktop/SISTEMA_BLUSH/migrate.py)**:
     *   Script de migración automatizado en Python con `pandas` y el SDK de Supabase.
+    *   **Buscador de Egresos**: Se integró un buscador de texto en la sección de egresos y facturas.
+    *   **Comparativa de Distribuidores**: Se añadió una sub-pestaña "Comparar Proveedores" que muestra un catálogo con los costos y precios de venta de cada distribuidor, facilitando la estimación y auditoría de costos.
+    *   **Retenciones Manuales**: Se diseñó una sub-pestaña "Retenciones" para ingresar manualmente retenciones de Renta o IVA, con cálculo automático y botón de exportación a Excel.
+    *   **Validación contra Negativos**: Se implementaron restricciones a nivel de HTML (`min="0"`) y descarte automático del carácter de resta `-` en tiempo real en los campos numéricos de Egresos y Retenciones (Cantidad, Valor Unitario, Total, Base Imponible), garantizando que no se puedan ingresar montos negativos.
     *   Lee de forma recursiva las hojas mensuales de venta y gastos.
     *   Aplica ingeniería inversa para extraer y normalizar el catálogo de servicios (creando precios base de acuerdo con la moda de precios históricos).
     *   Unifica y limpia los perfiles de clientes para evitar duplicados.

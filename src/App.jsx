@@ -316,11 +316,11 @@ export default function App() {
     { id: 'dashboard', label: 'Panel', icon: LayoutDashboard },
     { id: 'crm', label: 'Clientes', icon: Users },
     { id: 'seguimiento', label: 'Seguimiento', icon: BellRing },
-    { id: 'sueldos', label: 'Sueldos / Comisiones', icon: DollarSign },
-    { id: 'inventario', label: 'Inventario', icon: Package },
     { id: 'ventas', label: 'Citas y Ventas', icon: Calendar },
     { id: 'servicios', label: 'Servicios', icon: Scissors },
     { id: 'gastos', label: 'Egresos (Gastos)', icon: TrendingDown },
+    { id: 'inventario', label: 'Inventario', icon: Package },
+    { id: 'sueldos', label: 'Sueldos / Comisiones', icon: DollarSign },
   ]
 
   // Filtrar pestañas basadas en roles
@@ -435,7 +435,7 @@ export default function App() {
     <div className="min-h-screen bg-blush-seashell/40 flex flex-col md:flex-row font-sans">
       
       {/* SIDEBAR NAVIGATION - FIXED & PERMANENT FOR SENIOR ACCESSIBILITY */}
-      <aside className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-gray-250 flex flex-col justify-between shrink-0 sticky top-0 z-40 h-auto md:h-screen shadow-sm">
+      <aside className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-gray-250 flex flex-col justify-between shrink-0 sticky top-0 z-40 h-auto md:h-screen md:overflow-y-auto shadow-sm">
         <div>
           {/* Logo Brand */}
           <div className="p-6 border-b border-gray-150 flex items-center gap-3">
@@ -495,7 +495,7 @@ export default function App() {
       </aside>
 
       {/* RIGHT SIDE MAIN CONTAINER */}
-      <div className="flex-1 flex flex-col min-w-0 md:max-h-screen md:overflow-y-auto">
+      <div className="flex-1 flex flex-col min-w-0">
         {dataService.isDemoMode() && (
           <div className="bg-amber-600 text-white text-center py-2.5 px-4 text-xs font-black tracking-wider flex items-center justify-center gap-2 shadow-sm animate-pulse z-50">
             <span>⚠️ MODO ENTRENAMIENTO Y CAPACITACIÓN ACTIVO: Los datos ingresados aquí son temporales y NO afectan a la base de datos real.</span>
@@ -714,28 +714,28 @@ export default function App() {
 
           {/* Carga del módulo seleccionado con persistencia de estado (keep-alive) */}
           <div className="transition-all duration-300">
-            <div style={{ display: activeTab === 'dashboard' && currentUser?.rol !== 'Administrador' ? 'block' : 'none' }}>
+            <div className={activeTab === 'dashboard' && currentUser?.rol !== 'Administrador' ? 'animate-tab-active' : ''} style={{ display: activeTab === 'dashboard' && currentUser?.rol !== 'Administrador' ? 'block' : 'none' }}>
               <DashboardTab onNavigate={(tab) => setActiveTab(tab)} activeTab={activeTab} selectedBranchId={selectedBranchId} />
             </div>
-            <div style={{ display: activeTab === 'crm' || (currentUser?.rol === 'Administrador' && activeTab === 'dashboard') ? 'block' : 'none' }}>
+            <div className={(activeTab === 'crm' || (currentUser?.rol === 'Administrador' && activeTab === 'dashboard')) ? 'animate-tab-active' : ''} style={{ display: activeTab === 'crm' || (currentUser?.rol === 'Administrador' && activeTab === 'dashboard') ? 'block' : 'none' }}>
               <ClientesTab activeTab={currentUser?.rol === 'Administrador' && activeTab === 'dashboard' ? 'crm' : activeTab} />
             </div>
-            <div style={{ display: activeTab === 'seguimiento' ? 'block' : 'none' }}>
+            <div className={activeTab === 'seguimiento' ? 'animate-tab-active' : ''} style={{ display: activeTab === 'seguimiento' ? 'block' : 'none' }}>
               <SeguimientoTab activeTab={activeTab} selectedBranchId={selectedBranchId} />
             </div>
-            <div style={{ display: activeTab === 'sueldos' ? 'block' : 'none' }}>
+            <div className={activeTab === 'sueldos' ? 'animate-tab-active' : ''} style={{ display: activeTab === 'sueldos' ? 'block' : 'none' }}>
               <SueldosTab activeTab={activeTab} selectedBranchId={selectedBranchId} />
             </div>
-            <div style={{ display: activeTab === 'inventario' ? 'block' : 'none' }}>
+            <div className={activeTab === 'inventario' ? 'animate-tab-active' : ''} style={{ display: activeTab === 'inventario' ? 'block' : 'none' }}>
               <InventarioTab activeTab={activeTab} selectedBranchId={selectedBranchId} />
             </div>
-            <div style={{ display: activeTab === 'ventas' ? 'block' : 'none' }}>
+            <div className={activeTab === 'ventas' ? 'animate-tab-active' : ''} style={{ display: activeTab === 'ventas' ? 'block' : 'none' }}>
               <VentasTab activeTab={activeTab} selectedBranchId={selectedBranchId} />
             </div>
-            <div style={{ display: activeTab === 'servicios' ? 'block' : 'none' }}>
+            <div className={activeTab === 'servicios' ? 'animate-tab-active' : ''} style={{ display: activeTab === 'servicios' ? 'block' : 'none' }}>
               <ServiciosTab activeTab={activeTab} />
             </div>
-            <div style={{ display: activeTab === 'gastos' ? 'block' : 'none' }}>
+            <div className={activeTab === 'gastos' ? 'animate-tab-active' : ''} style={{ display: activeTab === 'gastos' ? 'block' : 'none' }}>
               <GastosTab activeTab={activeTab} selectedBranchId={selectedBranchId} />
             </div>
           </div>

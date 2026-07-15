@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { Search, Phone, Mail, UserPlus, Users, BellRing, ExternalLink, Cake, Edit3 } from 'lucide-react'
+import { Search, Phone, Mail, UserPlus, Users, BellRing, ExternalLink, Cake, Edit3, Trash2, Download } from 'lucide-react'
 import { dataService } from '../dataService'
+import * as XLSX from 'xlsx-js-style'
+import { exportExcelJS } from '../excelExporter'
 
 export default function ClientesTab({ activeTab }) {
   const [clientes, setClientes] = useState([])
@@ -123,6 +125,113 @@ export default function ClientesTab({ activeTab }) {
       fecha_nacimiento: c.fecha_nacimiento || ''
     })
     setMsg('')
+  }
+
+  const handleDelete = async (id) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar este cliente? Sus citas históricas no se borrarán pero quedarán desasociadas.')) {
+      try {
+        await dataService.eliminarCliente(id)
+        setMsg('✅ Cliente eliminado con éxito.')
+        loadData()
+      } catch (err) {
+        setMsg(`⚠️ Error al eliminar cliente: ${err.message}`)
+      }
+    }
+  }
+
+  const handleExportExcel = async () => {
+    try {
+      const makeCell = (val, type, style = {}) => {
+        const cell = { v: val, t: type }
+        cell.s = {
+          font: { name: 'Segoe UI', size: 9.5, ...style.font },
+          alignment: { vertical: 'middle', ...style.alignment },
+          fill: style.fill || undefined,
+          border: style.border || undefined
+        }
+        return cell
+      }
+
+      const baseFont = { name: 'Segoe UI', size: 9.5 }
+      const headerStyle = {
+        font: { name: 'Segoe UI', size: 10, bold: true, color: { rgb: 'FFFFFF' } },
+        fill: { fgColor: { rgb: '748843' } },
+        alignment: { horizontal: 'center', vertical: 'middle' },
+        border: {
+          top: { style: 'thin', color: { rgb: '748843' } },
+          bottom: { style: 'thin', color: { rgb: '748843' } },
+          left: { style: 'thin', color: { rgb: '748843' } },
+          right: { style: 'thin', color: { rgb: '748843' } }
+        }
+      }
+      
+      const tableBorder = {
+        top: { style: 'thin', color: { rgb: 'D1D5DB' } },
+        bottom: { style: 'thin', color: { rgb: 'D1D5DB' } },
+        left: { style: 'thin', color: { rgb: 'D1D5DB' } },
+        right: { style: 'thin', color: { rgb: 'D1D5DB' } }
+      }
+
+      const cellStyleLeft = { font: baseFont, alignment: { horizontal: 'left', vertical: 'middle' }, border: tableBorder }
+      const cellStyleCenter = { font: baseFont, alignment: { horizontal: 'center', vertical: 'middle' }, border: tableBorder }
+
+      const ws = {}
+      ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: filteredClientes.length + 3, c: 5 } })
+      
+      ws['!cols'] = [
+        { wch: 25 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 25 },
+        { wch: 15 },
+        { wch: 20 }
+      ]
+
+      ws['!rows'] = [
+        { hpt: 45 },
+        { hpt: 20 },
+        { hpt: 25 }
+      ]
+
+      ws['A1'] = makeCell('DIRECTORIO DE CLIENTES - BLUSH BEAUTY STUDIO', 's', {
+        font: { name: 'Playfair Display', size: 14, bold: true, color: { rgb: '748843' } },
+        alignment: { horizontal: 'left', vertical: 'middle' }
+      })
+      ws['A2'] = makeCell(`Generado el: ${new Date().toLocaleDateString()} | Total registros: ${filteredClientes.length} clientes`, 's', {
+        font: { name: 'Segoe UI', size: 9, italic: true, color: { rgb: '6B7280' } }
+      })
+
+      ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } }
+      ]
+
+      const headers = ['Nombre Completo', 'Cédula', 'Celular', 'Correo Electrónico', 'Canal de Contacto', 'Fecha de Nacimiento']
+      headers.forEach((h, cIdx) => {
+        const cellRef = XLSX.utils.encode_cell({ r: 2, c: cIdx })
+        ws[cellRef] = makeCell(h, 's', headerStyle)
+      })
+
+      filteredClientes.forEach((client, rIdx) => {
+        const r = rIdx + 3
+        ws[XLSX.utils.encode_cell({ r, c: 0 })] = makeCell(client.nombre, 's', cellStyleLeft)
+        ws[XLSX.utils.encode_cell({ r, c: 1 })] = makeCell(client.cedula || 'N/A', 's', cellStyleCenter)
+        ws[XLSX.utils.encode_cell({ r, c: 2 })] = makeCell(client.celular || 'N/A', 's', cellStyleCenter)
+        ws[XLSX.utils.encode_cell({ r, c: 3 })] = makeCell(client.correo || 'N/A', 's', cellStyleLeft)
+        ws[XLSX.utils.encode_cell({ r, c: 4 })] = makeCell(client.medio_contacto || 'N/A', 's', cellStyleCenter)
+        ws[XLSX.utils.encode_cell({ r, c: 5 })] = makeCell(client.fecha_nacimiento || 'N/A', 's', cellStyleCenter)
+      })
+
+      const wb = {
+        SheetNames: ['Clientes'],
+        Sheets: { 'Clientes': ws }
+      }
+
+      await exportExcelJS(wb, `Clientes_Blush_${new Date().toISOString().split('T')[0]}.xlsx`, { sheetName: 'Clientes', col: 5, row: 0 })
+    } catch (err) {
+      console.error('Error al exportar clientes:', err)
+      alert('No se pudo exportar la lista de clientes.')
+    }
   }
 
   // Filtrado de clientes
@@ -272,16 +381,29 @@ export default function ClientesTab({ activeTab }) {
             </h3>
             <p className="text-xs text-gray-400">Total registrados: {clientes.length} clientes</p>
           </div>
-          {/* Barra de búsqueda */}
-          <div className="relative w-full sm:w-64">
-            <input
-              type="text"
-              placeholder="Buscar por nombre o cédula..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full !pl-10 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
-            />
-            <Search className="absolute left-3 top-2.5 text-gray-400" size={15} />
+          
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {/* Botón Exportar */}
+            <button
+              onClick={handleExportExcel}
+              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm"
+              title="Exportar a Excel"
+            >
+              <Download size={14} />
+              Exportar Excel
+            </button>
+
+            {/* Barra de búsqueda */}
+            <div className="relative w-full sm:w-64">
+              <input
+                type="text"
+                placeholder="Buscar por nombre o cédula..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full !pl-10 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+              />
+              <Search className="absolute left-3 top-2.5 text-gray-400" size={15} />
+            </div>
           </div>
         </div>
 
@@ -302,13 +424,22 @@ export default function ClientesTab({ activeTab }) {
                       <h4 className="text-sm font-bold text-gray-800">{c.nombre}</h4>
                       <div className="text-xxs text-gray-400 mt-0.5">Cédula: {c.cedula || 'N/A'}</div>
                     </div>
-                    <button
-                      onClick={() => handleEdit(c)}
-                      className="p-1.5 hover:bg-gray-200/50 rounded-lg text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
-                      title="Editar Cliente"
-                    >
-                      <Edit3 size={14} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleEdit(c)}
+                        className="p-1.5 hover:bg-gray-200/50 rounded-lg text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
+                        title="Editar Cliente"
+                      >
+                        <Edit3 size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(c.id)}
+                        className="p-1.5 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                        title="Eliminar Cliente"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 

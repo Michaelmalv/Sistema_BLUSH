@@ -586,16 +586,13 @@ export default function InventarioTab({ activeTab, selectedBranchId }) {
                         <h4 className="text-sm font-bold text-gray-800">{prod.nombre}</h4>
                         {prod.descripcion && <p className="text-xs text-gray-400 mt-1">{prod.descripcion}</p>}
                         
-                        {/* Campos Adicionales */}
+                         {/* Campos Adicionales */}
                         <div className="mt-2.5 space-y-1 text-xxs text-gray-500 font-medium bg-white/50 p-2 rounded-xl border border-gray-100">
                           {prod.proveedor && (
                             <div>
                               <span className="font-bold text-gray-400">Prov:</span> {prod.proveedor} 
                               {prod.proveedor_ruc && <span className="text-[10px] text-gray-400"> ({prod.proveedor_ruc})</span>}
                             </div>
-                          )}
-                          {prod.precio_costo !== null && (
-                            <div><span className="font-bold text-gray-400">Costo:</span> ${Number(prod.precio_costo).toFixed(2)}</div>
                           )}
                           {prod.fecha_compra && (
                             <div><span className="font-bold text-gray-400">F. Compra:</span> {prod.fecha_compra}</div>
@@ -613,9 +610,6 @@ export default function InventarioTab({ activeTab, selectedBranchId }) {
                               Stock: <span className={`font-black ${isLow ? 'text-rose-600' : 'text-gray-800'}`}>{prod.stock_actual}</span>
                               <span className="text-xxs text-gray-400"> / min {prod.stock_minimo}</span>
                             </div>
-                            {prod.precio_venta && (
-                              <div className="text-xs text-blush-palmLeaf font-bold mt-0.5">Venta: ${Number(prod.precio_venta).toFixed(2)}</div>
-                            )}
                           </div>
                           
                           <div className="flex items-center gap-1.5">

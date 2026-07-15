@@ -561,8 +561,52 @@ export default function DashboardTab({ onNavigate, activeTab, selectedBranchId }
 
         {/* Sección de Alertas */}
         <div className="space-y-6">
+          {/* Alertas CRM de Recontacto */}
+          <div className="p-6 bg-white rounded-3xl shadow-sm border border-gray-100 animate-fade-in">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-2">
+                <UserCheck className="text-blush-palmLeaf" size={20} />
+                <h3 className="text-lg font-bold text-blush-palmLeaf">Seguimiento de Clientes</h3>
+              </div>
+              <span className="text-xs bg-blush-palmLeaf/10 text-blush-palmLeaf px-2.5 py-1 rounded-full font-semibold">
+                {alertasCRM.length} pendiente{alertasCRM.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+
+            {alertasCRM.length === 0 ? (
+              <p className="text-sm text-gray-400 py-6 text-center">🎉 Todos los clientes al día en sus tratamientos recurrentes.</p>
+            ) : (
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                 {alertasCRM.slice(0, 4).map((crm, i) => (
+                  <div key={i} className="flex justify-between items-center p-3 rounded-2xl bg-blush-seashell/50 border border-blush-seashell transition-luxury hover:bg-blush-seashell">
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-800">{crm.cliente_nombre}</h4>
+                      <p className="text-xs text-gray-500 font-semibold">
+                        {crm.servicio_nombre} {crm.dias_retraso === -1 ? '(mañana)' : crm.dias_retraso === 0 ? '(hoy)' : `(hace ${crm.dias_retraso} días)`}
+                      </p>
+                    </div>
+                    <button 
+                      onClick={() => onNavigate('seguimiento')}
+                      className="text-xs bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer"
+                    >
+                      Contactar
+                    </button>
+                  </div>
+                ))}
+                {alertasCRM.length > 4 && (
+                  <button 
+                    onClick={() => onNavigate('seguimiento')}
+                    className="w-full text-center text-xs text-blush-palmLeaf font-bold py-1.5 mt-2 hover:underline cursor-pointer"
+                  >
+                    Ver los {alertasCRM.length} pendientes
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Alertas de Stock Mínimo */}
-          <div className="p-6 bg-white rounded-3xl shadow-sm border border-gray-100">
+          <div className="p-6 bg-white rounded-3xl shadow-sm border border-gray-100 animate-fade-in">
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="text-amber-500" size={20} />
@@ -589,50 +633,6 @@ export default function DashboardTab({ onNavigate, activeTab, selectedBranchId }
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
-          </div>
-
-          {/* Alertas CRM de Recontacto */}
-          <div className="p-6 bg-white rounded-3xl shadow-sm border border-gray-100">
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center gap-2">
-                <UserCheck className="text-blush-palmLeaf" size={20} />
-                <h3 className="text-lg font-bold text-blush-palmLeaf">Seguimiento de Clientes</h3>
-              </div>
-              <span className="text-xs bg-blush-palmLeaf/10 text-blush-palmLeaf px-2.5 py-1 rounded-full font-semibold">
-                {alertasCRM.length} pendiente{alertasCRM.length !== 1 ? 's' : ''}
-              </span>
-            </div>
-
-            {alertasCRM.length === 0 ? (
-              <p className="text-sm text-gray-400 py-6 text-center">🎉 Todos los clientes al día en sus tratamientos recurrentes.</p>
-            ) : (
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                 {alertasCRM.slice(0, 4).map((crm, i) => (
-                  <div key={i} className="flex justify-between items-center p-3 rounded-2xl bg-blush-seashell/50 border border-blush-seashell transition-luxury hover:bg-blush-seashell">
-                    <div>
-                      <h4 className="text-sm font-bold text-gray-800">{crm.cliente_nombre}</h4>
-                      <p className="text-xs text-gray-500 font-semibold">
-                        {crm.servicio_nombre} {crm.dias_retraso === -1 ? '(mañana)' : crm.dias_retraso === 0 ? '(hoy)' : `(hace ${crm.dias_retraso} días)`}
-                      </p>
-                    </div>
-                    <button 
-                      onClick={() => onNavigate('seguimiento')}
-                      className="text-xs bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white px-3 py-1.5 rounded-lg font-semibold transition-colors"
-                    >
-                      Contactar
-                    </button>
-                  </div>
-                ))}
-                {alertasCRM.length > 4 && (
-                  <button 
-                    onClick={() => onNavigate('seguimiento')}
-                    className="w-full text-center text-xs text-blush-palmLeaf font-bold py-1.5 mt-2 hover:underline"
-                  >
-                    Ver los {alertasCRM.length} pendientes
-                  </button>
-                )}
               </div>
             )}
           </div>

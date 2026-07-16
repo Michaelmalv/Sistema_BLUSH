@@ -14,7 +14,8 @@ import {
   MapPin,
   Lock,
   User as UserIcon,
-  DollarSign
+  DollarSign,
+  Menu
 } from 'lucide-react'
 
 // Tabs
@@ -46,6 +47,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [showConfigInfo, setShowConfigInfo] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [notificaciones, setNotificaciones] = useState([])
   const [toasts, setToasts] = useState([])
 
@@ -411,7 +413,7 @@ export default function App() {
     <div className="min-h-screen bg-blush-seashell/40 flex flex-col md:flex-row font-sans">
       
       {/* SIDEBAR NAVIGATION - FIXED & PERMANENT FOR SENIOR ACCESSIBILITY */}
-      <aside className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-gray-250 flex flex-col justify-between shrink-0 sticky top-0 z-40 h-auto md:h-screen md:overflow-y-auto shadow-sm">
+      <aside className="hidden md:flex md:w-64 bg-white border-b md:border-b-0 md:border-r border-gray-250 flex-col justify-between shrink-0 sticky top-0 z-40 h-auto md:h-screen md:overflow-y-auto shadow-sm">
         <div>
           {/* Logo Brand */}
           <div className="p-6 border-b border-gray-150 flex items-center gap-3">
@@ -470,6 +472,106 @@ export default function App() {
         </div>
       </aside>
 
+      {/* TOP HEADER MÓVIL (SÓLO VISIBLE EN PANTALLAS CHICAS) */}
+      <div className="md:hidden bg-white border-b border-gray-250 px-4 py-3 flex items-center justify-between sticky top-0 z-40 shadow-sm shrink-0">
+        <div className="flex items-center gap-3">
+          <LogoImg className="w-8 h-8 shadow-sm border border-gray-100" />
+          <div>
+            <span className="font-display text-base font-black tracking-wider text-blush-palmLeaf block -mb-0.5 leading-none">BLUSH</span>
+            <span className="text-[7px] uppercase tracking-widest text-blush-khaki font-black block">Beauty Studio</span>
+          </div>
+        </div>
+        <button
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="p-2 bg-gray-50 border border-gray-250 hover:bg-gray-100 text-blush-palmLeaf rounded-xl cursor-pointer transition-all flex items-center justify-center focus:outline-none"
+        >
+          <Menu size={18} />
+        </button>
+      </div>
+
+      {/* MENÚ MÓVIL DESLIZABLE (DRAWER) */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          {/* Fondo traslúcido difuminado */}
+          <div 
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" 
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          
+          {/* Contenido del menú deslizable */}
+          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white shadow-2xl animate-slide-in h-full border-r border-gray-150">
+            {/* Botón de cierre */}
+            <div className="absolute top-4 right-4">
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            
+            {/* Encabezado */}
+            <div className="p-6 border-b border-gray-150 flex items-center gap-3">
+              <LogoImg className="w-9 h-9 shadow-sm border border-gray-100" />
+              <div>
+                <span className="font-display text-lg font-black tracking-wider text-blush-palmLeaf block -mb-0.5 leading-none">BLUSH</span>
+                <span className="text-[8px] uppercase tracking-widest text-blush-khaki font-black block">Beauty Studio</span>
+              </div>
+            </div>
+            
+            {/* Lista de Navegación */}
+            <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+              {visibleTabs.map((tab) => {
+                const Icon = tab.icon
+                const isActive = activeTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id)
+                      setIsMobileMenuOpen(false)
+                      setShowConfigInfo(false)
+                      setShowNotifications(false)
+                    }}
+                    className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-xs font-black transition-luxury text-left border cursor-pointer ${
+                      isActive 
+                        ? 'bg-blush-palmLeaf text-white shadow-md shadow-blush-palmLeaf/25 border-blush-khaki/30' 
+                        : 'bg-transparent text-gray-600 border-transparent hover:bg-blush-seashell/50 hover:text-blush-palmLeaf'
+                    }`}
+                  >
+                    <Icon size={16} className={isActive ? 'text-white' : 'text-blush-palmLeaf'} />
+                    <span>{tab.label}</span>
+                  </button>
+                )
+              })}
+            </nav>
+            
+            {/* Perfil de Usuario y Cierre de Sesión */}
+            <div className="p-4 border-t border-gray-150 bg-gray-50 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="bg-blush-seashell/80 p-2 rounded-xl text-blush-palmLeaf border border-blush-khaki/20">
+                  <UserIcon size={14} />
+                </div>
+                <div>
+                  <span className="block text-xs font-bold text-gray-700 leading-tight">{currentUser.nombre}</span>
+                  <span className="block text-[8px] font-black text-blush-khaki uppercase tracking-wider">{currentUser.rol}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  handleLogout()
+                  setIsMobileMenuOpen(false)
+                }}
+                title="Cerrar Sesión"
+                className="p-2 bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 rounded-xl transition-all cursor-pointer flex items-center justify-center"
+              >
+                <LogOut size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* RIGHT SIDE MAIN CONTAINER */}
       <div className="flex-1 flex flex-col min-w-0">
         {dataService.isDemoMode() && (
@@ -488,7 +590,7 @@ export default function App() {
         )}
         
         {/* TOP BAR BAR */}
-        <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
+        <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between sticky top-0 z-30">
           <div>
             <h1 className="text-base font-black text-gray-800 uppercase tracking-wider">
               {tabs.find(t => t.id === activeTab)?.label || 'Panel de Control'}
@@ -595,7 +697,7 @@ export default function App() {
             </div>
 
             {/* Selector de Entorno (Producción / Capacitación) */}
-            <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-2xl shadow-sm">
+            <div className="hidden sm:flex items-center gap-1.5 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-2xl shadow-sm">
               <span className="text-[10px] font-black text-gray-400 uppercase">Entorno:</span>
               <button
                 onClick={() => {
@@ -621,7 +723,7 @@ export default function App() {
                   setShowConfigInfo(!showConfigInfo)
                   setShowNotifications(false)
                 }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-black transition-all border shadow-sm cursor-pointer ${
+                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-black transition-all border shadow-sm cursor-pointer ${
                   supabaseActive 
                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                     : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
@@ -672,7 +774,7 @@ export default function App() {
         </header>
 
         {/* MAIN CONTENT AREA */}
-        <main className="flex-grow p-6 md:p-8">
+        <main className="flex-grow p-4 md:p-8">
           {/* Banner de aviso demo */}
           {!isSupabaseConfigured && (
             <div className="mb-6 p-4 bg-amber-50/70 border border-amber-200 rounded-3xl flex items-center justify-between gap-4">

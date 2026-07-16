@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { 
   Plus, 
   Trash2, 
@@ -1227,7 +1228,7 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
         </div>
       )}
       {/* MODAL DE EDICIÓN DE PRODUCTO / INSUMO */}
-      {editingProduct && (
+      {editingProduct && createPortal(
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
           <div className="bg-white w-full max-w-lg rounded-3xl p-6 shadow-2xl border border-gray-150 relative animate-slide-in my-8">
             <button
@@ -1356,7 +1357,8 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

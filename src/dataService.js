@@ -199,11 +199,8 @@ const MOCK_SUCURSALES = [
 ]
 
 const MOCK_USUARIOS = [
-  { id: 'u1', username: 'dueno', password: '123', nombre: 'Propietaria General', rol: 'Dueño', sucursal_id: null },
-  { id: 'u2', username: 'gerente_norte', password: '123', nombre: 'Gerente Norte', rol: 'Gerente', sucursal_id: '22222222-2222-2222-2222-222222222222' },
-  { id: 'u3', username: 'admin_norte', password: '123', nombre: 'Admin Norte', rol: 'Administrador', sucursal_id: '22222222-2222-2222-2222-222222222222' },
-  { id: 'u4', username: 'gerente_sur', password: '123', nombre: 'Gerente Sur', rol: 'Gerente', sucursal_id: '33333333-3333-3333-3333-333333333333' },
-  { id: 'u5', username: 'admin_sur', password: '123', nombre: 'Admin Sur', rol: 'Administrador', sucursal_id: '33333333-3333-3333-3333-333333333333' }
+  { id: 'u1', username: '1721946067', password: 'Dannabonita2026', nombre: 'Propietaria General', rol: 'Dueño', sucursal_id: null },
+  { id: 'u2', username: '1707963227', password: 'Dannabonita2026', nombre: 'Administradora General', rol: 'Administrador', sucursal_id: null }
 ]
 
 // Inicializar almacenamiento local si no existe para el modo demo
@@ -218,7 +215,8 @@ const initLocalStorage = () => {
     localStorage.setItem('blush_productos', JSON.stringify(MOCK_PRODUCTOS))
   }
   if (!localStorage.getItem('blush_sucursales')) localStorage.setItem('blush_sucursales', JSON.stringify(MOCK_SUCURSALES))
-  if (!localStorage.getItem('blush_usuarios')) localStorage.setItem('blush_usuarios', JSON.stringify(MOCK_USUARIOS))
+  // Forzar siempre la actualización de las credenciales de producción autorizadas
+  localStorage.setItem('blush_usuarios', JSON.stringify(MOCK_USUARIOS))
   if (!localStorage.getItem('blush_reposiciones')) localStorage.setItem('blush_reposiciones', JSON.stringify([]))
 }
 initLocalStorage()

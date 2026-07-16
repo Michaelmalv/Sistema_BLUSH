@@ -274,21 +274,6 @@ export default function App() {
     }
   }
 
-  const handleQuickLogin = async (username) => {
-    setLoginError('')
-    try {
-      const user = await dataService.login(username, '123')
-      setCurrentUser(user)
-      setSelectedBranchId(dataService.getSelectedBranchId())
-      if (user.rol === 'Administrador') {
-        setActiveTab('crm')
-      } else {
-        setActiveTab('dashboard')
-      }
-    } catch (err) {
-      setLoginError(err.message)
-    }
-  }
 
   const handleLogout = async () => {
     await dataService.logout()
@@ -381,7 +366,7 @@ export default function App() {
                 <input
                   type="text"
                   required
-                  placeholder="ej. dueno"
+                  placeholder="Cédula de usuario..."
                   value={usernameInput}
                   onChange={(e) => setUsernameInput(e.target.value)}
                   className="w-full !pl-10 pr-4 py-3 rounded-2xl bg-white border border-gray-150 focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none text-xs font-semibold text-gray-700 placeholder-gray-400 transition-all"
@@ -413,33 +398,6 @@ export default function App() {
               Iniciar Sesión
             </button>
           </form>
-
-          {/* Demostración de Roles Rápidos */}
-          <div className="mt-8 pt-6 border-t border-gray-100">
-            <span className="block text-center text-[10px] font-black text-blush-khaki uppercase tracking-widest mb-3.5">
-              Acceso Rápido Demo (Contraseña: 123)
-            </span>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => handleQuickLogin('dueno')}
-                className="px-2 py-2.5 bg-blush-seashell/50 hover:bg-blush-seashell text-blush-palmLeaf border border-blush-seashell-dark/20 rounded-xl font-bold text-[10px] text-center transition-all cursor-pointer"
-              >
-                👑 Dueño
-              </button>
-              <button
-                onClick={() => handleQuickLogin('gerente_norte')}
-                className="px-2 py-2.5 bg-blush-seashell/50 hover:bg-blush-seashell text-blush-palmLeaf border border-blush-seashell-dark/20 rounded-xl font-bold text-[10px] text-center transition-all cursor-pointer"
-              >
-                👔 Gerente N.
-              </button>
-              <button
-                onClick={() => handleQuickLogin('admin_norte')}
-                className="px-2 py-2.5 bg-blush-seashell/50 hover:bg-blush-seashell text-blush-palmLeaf border border-blush-seashell-dark/20 rounded-xl font-bold text-[10px] text-center transition-all cursor-pointer"
-              >
-                🛠️ Admin N.
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     )

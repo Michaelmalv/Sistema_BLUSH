@@ -131,9 +131,15 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
 
   const filteredGroupedCitas = useMemo(() => {
     return groupedCitas.filter(group => {
-      const clientName = group.cliente?.nombre?.toLowerCase() || ''
-      if (historySearch && !clientName.includes(historySearch.toLowerCase())) {
-        return false
+      const q = historySearch.toLowerCase().trim()
+      if (q) {
+        const clientName = group.cliente?.nombre?.toLowerCase() || ''
+        const clientCedula = group.cliente?.cedula || ''
+        const matchesName = clientName.includes(q)
+        const matchesCedula = clientCedula.includes(q)
+        if (!matchesName && !matchesCedula) {
+          return false
+        }
       }
       const groupDate = new Date(group.fecha_hora)
       if (filterStartDate) {
@@ -817,7 +823,7 @@ const TransactionHistory = React.memo(({
             <div className="relative">
               <input
                 type="text"
-                placeholder="Ej. Mayra Lojano..."
+                placeholder="Nombre o Cédula..."
                 value={historySearch}
                 onChange={(e) => setHistorySearch(e.target.value)}
                 className="w-full !pl-9 pr-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-blush-palmLeaf"

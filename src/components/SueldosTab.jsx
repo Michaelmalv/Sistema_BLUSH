@@ -33,6 +33,7 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
   // Estados del Formulario de Colaboradoras
   const [formColaboradora, setFormColaboradora] = useState({
     nombre: '',
+    cedula: '',
     cargo: 'Manicurista',
     activo: true
   })
@@ -178,6 +179,7 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
       if (editingPersonalId) {
         await dataService.actualizarPersonal(editingPersonalId, {
           nombre: formColaboradora.nombre.trim(),
+          cedula: formColaboradora.cedula.trim() || null,
           cargo: formColaboradora.cargo,
           activo: formColaboradora.activo
         })
@@ -185,13 +187,14 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
       } else {
         await dataService.registrarPersonal({
           nombre: formColaboradora.nombre.trim(),
+          cedula: formColaboradora.cedula.trim() || null,
           cargo: formColaboradora.cargo,
           activo: true
         })
         setMsgCol({ type: 'success', text: '✅ Colaboradora agregada con éxito.' })
       }
 
-      setFormColaboradora({ nombre: '', cargo: 'Manicurista', activo: true })
+      setFormColaboradora({ nombre: '', cedula: '', cargo: 'Manicurista', activo: true })
       setEditingPersonalId(null)
       loadData()
     } catch (err) {
@@ -215,6 +218,7 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
     setEditingPersonalId(colab.id)
     setFormColaboradora({
       nombre: colab.nombre,
+      cedula: colab.cedula || '',
       cargo: colab.cargo || 'Manicurista',
       activo: colab.activo
     })
@@ -222,11 +226,12 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
 
   // Filtrado de colaboradores en lista
   const filteredPersonal = personal.filter(p => {
-    const q = searchColaboradora.toLowerCase().trim()
+    const q = (searchColaboradora || '').toLowerCase().trim()
     if (!q) return true
     return (
-      p.nombre.toLowerCase().includes(q) ||
-      (p.cargo && p.cargo.toLowerCase().includes(q))
+      (p.nombre && String(p.nombre).toLowerCase().includes(q)) ||
+      (p.cargo && String(p.cargo).toLowerCase().includes(q)) ||
+      (p.cedula && String(p.cedula).toLowerCase().includes(q))
     )
   })
 
@@ -492,6 +497,17 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
               </div>
 
               <div>
+                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Número de Cédula</label>
+                <input
+                  type="text"
+                  placeholder="Ej. 1723456789"
+                  value={formColaboradora.cedula}
+                  onChange={(e) => setFormColaboradora({ ...formColaboradora, cedula: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                  className="w-full px-3 py-2.5 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-xl outline-none transition-all text-xs text-gray-700"
+                />
+              </div>
+
+              <div>
                 <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Cargo / Especialidad</label>
                 <select
                   value={formColaboradora.cargo}
@@ -539,7 +555,7 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
                     type="button"
                     onClick={() => {
                       setEditingPersonalId(null)
-                      setFormColaboradora({ nombre: '', cargo: 'Manicurista', activo: true })
+                      setFormColaboradora({ nombre: '', cedula: '', cargo: 'Manicurista', activo: true })
                     }}
                     className="py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer"
                   >
@@ -587,7 +603,12 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
                 <tbody className="divide-y divide-gray-50 text-gray-700 font-bold text-xs">
                   {filteredPersonal.map((colab) => (
                     <tr key={colab.id} className="hover:bg-gray-50/30 transition-colors">
-                      <td className="py-3 px-4 text-gray-800 text-sm font-black">{colab.nombre}</td>
+                      <td className="py-3 px-4 text-gray-800 text-sm font-black">
+                        <div>{colab.nombre}</div>
+                        {colab.cedula && (
+                          <div className="text-xxs text-gray-400 font-medium mt-0.5 font-bold">Ced: {colab.cedula}</div>
+                        )}
+                      </td>
                       <td className="py-3 px-3">
                         <span className="flex items-center gap-1 text-gray-550">
                           <Briefcase size={12} className="text-gray-400" />

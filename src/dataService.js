@@ -16,12 +16,12 @@ updateSupabaseConfigState();
 // ============================================================================
 
 const MOCK_PERSONAL = [
-  { id: 'p1', nombre: 'Pamela', cargo: 'Manicurista', activo: true },
-  { id: 'p2', nombre: 'Sofia', cargo: 'Manicurista', activo: true },
-  { id: 'p3', nombre: 'Roxana', cargo: 'Manicurista', activo: true },
-  { id: 'p4', nombre: 'Cecilia', cargo: 'Manicurista', activo: true },
-  { id: 'p5', nombre: 'Silvia', cargo: 'Manicurista', activo: true },
-  { id: 'p6', nombre: 'Liz', cargo: 'Manicurista', activo: true },
+  { id: 'p1', nombre: 'Pamela', cedula: '1711111111', cargo: 'Manicurista', activo: true },
+  { id: 'p2', nombre: 'Sofia', cedula: '1722222222', cargo: 'Manicurista', activo: true },
+  { id: 'p3', nombre: 'Roxana', cedula: '1733333333', cargo: 'Manicurista', activo: true },
+  { id: 'p4', nombre: 'Cecilia', cedula: '1744444444', cargo: 'Manicurista', activo: true },
+  { id: 'p5', nombre: 'Silvia', cedula: '1755555555', cargo: 'Manicurista', activo: true },
+  { id: 'p6', nombre: 'Liz', cedula: '1766666666', cargo: 'Manicurista', activo: true },
 ]
 
 const MOCK_SERVICIOS = [

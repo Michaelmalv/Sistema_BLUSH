@@ -453,13 +453,13 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
   // Filtrado de Gastos por buscador
   const filteredGastos = useMemo(() => {
     return gastos.filter(g => {
-      const q = searchGasto.toLowerCase().trim()
+      const q = (searchGasto || '').toLowerCase().trim()
       if (!q) return true
       return (
-        (g.concepto && g.concepto.toLowerCase().includes(q)) ||
-        (g.factura && g.factura.toLowerCase().includes(q)) ||
-        (g.categoria && g.categoria.toLowerCase().includes(q)) ||
-        (g.forma_pago && g.forma_pago.toLowerCase().includes(q))
+        (g.concepto && String(g.concepto).toLowerCase().includes(q)) ||
+        (g.factura && String(g.factura).toLowerCase().includes(q)) ||
+        (g.categoria && String(g.categoria).toLowerCase().includes(q)) ||
+        (g.forma_pago && String(g.forma_pago).toLowerCase().includes(q))
       )
     })
   }, [gastos, searchGasto])
@@ -493,12 +493,12 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
   // Filtrado de comparativa de productos
   const filteredProducts = useMemo(() => {
     return productos.filter(p => {
-      const q = searchProduct.toLowerCase().trim()
+      const q = (searchProduct || '').toLowerCase().trim()
       if (!q) return true
       return (
-        p.nombre.toLowerCase().includes(q) ||
-        (p.proveedor && p.proveedor.toLowerCase().includes(q)) ||
-        p.tipo.toLowerCase().includes(q)
+        (p.nombre && String(p.nombre).toLowerCase().includes(q)) ||
+        (p.proveedor && String(p.proveedor).toLowerCase().includes(q)) ||
+        (p.tipo && String(p.tipo).toLowerCase().includes(q))
       )
     })
   }, [productos, searchProduct])
@@ -506,13 +506,13 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
   // Filtrado de Retenciones
   const filteredRetenciones = useMemo(() => {
     return retenciones.filter(r => {
-      const q = searchRetencion.toLowerCase().trim()
+      const q = (searchRetencion || '').toLowerCase().trim()
       if (!q) return true
       return (
-        r.ruc_emisor.includes(q) ||
-        r.ruc_retenido.includes(q) ||
-        r.no_retencion.includes(q) ||
-        r.tipo_impuesto.toLowerCase().includes(q)
+        (r.ruc_emisor && String(r.ruc_emisor).toLowerCase().includes(q)) ||
+        (r.ruc_retenido && String(r.ruc_retenido).toLowerCase().includes(q)) ||
+        (r.no_retencion && String(r.no_retencion).toLowerCase().includes(q)) ||
+        (r.tipo_impuesto && String(r.tipo_impuesto).toLowerCase().includes(q))
       )
     })
   }, [retenciones, searchRetencion])

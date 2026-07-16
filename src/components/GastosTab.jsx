@@ -456,10 +456,10 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
       const q = searchGasto.toLowerCase().trim()
       if (!q) return true
       return (
-        g.concepto.toLowerCase().includes(q) ||
+        (g.concepto && g.concepto.toLowerCase().includes(q)) ||
         (g.factura && g.factura.toLowerCase().includes(q)) ||
-        g.categoria.toLowerCase().includes(q) ||
-        g.forma_pago.toLowerCase().includes(q)
+        (g.categoria && g.categoria.toLowerCase().includes(q)) ||
+        (g.forma_pago && g.forma_pago.toLowerCase().includes(q))
       )
     })
   }, [gastos, searchGasto])

@@ -962,19 +962,104 @@ export const dataService = {
     return verificadorObtenido === verificadorReal;
   },
 
-  async login(username, password) {
-    const users = getLocal('blush_usuarios') || MOCK_USUARIOS;
-    const found = users.find(u => u.username.toLowerCase() === username.toLowerCase().trim() && u.password === password);
-    if (!found) {
-      throw new Error('Usuario o contraseña incorrectos.');
-    }
-    sessionStorage.setItem('blush_current_user', JSON.stringify(found));
-    if (found.rol === 'Dueño') {
-      this.setSelectedBranchId(null);
+  async obtenerUsuarios() {
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select(`
+          id,
+          username,
+          nombre,
+          rol,
+          sucursal_id,
+          correo,
+          creado_en
+        `)
+        .order('nombre', { ascending: true });
+      if (error) throw error;
+      return data;
     } else {
-      this.setSelectedBranchId(found.sucursal_id);
+      return getLocal('blush_usuarios') || MOCK_USUARIOS;
     }
-    return found;
+  },
+
+  async actualizarUsuario(id, userData) {
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .update(userData)
+        .eq('id', id)
+        .select();
+      if (error) throw error;
+      return data[0];
+    } else {
+      const users = getLocal('blush_usuarios') || MOCK_USUARIOS;
+      const idx = users.findIndex(u => u.id === id);
+      if (idx !== -1) {
+        users[idx] = { ...users[idx], ...userData };
+        setLocal('blush_usuarios', users);
+        return users[idx];
+      }
+      throw new Error('Usuario no encontrado.');
+    }
+  },
+
+  async registrarUsuario(userData) {
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .insert([userData])
+        .select();
+      if (error) throw error;
+      return data[0];
+    } else {
+      const users = getLocal('blush_usuarios') || MOCK_USUARIOS;
+      if (users.some(u => u.username.toLowerCase() === userData.username.toLowerCase().trim())) {
+        throw new Error('La cédula ya está registrada.');
+      }
+      const newUser = {
+        id: 'u_' + Date.now(),
+        ...userData
+      };
+      users.push(newUser);
+      setLocal('blush_usuarios', users);
+      return newUser;
+    }
+  },
+
+  async login(username, password) {
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('username', username.trim())
+        .eq('password', password)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        throw new Error('Usuario o contraseña incorrectos.');
+      }
+      sessionStorage.setItem('blush_current_user', JSON.stringify(data));
+      if (data.rol === 'Dueño') {
+        this.setSelectedBranchId(null);
+      } else {
+        this.setSelectedBranchId(data.sucursal_id);
+      }
+      return data;
+    } else {
+      const users = getLocal('blush_usuarios') || MOCK_USUARIOS;
+      const found = users.find(u => u.username.toLowerCase() === username.toLowerCase().trim() && u.password === password);
+      if (!found) {
+        throw new Error('Usuario o contraseña incorrectos.');
+      }
+      sessionStorage.setItem('blush_current_user', JSON.stringify(found));
+      if (found.rol === 'Dueño') {
+        this.setSelectedBranchId(null);
+      } else {
+        this.setSelectedBranchId(found.sucursal_id);
+      }
+      return found;
+    }
   },
 
   async logout() {

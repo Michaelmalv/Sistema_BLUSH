@@ -15,7 +15,8 @@ import {
   Lock,
   User as UserIcon,
   DollarSign,
-  Menu
+  Menu,
+  Mail
 } from 'lucide-react'
 
 // Tabs
@@ -27,6 +28,7 @@ import ClientesTab from './components/ClientesTab'
 import ServiciosTab from './components/ServiciosTab'
 import SeguimientoTab from './components/SeguimientoTab'
 import SueldosTab from './components/SueldosTab'
+import UsuariosTab from './components/UsuariosTab'
 
 // Client config check
 import { isSupabaseConfigured } from './supabaseClient'
@@ -48,6 +50,9 @@ export default function App() {
   const [showConfigInfo, setShowConfigInfo] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isRegisterMode, setIsRegisterMode] = useState(false)
+  const [registerNameInput, setRegisterNameInput] = useState('')
+  const [registerEmailInput, setRegisterEmailInput] = useState('')
   const [notificaciones, setNotificaciones] = useState([])
   const [toasts, setToasts] = useState([])
 
@@ -276,6 +281,64 @@ export default function App() {
     }
   }
 
+  const handleRegisterSubmit = async (e) => {
+    if (e) e.preventDefault()
+    setLoginError('')
+    
+    const cedulaLimpia = usernameInput.trim()
+    if (!cedulaLimpia) {
+      setLoginError('Por favor ingresa tu número de cédula.')
+      return
+    }
+    if (cedulaLimpia.length !== 10 || /\D/.test(cedulaLimpia)) {
+      setLoginError('La cédula debe tener exactamente 10 dígitos numéricos.')
+      return
+    }
+    if (!dataService.validarCedulaEcuatoriana(cedulaLimpia)) {
+      setLoginError('La cédula ingresada no es válida en Ecuador.')
+      return
+    }
+    if (!registerNameInput.trim()) {
+      setLoginError('Por favor ingresa tu nombre completo.')
+      return
+    }
+    if (!registerEmailInput.trim()) {
+      setLoginError('Por favor ingresa tu correo electrónico.')
+      return
+    }
+    if (!passwordInput) {
+      setLoginError('Por favor ingresa tu contraseña.')
+      return
+    }
+    
+    try {
+      await dataService.registrarUsuario({
+        username: cedulaLimpia,
+        nombre: registerNameInput.trim(),
+        correo: registerEmailInput.trim(),
+        password: passwordInput,
+        rol: 'Administrador', // default
+        sucursal_id: null     // default (sin sucursal)
+      })
+      
+      // Toast notification
+      setToasts(prev => [...prev, {
+        id: Date.now(),
+        title: '🎉 Cuenta Creada',
+        desc: 'Tu cuenta ha sido creada. Ya puedes iniciar sesión.'
+      }])
+      
+      // Clean inputs
+      setUsernameInput('')
+      setRegisterNameInput('')
+      setRegisterEmailInput('')
+      setPasswordInput('')
+      setIsRegisterMode(false)
+    } catch (err) {
+      setLoginError(err.message || 'Error al registrar la cuenta.')
+    }
+  }
+
 
   const handleLogout = async () => {
     await dataService.logout()
@@ -310,6 +373,10 @@ export default function App() {
         return <ServiciosTab key={tabKey} />
       case 'gastos':
         return <GastosTab key={tabKey} />
+      case 'sueldos':
+        return <SueldosTab key={tabKey} />
+      case 'usuarios':
+        return <UsuariosTab key={tabKey} />
       default:
         return currentUser?.rol === 'Administrador' 
           ? <ClientesTab key={tabKey} /> 
@@ -326,11 +393,15 @@ export default function App() {
     { id: 'gastos', label: 'Egresos (Gastos)', icon: TrendingDown },
     { id: 'inventario', label: 'Inventario', icon: Package },
     { id: 'sueldos', label: 'Sueldos / Comisiones', icon: DollarSign },
+    { id: 'usuarios', label: 'Usuarios y Accesos', icon: Lock },
   ]
 
   // Filtrar pestañas basadas en roles
   const visibleTabs = tabs.filter(tab => {
     if (tab.id === 'dashboard' && currentUser?.rol === 'Administrador') {
+      return false
+    }
+    if (tab.id === 'usuarios' && currentUser?.rol !== 'Dueño') {
       return false
     }
     return true
@@ -345,11 +416,15 @@ export default function App() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[40rem] h-[40rem] rounded-full bg-blush-khaki/10 blur-3xl" />
 
         <div className="bg-white/85 backdrop-blur-xl border border-white/50 shadow-2xl p-8 rounded-[2.5rem] max-w-md w-full relative z-10 transition-all duration-300">
-          <div className="text-center mb-8 flex flex-col items-center">
+          <div className="text-center mb-6 flex flex-col items-center">
             <LogoImg className="w-20 h-20 mb-3 shadow-md border border-gray-150" />
             <h2 className="font-display text-3xl font-extrabold tracking-wider text-blush-palmLeaf">BLUSH</h2>
             <span className="text-xxs uppercase tracking-widest text-blush-khaki font-black">Beauty Studio</span>
-            <p className="text-xs text-gray-500 mt-2 font-medium">Ingresa tus credenciales para acceder a la gestión sucursal</p>
+            <p className="text-xs text-gray-500 mt-2 font-medium">
+              {isRegisterMode 
+                ? 'Completa los campos para registrar tu nueva cuenta'
+                : 'Ingresa tus credenciales para acceder a la gestión sucursal'}
+            </p>
           </div>
 
           {loginError && (
@@ -358,48 +433,161 @@ export default function App() {
             </div>
           )}
 
-          <form onSubmit={handleLoginSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xxs font-black text-blush-palmLeaf uppercase tracking-wider mb-1.5 ml-1">Usuario</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400">
-                  <UserIcon size={16} />
-                </span>
-                <input
-                  type="text"
-                  required
-                  placeholder="Cédula de usuario..."
-                  value={usernameInput}
-                  onChange={(e) => setUsernameInput(e.target.value)}
-                  className="w-full !pl-10 pr-4 py-3 rounded-2xl bg-white border border-gray-150 focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none text-xs font-semibold text-gray-700 placeholder-gray-400 transition-all"
-                />
+          {isRegisterMode ? (
+            <form onSubmit={handleRegisterSubmit} className="space-y-4">
+              {/* Cédula */}
+              <div>
+                <label className="block text-xxs font-black text-blush-palmLeaf uppercase tracking-wider mb-1.5 ml-1">Cédula</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400">
+                    <UserIcon size={16} />
+                  </span>
+                  <input
+                    type="text"
+                    required
+                    placeholder="10 dígitos de cédula..."
+                    value={usernameInput}
+                    onChange={(e) => setUsernameInput(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    className="w-full !pl-10 pr-4 py-3 rounded-2xl bg-white border border-gray-150 focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none text-xs font-semibold text-gray-700 placeholder-gray-400 transition-all"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-xxs font-black text-blush-palmLeaf uppercase tracking-wider mb-1.5 ml-1">Contraseña</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400">
-                  <Lock size={16} />
-                </span>
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={passwordInput}
-                  onChange={(e) => setPasswordInput(e.target.value)}
-                  className="w-full !pl-10 pr-4 py-3 rounded-2xl bg-white border border-gray-150 focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none text-xs font-semibold text-gray-700 placeholder-gray-400 transition-all"
-                />
+              {/* Nombres */}
+              <div>
+                <label className="block text-xxs font-black text-blush-palmLeaf uppercase tracking-wider mb-1.5 ml-1">Nombre Completo</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400">
+                    <UserIcon size={16} />
+                  </span>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. María Pérez..."
+                    value={registerNameInput}
+                    onChange={(e) => setRegisterNameInput(e.target.value)}
+                    className="w-full !pl-10 pr-4 py-3 rounded-2xl bg-white border border-gray-150 focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none text-xs font-semibold text-gray-700 placeholder-gray-400 transition-all"
+                  />
+                </div>
               </div>
-            </div>
 
-            <button
-              type="submit"
-              className="w-full py-3.5 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-blush-palmLeaf/25 cursor-pointer mt-2"
-            >
-              Iniciar Sesión
-            </button>
-          </form>
+              {/* Correo */}
+              <div>
+                <label className="block text-xxs font-black text-blush-palmLeaf uppercase tracking-wider mb-1.5 ml-1">Correo Electrónico</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400">
+                    <Mail size={16} />
+                  </span>
+                  <input
+                    type="email"
+                    required
+                    placeholder="correo@ejemplo.com"
+                    value={registerEmailInput}
+                    onChange={(e) => setRegisterEmailInput(e.target.value)}
+                    className="w-full !pl-10 pr-4 py-3 rounded-2xl bg-white border border-gray-150 focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none text-xs font-semibold text-gray-700 placeholder-gray-400 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Contraseña */}
+              <div>
+                <label className="block text-xxs font-black text-blush-palmLeaf uppercase tracking-wider mb-1.5 ml-1">Contraseña</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400">
+                    <Lock size={16} />
+                  </span>
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    className="w-full !pl-10 pr-4 py-3 rounded-2xl bg-white border border-gray-150 focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none text-xs font-semibold text-gray-700 placeholder-gray-400 transition-all"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3.5 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-blush-palmLeaf/25 cursor-pointer mt-2"
+              >
+                Registrar Cuenta
+              </button>
+
+              <div className="text-center mt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRegisterMode(false)
+                    setLoginError('')
+                    setUsernameInput('')
+                    setPasswordInput('')
+                  }}
+                  className="text-xs text-blush-palmLeaf hover:underline font-bold cursor-pointer"
+                >
+                  ¿Ya tienes cuenta? Inicia Sesión
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xxs font-black text-blush-palmLeaf uppercase tracking-wider mb-1.5 ml-1">Usuario (Cédula)</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400">
+                    <UserIcon size={16} />
+                  </span>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Cédula de usuario..."
+                    value={usernameInput}
+                    onChange={(e) => setUsernameInput(e.target.value)}
+                    className="w-full !pl-10 pr-4 py-3 rounded-2xl bg-white border border-gray-150 focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none text-xs font-semibold text-gray-700 placeholder-gray-400 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xxs font-black text-blush-palmLeaf uppercase tracking-wider mb-1.5 ml-1">Contraseña</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400">
+                    <Lock size={16} />
+                  </span>
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    className="w-full !pl-10 pr-4 py-3 rounded-2xl bg-white border border-gray-150 focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none text-xs font-semibold text-gray-700 placeholder-gray-400 transition-all"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3.5 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-blush-palmLeaf/25 cursor-pointer mt-2"
+              >
+                Iniciar Sesión
+              </button>
+
+              <div className="text-center mt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRegisterMode(true)
+                    setLoginError('')
+                    setUsernameInput('')
+                    setPasswordInput('')
+                  }}
+                  className="text-xs text-blush-palmLeaf hover:underline font-bold cursor-pointer"
+                >
+                  ¿No tienes cuenta? Regístrate aquí
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     )

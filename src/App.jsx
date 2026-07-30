@@ -1004,6 +1004,9 @@ export default function App() {
             <div className={activeTab === 'gastos' ? 'animate-tab-active' : ''} style={{ display: activeTab === 'gastos' ? 'block' : 'none' }}>
               <GastosTab activeTab={activeTab} selectedBranchId={selectedBranchId} />
             </div>
+            <div className={activeTab === 'usuarios' ? 'animate-tab-active' : ''} style={{ display: activeTab === 'usuarios' ? 'block' : 'none' }}>
+              <UsuariosTab />
+            </div>
           </div>
         </main>
 

@@ -16,7 +16,9 @@ import {
   User as UserIcon,
   DollarSign,
   Menu,
-  Mail
+  Mail,
+  Eye,
+  EyeOff
 } from 'lucide-react'
 
 // Tabs
@@ -53,6 +55,7 @@ export default function App() {
   const [isRegisterMode, setIsRegisterMode] = useState(false)
   const [registerNameInput, setRegisterNameInput] = useState('')
   const [registerEmailInput, setRegisterEmailInput] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [notificaciones, setNotificaciones] = useState([])
   const [toasts, setToasts] = useState([])
 
@@ -497,13 +500,20 @@ export default function App() {
                     <Lock size={16} />
                   </span>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
                     placeholder="••••••••"
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
-                    className="w-full !pl-10 pr-4 py-3 rounded-2xl bg-white border border-gray-150 focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none text-xs font-semibold text-gray-700 placeholder-gray-400 transition-all"
+                    className="w-full !pl-10 pr-10 py-3 rounded-2xl bg-white border border-gray-150 focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none text-xs font-semibold text-gray-700 placeholder-gray-400 transition-all"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
               </div>
 
@@ -555,13 +565,20 @@ export default function App() {
                     <Lock size={16} />
                   </span>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
                     placeholder="••••••••"
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
-                    className="w-full !pl-10 pr-4 py-3 rounded-2xl bg-white border border-gray-150 focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none text-xs font-semibold text-gray-700 placeholder-gray-400 transition-all"
+                    className="w-full !pl-10 pr-10 py-3 rounded-2xl bg-white border border-gray-150 focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none text-xs font-semibold text-gray-700 placeholder-gray-400 transition-all"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
               </div>
 

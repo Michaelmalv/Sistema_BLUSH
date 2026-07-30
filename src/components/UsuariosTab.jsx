@@ -21,6 +21,8 @@ export default function UsuariosTab() {
   const [editingId, setEditingId] = useState(null)
   
   // Edit values
+  const [editNombre, setEditNombre] = useState('')
+  const [editCorreo, setEditCorreo] = useState('')
   const [editRol, setEditRol] = useState('')
   const [editSucursalId, setEditSucursalId] = useState('')
   
@@ -49,6 +51,8 @@ export default function UsuariosTab() {
 
   const startEdit = (user) => {
     setEditingId(user.id)
+    setEditNombre(user.nombre)
+    setEditCorreo(user.correo || '')
     setEditRol(user.rol)
     setEditSucursalId(user.sucursal_id || '')
     setMsg('')
@@ -64,6 +68,8 @@ export default function UsuariosTab() {
     setErrorMsg('')
     try {
       const payload = {
+        nombre: editNombre.trim(),
+        correo: editCorreo.trim() || null,
         rol: editRol,
         sucursal_id: editRol === 'Dueño' ? null : (editSucursalId || null)
       }
@@ -71,7 +77,15 @@ export default function UsuariosTab() {
       await dataService.actualizarUsuario(id, payload)
       setMsg('✅ Usuario actualizado correctamente.')
       setEditingId(null)
-      loadData()
+      
+      const activeUser = dataService.getCurrentUser()
+      if (activeUser && activeUser.id === id) {
+        const updatedUser = { ...activeUser, ...payload }
+        sessionStorage.setItem('blush_current_user', JSON.stringify(updatedUser))
+        window.location.reload()
+      } else {
+        loadData()
+      }
     } catch (err) {
       console.error('Error al actualizar usuario:', err)
       setErrorMsg(`⚠️ Error: ${err.message || 'No se pudo actualizar el usuario.'}`)
@@ -147,9 +161,21 @@ export default function UsuariosTab() {
                           <div className="bg-blush-seashell/60 p-2 rounded-xl text-blush-palmLeaf border border-blush-khaki/20">
                             <Users size={14} />
                           </div>
-                          <div>
-                            <span className="block text-gray-800 font-bold">{u.nombre}</span>
-                            <span className="block text-[8px] text-gray-400 mt-0.5">Registrado el {new Date(u.creado_en).toLocaleDateString()}</span>
+                          <div className="flex-grow">
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                required
+                                value={editNombre}
+                                onChange={(e) => setEditNombre(e.target.value)}
+                                className="bg-white border border-gray-250 rounded-xl px-2 py-1.5 outline-none font-bold text-gray-700 w-full text-xs"
+                              />
+                            ) : (
+                              <>
+                                <span className="block text-gray-800 font-bold">{u.nombre}</span>
+                                <span className="block text-[8px] text-gray-400 mt-0.5">Registrado el {new Date(u.creado_en).toLocaleDateString()}</span>
+                              </>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -159,10 +185,23 @@ export default function UsuariosTab() {
 
                       {/* Correo */}
                       <td className="py-4 px-6">
-                        <div className="flex items-center gap-1 text-gray-500 font-medium">
-                          <Mail size={12} className="opacity-75" />
-                          <span>{u.correo || 'N/R'}</span>
-                        </div>
+                        {isEditing ? (
+                          <div className="flex items-center gap-1">
+                            <Mail size={12} className="text-gray-400" />
+                            <input
+                              type="email"
+                              placeholder="correo@ejemplo.com"
+                              value={editCorreo}
+                              onChange={(e) => setEditCorreo(e.target.value)}
+                              className="bg-white border border-gray-250 rounded-xl px-2 py-1.5 outline-none font-bold text-gray-700 w-full text-xs"
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-gray-500 font-medium">
+                            <Mail size={12} className="opacity-75" />
+                            <span>{u.correo || 'N/R'}</span>
+                          </div>
+                        )}
                       </td>
 
                       {/* Rol */}
@@ -218,9 +257,7 @@ export default function UsuariosTab() {
 
                       {/* Acciones */}
                       <td className="py-4 px-6 text-center">
-                        {isSystemOwner ? (
-                          <span className="text-gray-400 italic text-[10px]">Cuenta Propietario (Protegido)</span>
-                        ) : isEditing ? (
+                        {isEditing ? (
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => saveEdit(u.id)}

@@ -317,7 +317,7 @@ export default function DashboardTab({ onNavigate, activeTab, selectedBranchId }
       } else {
         periodCitas.forEach(c => {
           const clientName = c.clientes?.nombre || 'N/A';
-          const clientCed = c.clientes?.cedula || 'N/A';
+          const clientCed = c.clientes?.cedula || 'Consumidor Final';
           const svcName = c.servicios?.nombre || 'N/A';
           const staffName = c.personal?.nombre || 'N/A';
           const dateStr = new Date(c.fecha_hora).toLocaleDateString();

@@ -492,7 +492,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
                         {clientes.find(c => c.id === form.cliente_id)?.nombre || 'Cliente seleccionado'}
                       </span>
                       <span className="block text-[10px] text-gray-400">
-                        Cédula: {clientes.find(c => c.id === form.cliente_id)?.cedula || 'N/A'}
+                        Cédula: {clientes.find(c => c.id === form.cliente_id)?.cedula || 'Consumidor Final'}
                       </span>
                     </div>
                     <button
@@ -534,7 +534,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
                           >
                             <span className="font-bold text-gray-800">{c.nombre}</span>
                             <span className="text-[10px] text-gray-400">
-                              Cédula: {c.cedula || 'N/A'} | Cel: {c.celular || 'N/A'}
+                              Cédula: {c.cedula || 'Consumidor Final'} | Cel: {c.celular || 'N/A'}
                             </span>
                           </button>
                         ))}

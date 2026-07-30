@@ -215,7 +215,7 @@ export default function ClientesTab({ activeTab }) {
       filteredClientes.forEach((client, rIdx) => {
         const r = rIdx + 3
         ws[XLSX.utils.encode_cell({ r, c: 0 })] = makeCell(client.nombre, 's', cellStyleLeft)
-        ws[XLSX.utils.encode_cell({ r, c: 1 })] = makeCell(client.cedula || 'N/A', 's', cellStyleCenter)
+        ws[XLSX.utils.encode_cell({ r, c: 1 })] = makeCell(client.cedula || 'Consumidor Final', 's', cellStyleCenter)
         ws[XLSX.utils.encode_cell({ r, c: 2 })] = makeCell(client.celular || 'N/A', 's', cellStyleCenter)
         ws[XLSX.utils.encode_cell({ r, c: 3 })] = makeCell(client.correo || 'N/A', 's', cellStyleLeft)
         ws[XLSX.utils.encode_cell({ r, c: 4 })] = makeCell(client.medio_contacto || 'N/A', 's', cellStyleCenter)
@@ -420,7 +420,7 @@ export default function ClientesTab({ activeTab }) {
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="text-sm font-bold text-gray-800">{c.nombre}</h4>
-                      <div className="text-xxs text-gray-400 mt-0.5">Cédula: {c.cedula || 'N/A'}</div>
+                      <div className="text-xxs text-gray-400 mt-0.5">Cédula: {c.cedula || 'Consumidor Final'}</div>
                     </div>
                     <div className="flex items-center gap-1">
                       <button

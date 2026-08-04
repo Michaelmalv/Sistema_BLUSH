@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react'
-import { Plus, Edit3, Trash2, Scissors, Award, Clock } from 'lucide-react'
+import React, { useEffect, useState, useMemo } from 'react'
+import { Plus, Edit3, Trash2, Scissors, Award, Clock, Search } from 'lucide-react'
 import { dataService } from '../dataService'
 
 export default function ServiciosTab({ activeTab }) {
   const [servicios, setServicios] = useState([])
   const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Formulario
   const [form, setForm] = useState({
@@ -91,6 +92,12 @@ export default function ServiciosTab({ activeTab }) {
       setMsg({ type: 'error', text: 'No se pudo eliminar el servicio (puede estar enlazado a citas históricas).' })
     }
   }
+
+  const filteredServicios = useMemo(() => {
+    return servicios.filter(svc => 
+      svc.nombre.toLowerCase().includes(searchQuery.toLowerCase().trim())
+    )
+  }, [servicios, searchQuery])
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -186,21 +193,39 @@ export default function ServiciosTab({ activeTab }) {
 
       {/* Grid del Listado */}
       <div className="lg:col-span-2 bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col">
-        <div className="mb-4">
-          <h3 className="text-lg font-bold text-blush-palmLeaf flex items-center gap-2">
-            <Award size={18} />
-            Catálogo de Servicios
-          </h3>
-          <p className="text-xs text-gray-400">Listado de servicios registrados y sus intervalos de recurrencia</p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div>
+            <h3 className="text-lg font-bold text-blush-palmLeaf flex items-center gap-2">
+              <Award size={18} />
+              Catálogo de Servicios
+            </h3>
+            <p className="text-xs text-gray-400">Listado de servicios registrados y sus intervalos de recurrencia</p>
+          </div>
+
+          {/* Buscador */}
+          <div className="relative md:w-64">
+            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 pointer-events-none">
+              <Search size={16} />
+            </span>
+            <input
+              type="text"
+              placeholder="Buscar servicio..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 focus:bg-white focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none transition-all"
+            />
+          </div>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-20 text-gray-400">Cargando catálogo...</div>
         ) : servicios.length === 0 ? (
           <div className="flex items-center justify-center py-20 text-gray-400">No hay servicios registrados.</div>
+        ) : filteredServicios.length === 0 ? (
+          <div className="flex items-center justify-center py-20 text-gray-400">No se encontraron servicios que coincidan con la búsqueda.</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto max-h-[500px] pr-2">
-            {servicios.map((svc) => (
+            {filteredServicios.map((svc) => (
               <div 
                 key={svc.id} 
                 className="p-4 rounded-2xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-luxury flex flex-col justify-between"

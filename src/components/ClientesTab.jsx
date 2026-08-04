@@ -197,7 +197,7 @@ export default function ClientesTab({ activeTab }) {
         font: { name: 'Playfair Display', size: 14, bold: true, color: { rgb: '748843' } },
         alignment: { horizontal: 'left', vertical: 'middle' }
       })
-      ws['A2'] = makeCell(`Generado el: ${new Date().toLocaleDateString()} | Total registros: ${filteredClientes.length} clientes`, 's', {
+      ws['A2'] = makeCell(`Generado el: ${new Date().toLocaleDateString('es-EC')} | Total registros: ${filteredClientes.length} clientes`, 's', {
         font: { name: 'Segoe UI', size: 9, italic: true, color: { rgb: '6B7280' } }
       })
 

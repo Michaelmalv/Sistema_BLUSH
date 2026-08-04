@@ -937,7 +937,7 @@ const TransactionHistory = React.memo(({
                       />
                     </td>
                     <td className="py-2.5 px-2 text-xs font-semibold text-gray-600">
-                      {new Date(c.fecha_hora).toLocaleDateString()}
+                      {new Date(c.fecha_hora).toLocaleDateString('es-EC')}
                     </td>
                     <td className="py-2.5 px-2 font-bold text-gray-800 text-xs">{c.clientes?.nombre || 'S/N'}</td>
                     <td className="py-2.5 px-2 text-xs font-semibold text-gray-700">{c.servicios?.nombre || 'S/N'}</td>
@@ -973,7 +973,7 @@ const TransactionHistory = React.memo(({
               {filteredGroupedCitas.map((group) => (
                 <tr key={group.key} className="hover:bg-gray-50/50 transition-colors align-top">
                   <td className="py-3.5 px-2 font-medium text-gray-600 text-xs">
-                    <span className="block font-bold">{new Date(group.fecha_hora).toLocaleDateString()}</span>
+                    <span className="block font-bold">{new Date(group.fecha_hora).toLocaleDateString('es-EC')}</span>
                     <span className="text-xxs text-gray-400">{new Date(group.fecha_hora).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   </td>
                   <td className="py-3.5 px-2">

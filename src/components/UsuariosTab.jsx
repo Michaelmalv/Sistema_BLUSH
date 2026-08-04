@@ -173,7 +173,7 @@ export default function UsuariosTab() {
                             ) : (
                               <>
                                 <span className="block text-gray-800 font-bold">{u.nombre}</span>
-                                <span className="block text-[8px] text-gray-400 mt-0.5">Registrado el {new Date(u.creado_en).toLocaleDateString()}</span>
+                                <span className="block text-[8px] text-gray-400 mt-0.5">Registrado el {new Date(u.creado_en).toLocaleDateString('es-EC')}</span>
                               </>
                             )}
                           </div>

@@ -241,7 +241,7 @@ export default function InventarioTab({ activeTab, selectedBranchId }) {
       })])
 
       merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 8 } })
-      rows.push([makeCell(`Sucursal: ${branchName} | Generado el: ${new Date().toLocaleDateString()}`, 's', null, subtitleStyle)])
+      rows.push([makeCell(`Sucursal: ${branchName} | Generado el: ${new Date().toLocaleDateString('es-EC')}`, 's', null, subtitleStyle)])
       
       rows.push([]) // empty row
 

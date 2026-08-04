@@ -243,7 +243,7 @@ export default function DashboardTab({ onNavigate, activeTab, selectedBranchId }
       })])
 
       merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 7 } })
-      rows.push([makeCell(`Periodo: ${rango.inicio} al ${rango.fin} | Sucursal: ${branchName} | Generado el: ${new Date().toLocaleDateString()}`, 's', null, subtitleStyle)])
+      rows.push([makeCell(`Periodo: ${rango.inicio} al ${rango.fin} | Sucursal: ${branchName} | Generado el: ${new Date().toLocaleDateString('es-EC')}`, 's', null, subtitleStyle)])
       
       rows.push([]) // empty row
 
@@ -320,7 +320,7 @@ export default function DashboardTab({ onNavigate, activeTab, selectedBranchId }
           const clientCed = c.clientes?.cedula || 'Consumidor Final';
           const svcName = c.servicios?.nombre || 'N/A';
           const staffName = c.personal?.nombre || 'N/A';
-          const dateStr = new Date(c.fecha_hora).toLocaleDateString();
+          const dateStr = new Date(c.fecha_hora).toLocaleDateString('es-EC');
           rows.push([
             makeCell(dateStr, 's', null, cellStyleTextCenter),
             makeCell(clientName, 's', null, cellStyleTextLeft),
@@ -362,7 +362,7 @@ export default function DashboardTab({ onNavigate, activeTab, selectedBranchId }
         ])
       } else {
         periodGastos.forEach(g => {
-          const dateStr = new Date(g.fecha + 'T00:00:00').toLocaleDateString();
+          const dateStr = new Date(g.fecha + 'T00:00:00').toLocaleDateString('es-EC');
           rows.push([
             makeCell(dateStr, 's', null, cellStyleTextCenter),
             makeCell(g.factura || 'Sin Doc', 's', '@', cellStyleTextCenter),

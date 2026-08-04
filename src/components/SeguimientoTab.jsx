@@ -148,7 +148,7 @@ export default function SeguimientoTab({ activeTab, selectedBranchId }) {
     if (!d) return 'Sin fecha'
     const dateOnly = d.includes('T') ? d.split('T')[0] : d
     const dt = new Date(dateOnly + 'T00:00:00')
-    return isNaN(dt.getTime()) ? 'Invalid Date' : dt.toLocaleDateString()
+    return isNaN(dt.getTime()) ? 'Invalid Date' : dt.toLocaleDateString('es-EC')
   }
 
   return (

@@ -212,7 +212,7 @@ export default function ServiciosTab({ activeTab }) {
               placeholder="Buscar servicio..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 focus:bg-white focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none transition-all"
+              className="w-full !pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 focus:bg-white focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf outline-none transition-all"
             />
           </div>
         </div>

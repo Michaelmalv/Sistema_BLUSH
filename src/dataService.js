@@ -289,34 +289,48 @@ export const dataService = {
   },
 
   async registrarPersonal(persona) {
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase.from('personal').insert([persona]).select()
-      if (error) throw error
+    try {
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase.from('personal').insert([persona]).select()
+        if (error) throw error
+        this.clearCache('personal')
+        return data[0]
+      }
+      const list = getLocal('blush_personal') || []
+      if (list.some(p => p.nombre.toLowerCase().trim() === persona.nombre.toLowerCase().trim())) {
+        throw new Error('duplicate key value violates unique constraint "personal_nombre_key"')
+      }
+      const nuevo = { ...persona, id: 'p_' + Date.now() }
+      list.push(nuevo)
+      setLocal('blush_personal', list)
       this.clearCache('personal')
-      return data[0]
+      return nuevo
+    } catch (err) {
+      throw this.traducirErrorPostgres(err)
     }
-    const list = getLocal('blush_personal') || []
-    const nuevo = { ...persona, id: 'p_' + Date.now() }
-    list.push(nuevo)
-    setLocal('blush_personal', list)
-    this.clearCache('personal')
-    return nuevo
   },
 
   async actualizarPersonal(id, persona) {
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase.from('personal').update(persona).eq('id', id).select()
-      if (error) throw error
-      this.clearCache('personal')
-      return data[0]
-    }
-    const list = getLocal('blush_personal') || []
-    const index = list.findIndex(i => i.id === id)
-    if (index !== -1) {
-      list[index] = { ...list[index], ...persona }
-      setLocal('blush_personal', list)
-      this.clearCache('personal')
-      return list[index]
+    try {
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase.from('personal').update(persona).eq('id', id).select()
+        if (error) throw error
+        this.clearCache('personal')
+        return data[0]
+      }
+      const list = getLocal('blush_personal') || []
+      if (persona.nombre && list.some(p => p.id !== id && p.nombre.toLowerCase().trim() === persona.nombre.toLowerCase().trim())) {
+        throw new Error('duplicate key value violates unique constraint "personal_nombre_key"')
+      }
+      const index = list.findIndex(i => i.id === id)
+      if (index !== -1) {
+        list[index] = { ...list[index], ...persona }
+        setLocal('blush_personal', list)
+        this.clearCache('personal')
+        return list[index]
+      }
+    } catch (err) {
+      throw this.traducirErrorPostgres(err)
     }
   },
 
@@ -347,34 +361,48 @@ export const dataService = {
   },
 
   async registrarServicio(svc) {
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase.from('servicios').insert([svc]).select()
-      if (error) throw error
+    try {
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase.from('servicios').insert([svc]).select()
+        if (error) throw error
+        this.clearCache('servicios')
+        return data[0]
+      }
+      const list = getLocal('blush_servicios')
+      if (list.some(s => s.nombre.toLowerCase().trim() === svc.nombre.toLowerCase().trim())) {
+        throw new Error('duplicate key value violates unique constraint "servicios_nombre_key"')
+      }
+      const nuevo = { ...svc, id: 's_' + Date.now() }
+      list.push(nuevo)
+      setLocal('blush_servicios', list)
       this.clearCache('servicios')
-      return data[0]
+      return nuevo
+    } catch (err) {
+      throw this.traducirErrorPostgres(err)
     }
-    const list = getLocal('blush_servicios')
-    const nuevo = { ...svc, id: 's_' + Date.now() }
-    list.push(nuevo)
-    setLocal('blush_servicios', list)
-    this.clearCache('servicios')
-    return nuevo
   },
 
   async actualizarServicio(id, svc) {
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase.from('servicios').update(svc).eq('id', id).select()
-      if (error) throw error
-      this.clearCache('servicios')
-      return data[0]
-    }
-    const list = getLocal('blush_servicios')
-    const index = list.findIndex(i => i.id === id)
-    if (index !== -1) {
-      list[index] = { ...list[index], ...svc }
-      setLocal('blush_servicios', list)
-      this.clearCache('servicios')
-      return list[index]
+    try {
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase.from('servicios').update(svc).eq('id', id).select()
+        if (error) throw error
+        this.clearCache('servicios')
+        return data[0]
+      }
+      const list = getLocal('blush_servicios')
+      if (svc.nombre && list.some(s => s.id !== id && s.nombre.toLowerCase().trim() === svc.nombre.toLowerCase().trim())) {
+        throw new Error('duplicate key value violates unique constraint "servicios_nombre_key"')
+      }
+      const index = list.findIndex(i => i.id === id)
+      if (index !== -1) {
+        list[index] = { ...list[index], ...svc }
+        setLocal('blush_servicios', list)
+        this.clearCache('servicios')
+        return list[index]
+      }
+    } catch (err) {
+      throw this.traducirErrorPostgres(err)
     }
   },
 
@@ -407,34 +435,48 @@ export const dataService = {
   },
 
   async registrarCliente(cliente) {
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase.from('clientes').insert([cliente]).select()
-      if (error) throw error
+    try {
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase.from('clientes').insert([cliente]).select()
+        if (error) throw error
+        this.clearCache('clientes')
+        return data[0]
+      }
+      const list = getLocal('blush_clientes')
+      if (cliente.cedula && list.some(c => c.cedula === cliente.cedula)) {
+        throw new Error('duplicate key value violates unique constraint "clientes_cedula_key"')
+      }
+      const nuevo = { ...cliente, id: 'c_' + Date.now() }
+      list.push(nuevo)
+      setLocal('blush_clientes', list)
       this.clearCache('clientes')
-      return data[0]
+      return nuevo
+    } catch (err) {
+      throw this.traducirErrorPostgres(err)
     }
-    const list = getLocal('blush_clientes')
-    const nuevo = { ...cliente, id: 'c_' + Date.now() }
-    list.push(nuevo)
-    setLocal('blush_clientes', list)
-    this.clearCache('clientes')
-    return nuevo
   },
 
   async actualizarCliente(id, cliente) {
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase.from('clientes').update(cliente).eq('id', id).select()
-      if (error) throw error
-      this.clearCache('clientes')
-      return data[0]
-    }
-    const list = getLocal('blush_clientes')
-    const index = list.findIndex(c => c.id === id)
-    if (index !== -1) {
-      list[index] = { ...list[index], ...cliente }
-      setLocal('blush_clientes', list)
-      this.clearCache('clientes')
-      return list[index]
+    try {
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase.from('clientes').update(cliente).eq('id', id).select()
+        if (error) throw error
+        this.clearCache('clientes')
+        return data[0]
+      }
+      const list = getLocal('blush_clientes')
+      if (cliente.cedula && list.some(c => c.id !== id && c.cedula === cliente.cedula)) {
+        throw new Error('duplicate key value violates unique constraint "clientes_cedula_key"')
+      }
+      const index = list.findIndex(c => c.id === id)
+      if (index !== -1) {
+        list[index] = { ...list[index], ...cliente }
+        setLocal('blush_clientes', list)
+        this.clearCache('clientes')
+        return list[index]
+      }
+    } catch (err) {
+      throw this.traducirErrorPostgres(err)
     }
   },
 
@@ -659,40 +701,54 @@ export const dataService = {
   },
 
   async registrarProducto(prod) {
-    const user = this.getCurrentUser()
-    const prodConSucursal = { 
-      ...prod, 
-      sucursal_id: prod.sucursal_id || (user ? user.sucursal_id : null) 
-    }
+    try {
+      const user = this.getCurrentUser()
+      const prodConSucursal = { 
+        ...prod, 
+        sucursal_id: prod.sucursal_id || (user ? user.sucursal_id : null) 
+      }
 
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase.from('productos').insert([prodConSucursal]).select()
-      if (error) throw error
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase.from('productos').insert([prodConSucursal]).select()
+        if (error) throw error
+        this.clearCache('productos')
+        return data[0]
+      }
+      const list = getLocal('blush_productos')
+      if (list.some(p => p.nombre.toLowerCase().trim() === prod.nombre.toLowerCase().trim())) {
+        throw new Error('duplicate key value violates unique constraint "productos_nombre_key"')
+      }
+      const nuevo = { ...prodConSucursal, id: 'pr_' + Date.now() }
+      list.push(nuevo)
+      setLocal('blush_productos', list)
       this.clearCache('productos')
-      return data[0]
+      return nuevo
+    } catch (err) {
+      throw this.traducirErrorPostgres(err)
     }
-    const list = getLocal('blush_productos')
-    const nuevo = { ...prodConSucursal, id: 'pr_' + Date.now() }
-    list.push(nuevo)
-    setLocal('blush_productos', list)
-    this.clearCache('productos')
-    return nuevo
   },
 
   async actualizarProducto(id, prod) {
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase.from('productos').update(prod).eq('id', id).select()
-      if (error) throw error
-      this.clearCache('productos')
-      return data[0]
-    }
-    const list = getLocal('blush_productos')
-    const index = list.findIndex(i => i.id === id)
-    if (index !== -1) {
-      list[index] = { ...list[index], ...prod }
-      setLocal('blush_productos', list)
-      this.clearCache('productos')
-      return list[index]
+    try {
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase.from('productos').update(prod).eq('id', id).select()
+        if (error) throw error
+        this.clearCache('productos')
+        return data[0]
+      }
+      const list = getLocal('blush_productos')
+      if (prod.nombre && list.some(p => p.id !== id && p.nombre.toLowerCase().trim() === prod.nombre.toLowerCase().trim())) {
+        throw new Error('duplicate key value violates unique constraint "productos_nombre_key"')
+      }
+      const index = list.findIndex(i => i.id === id)
+      if (index !== -1) {
+        list[index] = { ...list[index], ...prod }
+        setLocal('blush_productos', list)
+        this.clearCache('productos')
+        return list[index]
+      }
+    } catch (err) {
+      throw this.traducirErrorPostgres(err)
     }
   },
 
@@ -984,46 +1040,57 @@ export const dataService = {
   },
 
   async actualizarUsuario(id, userData) {
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase
-        .from('usuarios')
-        .update(userData)
-        .eq('id', id)
-        .select();
-      if (error) throw error;
-      return data[0];
-    } else {
-      const users = getLocal('blush_usuarios') || MOCK_USUARIOS;
-      const idx = users.findIndex(u => u.id === id);
-      if (idx !== -1) {
-        users[idx] = { ...users[idx], ...userData };
-        setLocal('blush_usuarios', users);
-        return users[idx];
+    try {
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase
+          .from('usuarios')
+          .update(userData)
+          .eq('id', id)
+          .select();
+        if (error) throw error;
+        return data[0];
+      } else {
+        const users = getLocal('blush_usuarios') || MOCK_USUARIOS;
+        const idx = users.findIndex(u => u.id === id);
+        if (idx !== -1) {
+          if (userData.username && users.some(u => u.id !== id && u.username.toLowerCase() === userData.username.toLowerCase().trim())) {
+            throw new Error('La cédula ya está registrada.');
+          }
+          users[idx] = { ...users[idx], ...userData };
+          setLocal('blush_usuarios', users);
+          return users[idx];
+        }
+        throw new Error('Usuario no encontrado.');
       }
-      throw new Error('Usuario no encontrado.');
+    } catch (err) {
+      throw this.traducirErrorPostgres(err);
     }
   },
 
   async registrarUsuario(userData) {
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase
-        .from('usuarios')
-        .insert([userData])
-        .select();
-      if (error) throw error;
-      return data[0];
-    } else {
-      const users = getLocal('blush_usuarios') || MOCK_USUARIOS;
-      if (users.some(u => u.username.toLowerCase() === userData.username.toLowerCase().trim())) {
-        throw new Error('La cédula ya está registrada.');
+    try {
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase
+          .from('usuarios')
+          .insert([userData])
+          .select();
+        if (error) throw error;
+        return data[0];
+      } else {
+        const users = getLocal('blush_usuarios') || MOCK_USUARIOS;
+        if (users.some(u => u.username.toLowerCase() === userData.username.toLowerCase().trim())) {
+          throw new Error('La cédula ya está registrada.');
+        }
+        const newUser = {
+          id: 'u_' + Date.now(),
+          ...userData
+        };
+        users.push(newUser);
+        setLocal('blush_usuarios', users);
+        return newUser;
       }
-      const newUser = {
-        id: 'u_' + Date.now(),
-        ...userData
-      };
-      users.push(newUser);
-      setLocal('blush_usuarios', users);
-      return newUser;
+    } catch (err) {
+      throw this.traducirErrorPostgres(err);
     }
   },
 
@@ -1066,5 +1133,26 @@ export const dataService = {
     sessionStorage.removeItem('blush_current_user');
     sessionStorage.removeItem('blush_selected_branch_id');
     this._currentBranchId = null;
+  },
+
+  traducirErrorPostgres(err) {
+    if (!err || !err.message) return err
+    const msg = err.message
+    if (msg.includes('servicios_nombre_key') || (msg.includes('duplicate key') && msg.includes('servicios'))) {
+      return new Error('Ya existe un servicio registrado con ese nombre. Por favor, usa un nombre diferente.')
+    }
+    if (msg.includes('productos_nombre_key') || (msg.includes('duplicate key') && msg.includes('productos'))) {
+      return new Error('Ya existe un producto registrado con ese nombre. Por favor, usa un nombre diferente.')
+    }
+    if (msg.includes('clientes_cedula_key') || (msg.includes('duplicate key') && msg.includes('clientes') && msg.includes('cedula'))) {
+      return new Error('Ya existe un cliente registrado con ese número de cédula.')
+    }
+    if (msg.includes('personal_nombre_key') || (msg.includes('duplicate key') && msg.includes('personal'))) {
+      return new Error('Ya existe una colaboradora registrada con ese nombre.')
+    }
+    if (msg.includes('usuarios_username_key') || (msg.includes('duplicate key') && msg.includes('usuarios'))) {
+      return new Error('Este número de cédula ya está registrado en el sistema con otra cuenta de acceso.')
+    }
+    return err
   }
 }

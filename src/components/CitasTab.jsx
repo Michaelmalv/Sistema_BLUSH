@@ -471,11 +471,7 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
         throw new Error('Formato de fecha y hora inválido.');
       }
 
-      // Validar método de pago digital
-      const esDigital = ['Deuna', 'Transferencia'].includes(form.forma_pago)
-      if (esDigital && (!form.no_transferencia || form.no_transferencia.trim() === '')) {
-        throw new Error(`El número de referencia es obligatorio para pagos con ${form.forma_pago}`)
-      }
+
 
       // Si estamos editando, eliminamos el grupo de citas original primero
       if (editingOriginalGroup) {
@@ -908,7 +904,7 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
               <label className="block text-xs font-bold text-gray-500 mb-1">Forma de Pago</label>
               <select
                 value={form.forma_pago}
-                onChange={(e) => setForm({ ...form, forma_pago: e.target.value })}
+                onChange={(e) => setForm({ ...form, forma_pago: e.target.value, no_transferencia: '' })}
                 className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-blush-palmLeaf"
               >
                 <option value="Efectivo">Efectivo</option>
@@ -925,17 +921,31 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
             </div>
           </div>
 
-          {/* Referencia digital */}
-          {['Deuna', 'Transferencia'].includes(form.forma_pago) && (
+          {/* Código de tarjeta de 3 dígitos */}
+          {form.forma_pago === 'Tarjeta' && (
             <div className="animate-slide-in">
-              <label className="block text-xs font-bold text-amber-800 mb-1">Número de Transferencia / Referencia</label>
+              <label className="block text-xs font-bold text-gray-500 mb-1">Código de Tarjeta (3 dígitos)</label>
               <input
                 type="text"
-                placeholder="Ej. Ref 1009827 (Obligatorio)"
+                maxLength="3"
+                placeholder="Ej. 123"
+                value={form.no_transferencia}
+                onChange={(e) => setForm({ ...form, no_transferencia: e.target.value.replace(/\D/g, '').slice(0, 3) })}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-blush-palmLeaf"
+              />
+            </div>
+          )}
+
+          {/* Referencia digital (Opcional) */}
+          {['Deuna', 'Transferencia'].includes(form.forma_pago) && (
+            <div className="animate-slide-in">
+              <label className="block text-xs font-bold text-gray-500 mb-1">Número de Transferencia / Referencia (Opcional)</label>
+              <input
+                type="text"
+                placeholder="Ej. Ref 1009827 (Opcional)"
                 value={form.no_transferencia}
                 onChange={(e) => setForm({ ...form, no_transferencia: e.target.value })}
-                className="w-full px-3 py-2 bg-amber-50/40 border border-amber-200 rounded-xl text-sm font-semibold text-amber-900 focus:outline-none"
-                required
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-blush-palmLeaf"
               />
             </div>
           )}

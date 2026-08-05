@@ -273,11 +273,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
         throw new Error('Formato de fecha y hora inválido.');
       }
 
-      // Validar método de pago digital
-      const esDigital = ['Deuna', 'Transferencia'].includes(form.forma_pago)
-      if (esDigital && (!form.no_transferencia || form.no_transferencia.trim() === '')) {
-        throw new Error(`El número de transferencia/referencia es obligatorio para pagos con ${form.forma_pago}`)
-      }
+
 
       // Si estamos editando, eliminamos el grupo de citas original primero
       if (editingOriginalGroup) {
@@ -689,7 +685,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
               <label className="block text-xs font-bold text-gray-500 mb-1">Forma de Pago</label>
               <select
                 value={form.forma_pago}
-                onChange={(e) => setForm({ ...form, forma_pago: e.target.value })}
+                onChange={(e) => setForm({ ...form, forma_pago: e.target.value, no_transferencia: '' })}
                 className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-blush-palmLeaf"
               >
                 <option value="Efectivo">Efectivo</option>
@@ -706,24 +702,33 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
             </div>
           </div>
 
+          {/* Código de tarjeta de 3 dígitos */}
+          {form.forma_pago === 'Tarjeta' && (
+            <div className="animate-slide-in">
+              <label className="block text-xs font-bold text-gray-500 mb-1">Código de Tarjeta (3 dígitos)</label>
+              <input
+                type="text"
+                maxLength="3"
+                placeholder="Ej. 123"
+                value={form.no_transferencia}
+                onChange={(e) => setForm({ ...form, no_transferencia: e.target.value.replace(/\D/g, '').slice(0, 3) })}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-blush-palmLeaf"
+              />
+            </div>
+          )}
+
           {/* Nro Referencia o Comprobante */}
           {['Deuna', 'Transferencia', 'Efectivo'].includes(form.forma_pago) && (
             <div className="transition-all duration-300">
-              <label className={`block text-xs font-bold mb-1 ${form.forma_pago === 'Efectivo' ? 'text-gray-500' : 'text-amber-700'}`}>
-                {form.forma_pago === 'Efectivo' ? 'No. Depósito / Comprobante (Opcional)' : 'No. Transferencia / Referencia'}
-                {form.forma_pago !== 'Efectivo' && <span className="text-red-500"> *</span>}
+              <label className="block text-xs font-bold text-gray-500 mb-1">
+                {form.forma_pago === 'Efectivo' ? 'No. Depósito / Comprobante (Opcional)' : 'No. Transferencia / Referencia (Opcional)'}
               </label>
               <input
                 type="text"
                 placeholder={form.forma_pago === 'Efectivo' ? "Ej. DEP-998822" : "Ej. REF129482"}
                 value={form.no_transferencia}
                 onChange={(e) => setForm({ ...form, no_transferencia: e.target.value })}
-                className={`w-full px-3 py-2 border rounded-xl text-sm font-semibold outline-none ${
-                  form.forma_pago === 'Efectivo'
-                    ? 'bg-gray-50 border-gray-200 text-gray-700 focus:border-blush-palmLeaf'
-                    : 'bg-amber-50/50 border-amber-300 text-amber-900 focus:border-amber-500'
-                }`}
-                required={form.forma_pago !== 'Efectivo'}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-blush-palmLeaf text-gray-700"
               />
             </div>
           )}

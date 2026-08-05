@@ -564,10 +564,6 @@ export const dataService = {
   },
 
   async registrarCitaVenta(cita) {
-    if (['Deuna', 'Transferencia'].includes(cita.forma_pago) && (!cita.no_transferencia || cita.no_transferencia.trim() === '')) {
-      throw new Error(`El número de transferencia/referencia es requerido para ${cita.forma_pago}`)
-    }
-
     // Auto-asignar sucursal del creador
     const user = this.getCurrentUser()
     const citaConSucursal = { 

@@ -627,9 +627,6 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
                 ) : (
                   <>
                     <div className="relative">
-                      <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-                        <Search size={14} />
-                      </span>
                       <input
                         type="text"
                         placeholder="Buscar cliente por nombre o cédula..."
@@ -639,8 +636,9 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
                           setShowClientSuggestions(true)
                         }}
                         onFocus={() => setShowClientSuggestions(true)}
-                        className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-blush-palmLeaf font-semibold text-gray-700"
+                        className="w-full !pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-blush-palmLeaf font-semibold text-gray-700"
                       />
+                      <Search className="absolute left-3 top-2.5 text-gray-400" size={15} />
                     </div>
 
                     {showClientSuggestions && clientSearchText.trim() !== '' && (

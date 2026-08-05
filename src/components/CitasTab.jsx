@@ -42,6 +42,14 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
 
   const [msg, setMsg] = useState({ type: '', text: '' })
 
+  const [esNuevoServicio, setEsNuevoServicio] = useState(false)
+  const [nuevoServicioForm, setNuevoServicioForm] = useState({
+    nombre: '',
+    precio_base: '',
+    duracion_minutos: 30,
+    frecuencia_recomendada_dias: ''
+  })
+
   // Nuevos estados para múltiples servicios
   const [serviciosAgregados, setServiciosAgregados] = useState([])
   const [clientSearchText, setClientSearchText] = useState('')
@@ -270,36 +278,93 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const handleAddServicio = () => {
-    if (!form.servicio_id || !form.personal_id || !form.valor_pagado) {
-      return alert('Debe seleccionar servicio, colaborador y precio.')
-    }
-    const val = Number(form.valor_pagado)
-    if (isNaN(val) || val <= 0) {
-      return alert('El valor cobrado debe ser mayor a 0.')
-    }
-
-    const svc = servicios.find(s => s.id === form.servicio_id)
-    const pers = personal.find(p => p.id === form.personal_id)
-
-    setServiciosAgregados([
-      ...serviciosAgregados,
-      {
-        servicio_id: form.servicio_id,
-        nombre_servicio: svc.nombre,
-        personal_id: form.personal_id,
-        nombre_personal: pers.nombre,
-        valor_pagado: val
+  const handleAddServicio = async () => {
+    if (esNuevoServicio) {
+      const nombreLimpio = nuevoServicioForm.nombre.trim()
+      if (!nombreLimpio) {
+        return alert('El nombre del nuevo servicio es obligatorio.')
       }
-    ])
+      const precioVal = Number(nuevoServicioForm.precio_base)
+      if (isNaN(precioVal) || precioVal < 0) {
+        return alert('El precio base debe ser mayor o igual a 0.')
+      }
+      const duracionVal = Number(nuevoServicioForm.duracion_minutos)
+      if (isNaN(duracionVal) || duracionVal < 5) {
+        return alert('La duración debe ser de al menos 5 minutos.')
+      }
+      if (!form.personal_id) {
+        return alert('Debe seleccionar la colaboradora para el servicio.')
+      }
 
-    // Limpiar inputs de servicio
-    setForm(prev => ({
-      ...prev,
-      servicio_id: '',
-      personal_id: '',
-      valor_pagado: ''
-    }))
+      try {
+        const nuevoSvc = await dataService.registrarServicio({
+          nombre: nombreLimpio,
+          precio_base: precioVal,
+          duracion_minutos: duracionVal,
+          frecuencia_recomendada_dias: nuevoServicioForm.frecuencia_recomendada_dias ? Number(nuevoServicioForm.frecuencia_recomendada_dias) : null
+        })
+
+        const pers = personal.find(p => p.id === form.personal_id)
+        setServiciosAgregados([
+          ...serviciosAgregados,
+          {
+            servicio_id: nuevoSvc.id,
+            nombre_servicio: nuevoSvc.nombre,
+            personal_id: form.personal_id,
+            nombre_personal: pers.nombre,
+            valor_pagado: precioVal
+          }
+        ])
+
+        const updatedServicios = await dataService.getServicios()
+        setServicios(updatedServicios)
+
+        setNuevoServicioForm({
+          nombre: '',
+          precio_base: '',
+          duracion_minutos: 30,
+          frecuencia_recomendada_dias: ''
+        })
+        setEsNuevoServicio(false)
+        setForm(prev => ({
+          ...prev,
+          servicio_id: '',
+          personal_id: '',
+          valor_pagado: ''
+        }))
+      } catch (err) {
+        alert(err.message || 'No se pudo crear el servicio.')
+      }
+    } else {
+      if (!form.servicio_id || !form.personal_id || !form.valor_pagado) {
+        return alert('Debe seleccionar servicio, colaborador y precio.')
+      }
+      const val = Number(form.valor_pagado)
+      if (isNaN(val) || val <= 0) {
+        return alert('El valor cobrado debe ser mayor a 0.')
+      }
+
+      const svc = servicios.find(s => s.id === form.servicio_id)
+      const pers = personal.find(p => p.id === form.personal_id)
+
+      setServiciosAgregados([
+        ...serviciosAgregados,
+        {
+          servicio_id: form.servicio_id,
+          nombre_servicio: svc.nombre,
+          personal_id: form.personal_id,
+          nombre_personal: pers.nombre,
+          valor_pagado: val
+        }
+      ])
+
+      setForm(prev => ({
+        ...prev,
+        servicio_id: '',
+        personal_id: '',
+        valor_pagado: ''
+      }))
+    }
   }
 
   const handleRemoveServicio = (idx) => {
@@ -676,17 +741,79 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
             
             <div className="space-y-3">
               <div>
-                <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Servicio</label>
-                <select
-                  value={form.servicio_id}
-                  onChange={(e) => setForm({ ...form, servicio_id: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 outline-none"
-                >
-                  <option value="">Seleccione un servicio...</option>
-                  {servicios.map(s => (
-                    <option key={s.id} value={s.id}>{s.nombre} (${Number(s.precio_base).toFixed(2)})</option>
-                  ))}
-                </select>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-[10px] font-bold text-gray-400 ml-1">Servicio</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEsNuevoServicio(!esNuevoServicio)
+                      setForm(prev => ({ ...prev, servicio_id: '', valor_pagado: '' }))
+                    }}
+                    className="text-[10px] text-blush-palmLeaf font-bold hover:underline"
+                  >
+                    {esNuevoServicio ? 'Seleccionar existente' : 'Crear nuevo servicio'}
+                  </button>
+                </div>
+
+                {esNuevoServicio ? (
+                  <div className="p-3 bg-blush-seashell/45 rounded-2xl border border-blush-seashell space-y-2">
+                    <input
+                      type="text"
+                      placeholder="Nombre del nuevo servicio"
+                      value={nuevoServicioForm.nombre}
+                      onChange={(e) => setNuevoServicioForm({ ...nuevoServicioForm, nombre: e.target.value })}
+                      className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-xl outline-none focus:border-blush-palmLeaf font-semibold"
+                      required
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold ml-1">Precio Base ($)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={nuevoServicioForm.precio_base}
+                          onChange={(e) => setNuevoServicioForm({ ...nuevoServicioForm, precio_base: e.target.value })}
+                          className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-xl outline-none focus:border-blush-palmLeaf font-black text-blush-palmLeaf"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold ml-1">Duración (min)</label>
+                        <input
+                          type="number"
+                          min="5"
+                          placeholder="30"
+                          value={nuevoServicioForm.duracion_minutos}
+                          onChange={(e) => setNuevoServicioForm({ ...nuevoServicioForm, duracion_minutos: e.target.value })}
+                          className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-xl outline-none focus:border-blush-palmLeaf text-gray-700"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-gray-400 font-bold ml-1">Frecuencia (días, opcional)</label>
+                      <input
+                        type="number"
+                        placeholder="Ej. 21"
+                        value={nuevoServicioForm.frecuencia_recomendada_dias}
+                        onChange={(e) => setNuevoServicioForm({ ...nuevoServicioForm, frecuencia_recomendada_dias: e.target.value })}
+                        className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-xl outline-none focus:border-blush-palmLeaf text-gray-700"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <select
+                    value={form.servicio_id}
+                    onChange={(e) => setForm({ ...form, servicio_id: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 outline-none"
+                  >
+                    <option value="">Seleccione un servicio...</option>
+                    {servicios.map(s => (
+                      <option key={s.id} value={s.id}>{s.nombre} (${Number(s.precio_base).toFixed(2)})</option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -709,9 +836,18 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
                     type="number"
                     step="0.01"
                     placeholder="0.00"
-                    value={form.valor_pagado}
-                    onChange={(e) => setForm({ ...form, valor_pagado: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-black text-blush-palmLeaf outline-none"
+                    value={esNuevoServicio ? nuevoServicioForm.precio_base : form.valor_pagado}
+                    onChange={(e) => {
+                      if (esNuevoServicio) {
+                        setNuevoServicioForm({ ...nuevoServicioForm, precio_base: e.target.value })
+                      } else {
+                        setForm({ ...form, valor_pagado: e.target.value })
+                      }
+                    }}
+                    disabled={esNuevoServicio}
+                    className={`w-full px-3 py-2 border rounded-xl text-xs font-black text-blush-palmLeaf outline-none ${
+                      esNuevoServicio ? 'bg-gray-100/70 border-gray-200 text-blush-palmLeaf/60' : 'bg-white border-gray-200'
+                    }`}
                   />
                 </div>
               </div>
@@ -719,7 +855,7 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
               <button
                 type="button"
                 onClick={handleAddServicio}
-                className="w-full bg-blush-palmLeaf/10 hover:bg-blush-palmLeaf/20 text-blush-palmLeaf text-xs font-black py-2 rounded-xl transition-all flex items-center justify-center gap-1.5"
+                className="w-full bg-blush-palmLeaf/10 hover:bg-blush-palmLeaf/20 text-blush-palmLeaf text-xs font-black py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Plus size={14} /> Agregar Servicio
               </button>

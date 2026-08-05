@@ -18,11 +18,13 @@ import {
   Menu,
   Mail,
   Eye,
-  EyeOff
+  EyeOff,
+  Receipt
 } from 'lucide-react'
 
 // Tabs
 import DashboardTab from './components/DashboardTab'
+import CitasTab from './components/CitasTab'
 import VentasTab from './components/VentasTab'
 import GastosTab from './components/GastosTab'
 import InventarioTab from './components/InventarioTab'
@@ -370,8 +372,10 @@ export default function App() {
         return <SeguimientoTab key={tabKey} />
       case 'inventario':
         return <InventarioTab key={tabKey} />
+      case 'citas':
+        return <CitasTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} />
       case 'ventas':
-        return <VentasTab key={tabKey} />
+        return <VentasTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} />
       case 'servicios':
         return <ServiciosTab key={tabKey} />
       case 'gastos':
@@ -391,7 +395,8 @@ export default function App() {
     { id: 'dashboard', label: 'Panel', icon: LayoutDashboard },
     { id: 'crm', label: 'Clientes', icon: Users },
     { id: 'seguimiento', label: 'Seguimiento', icon: BellRing },
-    { id: 'ventas', label: 'Citas y Ventas', icon: Calendar },
+    { id: 'citas', label: 'Citas', icon: Calendar },
+    { id: 'ventas', label: 'Ventas', icon: Receipt },
     { id: 'servicios', label: 'Servicios', icon: Scissors },
     { id: 'gastos', label: 'Egresos (Gastos)', icon: TrendingDown },
     { id: 'inventario', label: 'Inventario', icon: Package },
@@ -1011,6 +1016,9 @@ export default function App() {
             </div>
             <div className={activeTab === 'inventario' ? 'animate-tab-active' : ''} style={{ display: activeTab === 'inventario' ? 'block' : 'none' }}>
               <InventarioTab activeTab={activeTab} selectedBranchId={selectedBranchId} />
+            </div>
+            <div className={activeTab === 'citas' ? 'animate-tab-active' : ''} style={{ display: activeTab === 'citas' ? 'block' : 'none' }}>
+              <CitasTab activeTab={activeTab} selectedBranchId={selectedBranchId} />
             </div>
             <div className={activeTab === 'ventas' ? 'animate-tab-active' : ''} style={{ display: activeTab === 'ventas' ? 'block' : 'none' }}>
               <VentasTab activeTab={activeTab} selectedBranchId={selectedBranchId} />

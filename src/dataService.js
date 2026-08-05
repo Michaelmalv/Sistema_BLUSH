@@ -519,7 +519,7 @@ export const dataService = {
         const { data: dbData, error } = await supabase
           .from('citas_ventas')
           .select(`
-            id, fecha_hora, valor_pagado, forma_pago, no_transferencia, sucursal_id,
+            id, fecha_hora, valor_pagado, forma_pago, no_transferencia, sucursal_id, tipo,
             cliente_id, servicio_id, personal_id,
             clientes (id, nombre, cedula, celular, correo),
             servicios (id, nombre, precio_base, frecuencia_recomendada_dias),
@@ -530,6 +530,7 @@ export const dataService = {
           if (c.personal && c.personal.nombre) {
             c.personal.nombre = this.resolverNombreEstandar(c.personal.nombre)
           }
+          c.tipo = c.tipo || 'cita'
           return c
         })
         this._cache.citas = mapped
@@ -547,6 +548,7 @@ export const dataService = {
           }
           return {
             ...c,
+            tipo: c.tipo || 'cita',
             clientes: clientes.find(cl => cl.id === c.cliente_id) || {},
             servicios: servicios.find(s => s.id === c.servicio_id) || {},
             personal: pers
@@ -570,6 +572,7 @@ export const dataService = {
     const user = this.getCurrentUser()
     const citaConSucursal = { 
       ...cita, 
+      tipo: cita.tipo || 'cita',
       sucursal_id: cita.sucursal_id || (user ? user.sucursal_id : null) 
     }
 
@@ -592,6 +595,7 @@ export const dataService = {
     const user = this.getCurrentUser()
     const citasConSucursal = citasArray.map(c => ({
       ...c,
+      tipo: c.tipo || 'cita',
       sucursal_id: c.sucursal_id || (user ? user.sucursal_id : null)
     }))
 

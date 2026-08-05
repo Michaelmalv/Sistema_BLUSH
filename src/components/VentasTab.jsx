@@ -99,6 +99,8 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
   const groupedCitas = useMemo(() => {
     const groups = {}
     citas.forEach(c => {
+      if (c.tipo !== 'venta') return
+
       const clientKey = c.cliente_id || 'anonymous'
       const dateKey = new Date(c.fecha_hora).toISOString()
       const groupKey = `${clientKey}_${dateKey}`
@@ -156,6 +158,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
 
   const cashCitas = useMemo(() => {
     return citas.filter(c => {
+      if (c.tipo !== 'venta') return false
       if (c.forma_pago !== 'Efectivo') return false
       const groupDate = new Date(c.fecha_hora)
       if (filterStartDate) {
@@ -289,12 +292,13 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
         fecha_hora: dateObj.toISOString(),
         valor_pagado: Number(s.valor_pagado),
         forma_pago: form.forma_pago,
-        no_transferencia: form.no_transferencia.trim() || null
+        no_transferencia: form.no_transferencia.trim() || null,
+        tipo: 'venta'
       }))
 
       await dataService.registrarGrupoCitas(citasToRegister)
 
-      setMsg({ type: 'success', text: editingOriginalGroup ? '✅ Cita/Venta actualizada con éxito.' : '✅ Venta registrada y caja actualizada con éxito.' })
+      setMsg({ type: 'success', text: editingOriginalGroup ? '✅ Venta actualizada con éxito.' : '✅ Venta registrada y caja actualizada con éxito.' })
       
       // Reiniciar formulario
       setForm({
@@ -390,9 +394,9 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
       <div className="lg:col-span-1 bg-white p-6 rounded-3xl shadow-sm border border-gray-100 h-fit">
         <h3 className="text-lg font-bold text-blush-palmLeaf mb-1 flex items-center gap-2">
           <Sparkles size={18} />
-          Registrar Venta / Cita
+          Registrar Venta
         </h3>
-        <p className="text-xs text-gray-400 mb-6">Genera la cita y actualiza el balance de caja al instante</p>
+        <p className="text-xs text-gray-400 mb-6">Registra la venta de servicios y actualiza el balance de caja al instante</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Selector de Cliente */}
@@ -555,7 +559,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
           <div className="bg-gray-50/50 p-3.5 rounded-2xl border border-gray-150 space-y-3">
             <div className="font-bold text-xs text-blush-palmLeaf flex items-center gap-1">
               <Sparkles size={14} />
-              Agregar servicios a esta cita:
+              Agregar servicios a esta venta:
             </div>
             
             <div className="grid grid-cols-2 gap-3">
@@ -1016,7 +1020,7 @@ const TransactionHistory = React.memo(({
                         type="button"
                         onClick={() => handleEditGroup(group)}
                         className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
-                        title="Editar Cita"
+                        title="Editar Venta"
                       >
                         <Edit3 size={14} />
                       </button>
@@ -1024,7 +1028,7 @@ const TransactionHistory = React.memo(({
                         type="button"
                         onClick={() => handleDeleteGroup(group)}
                         className="p-1 hover:bg-rose-50 rounded-lg text-gray-400 hover:text-rose-600 transition-colors cursor-pointer"
-                        title="Eliminar Cita"
+                        title="Eliminar Venta"
                       >
                         <Trash2 size={14} />
                       </button>

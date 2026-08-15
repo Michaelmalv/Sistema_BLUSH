@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { 
   Users, 
   Lock, 
@@ -146,14 +147,12 @@ export default function UsuariosTab() {
               </thead>
               <tbody className="divide-y divide-gray-150 text-xs text-gray-600 font-bold">
                 {usuarios.map((u) => {
-                  const isEditing = editingId === u.id
-                  const isSystemOwner = u.username === '1721946067' // La propietaria principal no puede auto-cambiarse el rol por seguridad
                   const assignedBranchName = sucursales.find(s => s.id === u.sucursal_id)?.nombre || 'Todas (Acceso Total)'
 
                   return (
                     <tr 
                       key={u.id} 
-                      className={`transition-colors hover:bg-gray-50/50 ${isEditing ? 'bg-blush-seashell/20' : ''}`}
+                      className="transition-colors hover:bg-gray-50/50"
                     >
                       {/* Nombre */}
                       <td className="py-4 px-6">
@@ -162,20 +161,8 @@ export default function UsuariosTab() {
                             <Users size={14} />
                           </div>
                           <div className="flex-grow">
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                required
-                                value={editNombre}
-                                onChange={(e) => setEditNombre(e.target.value)}
-                                className="bg-white border border-gray-250 rounded-xl px-2 py-1.5 outline-none font-bold text-gray-700 w-full text-xs"
-                              />
-                            ) : (
-                              <>
-                                <span className="block text-gray-800 font-bold">{u.nombre}</span>
-                                <span className="block text-[8px] text-gray-400 mt-0.5">Registrado el {new Date(u.creado_en).toLocaleDateString('es-EC')}</span>
-                              </>
-                            )}
+                            <span className="block text-gray-800 font-bold">{u.nombre}</span>
+                            <span className="block text-[8px] text-gray-400 mt-0.5">Registrado el {new Date(u.creado_en).toLocaleDateString('es-EC')}</span>
                           </div>
                         </div>
                       </td>
@@ -185,104 +172,42 @@ export default function UsuariosTab() {
 
                       {/* Correo */}
                       <td className="py-4 px-6">
-                        {isEditing ? (
-                          <div className="flex items-center gap-1">
-                            <Mail size={12} className="text-gray-400" />
-                            <input
-                              type="email"
-                              placeholder="correo@ejemplo.com"
-                              value={editCorreo}
-                              onChange={(e) => setEditCorreo(e.target.value)}
-                              className="bg-white border border-gray-250 rounded-xl px-2 py-1.5 outline-none font-bold text-gray-700 w-full text-xs"
-                            />
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 text-gray-500 font-medium">
-                            <Mail size={12} className="opacity-75" />
-                            <span>{u.correo || 'N/R'}</span>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1 text-gray-500 font-medium">
+                          <Mail size={12} className="opacity-75" />
+                          <span>{u.correo || 'N/R'}</span>
+                        </div>
                       </td>
 
                       {/* Rol */}
                       <td className="py-4 px-6">
-                        {isEditing ? (
-                          <select
-                            value={editRol}
-                            onChange={(e) => setEditRol(e.target.value)}
-                            disabled={isSystemOwner}
-                            className="bg-white border border-gray-250 rounded-xl px-2 py-1.5 outline-none font-bold text-gray-700"
-                          >
-                            <option value="Administrador">Administrador</option>
-                            <option value="Gerente">Gerente</option>
-                            <option value="Dueño">Dueño</option>
-                          </select>
-                        ) : (
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                            u.rol === 'Dueño'
-                              ? 'bg-rose-50 text-rose-700 border-rose-200'
-                              : u.rol === 'Gerente'
-                              ? 'bg-amber-50 text-amber-800 border-amber-250'
-                              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                          }`}>
-                            {u.rol}
-                          </span>
-                        )}
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                          u.rol === 'Dueño'
+                            ? 'bg-rose-50 text-rose-700 border-rose-200'
+                            : u.rol === 'Gerente'
+                            ? 'bg-amber-50 text-amber-800 border-amber-250'
+                            : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        }`}>
+                          {u.rol}
+                        </span>
                       </td>
 
                       {/* Sucursal */}
                       <td className="py-4 px-6">
-                        {isEditing ? (
-                          editRol === 'Dueño' ? (
-                            <span className="text-gray-400 italic font-medium">Acceso Total a todo el sistema</span>
-                          ) : (
-                            <select
-                              value={editSucursalId}
-                              onChange={(e) => setEditSucursalId(e.target.value)}
-                              className="bg-white border border-gray-250 rounded-xl px-2 py-1.5 outline-none font-bold text-gray-700"
-                            >
-                              <option value="">Todas las Sucursales</option>
-                              {sucursales.map(s => (
-                                <option key={s.id} value={s.id}>{s.nombre}</option>
-                              ))}
-                            </select>
-                          )
-                        ) : (
-                          <div className="flex items-center gap-1 text-gray-700">
-                            <MapPin size={12} className="text-blush-palmLeaf" />
-                            <span>{u.rol === 'Dueño' ? 'Todas (Acceso Total)' : assignedBranchName}</span>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1 text-gray-700">
+                          <MapPin size={12} className="text-blush-palmLeaf" />
+                          <span>{u.rol === 'Dueño' ? 'Todas (Acceso Total)' : assignedBranchName}</span>
+                        </div>
                       </td>
 
                       {/* Acciones */}
                       <td className="py-4 px-6 text-center">
-                        {isEditing ? (
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => saveEdit(u.id)}
-                              className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 px-2.5 font-bold"
-                            >
-                              <Save size={13} />
-                              Guardar
-                            </button>
-                            <button
-                              onClick={cancelEdit}
-                              className="p-1.5 bg-gray-50 hover:bg-gray-100 text-gray-500 border border-gray-200 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 px-2"
-                            >
-                              <X size={13} />
-                              Cancelar
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => startEdit(u)}
-                            className="p-2 hover:bg-gray-200/50 text-blush-palmLeaf rounded-xl border border-transparent hover:border-gray-200 transition-all cursor-pointer font-bold inline-flex items-center gap-1.5 px-3"
-                          >
-                            <Edit3 size={13} />
-                            Asignar Rol/Sucursal
-                          </button>
-                        )}
+                        <button
+                          onClick={() => startEdit(u)}
+                          className="p-2 hover:bg-gray-200/50 text-blush-palmLeaf rounded-xl border border-transparent hover:border-gray-200 transition-all cursor-pointer font-bold inline-flex items-center gap-1.5 px-3"
+                        >
+                          <Edit3 size={13} />
+                          Asignar Rol/Sucursal
+                        </button>
                       </td>
                     </tr>
                   )
@@ -292,6 +217,119 @@ export default function UsuariosTab() {
           </div>
         )}
       </div>
+
+      {/* MODAL DE EDICIÓN FLOTANTE */}
+      {editingId && (() => {
+        const u = usuarios.find(usr => usr.id === editingId)
+        if (!u) return null
+        const isSystemOwner = u.username === '1721946067'
+        return createPortal(
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-tab-active">
+            <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-gray-150 relative animate-slide-in my-8 max-h-[95vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-bold text-blush-palmLeaf flex items-center gap-2">
+                  <Edit3 size={18} />
+                  Editar Acceso de Usuario
+                </h3>
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Modal Form */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Nombre Completo</label>
+                  <input
+                    type="text"
+                    required
+                    value={editNombre}
+                    onChange={(e) => setEditNombre(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Cédula (Usuario)</label>
+                  <input
+                    type="text"
+                    value={u.username}
+                    disabled
+                    className="w-full px-3 py-2 bg-gray-100 border border-gray-200 rounded-xl text-xs font-semibold text-gray-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Correo Electrónico</label>
+                  <input
+                    type="email"
+                    placeholder="correo@ejemplo.com"
+                    value={editCorreo}
+                    onChange={(e) => setEditCorreo(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs outline-none focus:border-blush-palmLeaf focus:bg-white font-semibold text-gray-700"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Rol / Perfil</label>
+                  <select
+                    value={editRol}
+                    onChange={(e) => setEditRol(e.target.value)}
+                    disabled={isSystemOwner}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700 font-semibold"
+                  >
+                    <option value="Administrador">Administrador</option>
+                    <option value="Gerente">Gerente</option>
+                    <option value="Dueño">Dueño</option>
+                  </select>
+                </div>
+
+                {editRol !== 'Dueño' && (
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Sucursal Asignada</label>
+                    <select
+                      value={editSucursalId}
+                      onChange={(e) => setEditSucursalId(e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700 font-semibold"
+                    >
+                      <option value="">Todas las Sucursales</option>
+                      {sucursales.map(s => (
+                        <option key={s.id} value={s.id}>{s.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {msg && <div className="p-2 bg-green-50 text-green-800 border border-green-100 text-xs rounded-xl font-bold">{msg}</div>}
+                {errorMsg && <div className="p-2 bg-rose-50 text-rose-800 border border-rose-100 text-xs rounded-xl font-bold">{errorMsg}</div>}
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => saveEdit(u.id)}
+                    className="flex-1 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer"
+                  >
+                    Guardar Cambios
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelEdit}
+                    className="bg-gray-150 hover:bg-gray-200 text-gray-700 font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      })()}
 
     </div>
   )

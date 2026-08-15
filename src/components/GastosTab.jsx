@@ -17,6 +17,7 @@ import {
   Edit3
 } from 'lucide-react'
 import { dataService } from '../dataService'
+import defaultRetenciones from '../retenciones_import.json'
 import * as XLSX from 'xlsx-js-style'
 import { exportExcelJS } from '../excelExporter'
 
@@ -93,8 +94,8 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
       if (savedRet) {
         setRetenciones(JSON.parse(savedRet))
       } else {
-        // Data inicial vacía o mockup
-        setRetenciones([])
+        localStorage.setItem('blush_retenciones', JSON.stringify(defaultRetenciones))
+        setRetenciones(defaultRetenciones)
       }
     } catch (err) {
       console.error('Error al cargar datos de egresos:', err)

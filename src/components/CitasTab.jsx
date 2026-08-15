@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { Plus, Calendar, DollarSign, CreditCard, User, Sparkles, Receipt, X, Edit3, Trash2, Search, Clock, ArrowLeft, ArrowRight } from 'lucide-react'
 import { dataService } from '../dataService'
+import ExcelPlanillaView from './ExcelPlanillaView'
 
 const getLocalDatetimeString = () => {
   const tzoffset = (new Date()).getTimezoneOffset() * 60000;
@@ -19,6 +21,9 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
   const [subTab, setSubTab] = useState('calendario') // 'calendario' o 'historial'
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [currentTime, setCurrentTime] = useState(new Date())
+
+  const [currentUser] = useState(() => dataService.getCurrentUser())
+  const [modoExcel, setModoExcel] = useState(() => currentUser?.username === '1707963227')
 
   // Estados del Formulario
   const [esNuevoCliente, setEsNuevoCliente] = useState(false)
@@ -567,12 +572,37 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="flex flex-col gap-6">
+      {(currentUser?.rol === 'Dueño' || currentUser?.rol === 'Gerente' || currentUser?.rol === 'Administrador') && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setModoExcel(!modoExcel)
+              setMsg({ type: '', text: '' })
+            }}
+            className="px-4 py-2 bg-blush-palmLeaf/10 hover:bg-blush-palmLeaf/20 text-blush-palmLeaf font-black rounded-xl text-xs transition-all cursor-pointer flex items-center gap-1.5"
+          >
+            {modoExcel ? '📋 Cambiar a Vista Estándar (Formulario/Calendario)' : '📊 Cambiar a Modo Planilla Excel (Carga Rápida)'}
+          </button>
+        </div>
+      )}
+
+      {modoExcel ? (
+        <ExcelPlanillaView
+          activeTab="citas"
+          clientes={clientes}
+          servicios={servicios}
+          personal={personal}
+          loadData={loadData}
+        />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Formulario de registro */}
       <div className="lg:col-span-1 bg-white p-6 rounded-3xl shadow-sm border border-gray-100 h-fit">
         <h3 className="text-lg font-bold text-blush-palmLeaf mb-1 flex items-center gap-2">
           <Calendar size={18} />
-          {editingOriginalGroup ? 'Editar Cita' : 'Programar Cita'}
+          Programar Cita
         </h3>
         <p className="text-xs text-gray-400 mb-6">Agenda las citas de clientes y define fecha/hora del servicio</p>
 
@@ -1021,44 +1051,15 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
             </div>
           )}
 
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              className="flex-1 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer"
-            >
-              {editingOriginalGroup ? 'Actualizar Cita' : 'Programar Cita'}
-            </button>
-            {editingOriginalGroup && (
-              <button
-                type="button"
-                onClick={() => {
-                  setForm({
-                    cliente_id: '',
-                    nuevo_nombre: '',
-                    nuevo_cedula: '',
-                    nuevo_celular: '',
-                    nuevo_correo: '',
-                    nuevo_medio: 'WhatsApp',
-                    nuevo_medio_otro: '',
-                    nuevo_fecha_nacimiento: '',
-                    servicio_id: '',
-                    personal_id: '',
-                    fecha_hora: getLocalDatetimeString(),
-                    valor_pagado: '',
-                    forma_pago: 'Efectivo',
-                    no_transferencia: ''
-                  })
-                  setEsNuevoCliente(false)
-                  setServiciosAgregados([])
-                  setClientSearchText('')
-                  setEditingOriginalGroup(null)
-                }}
-                className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer"
-              >
-                Cancelar
-              </button>
-            )}
-          </div>
+          <button
+            type="submit"
+            disabled={!!editingOriginalGroup}
+            className={`w-full bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer ${
+              editingOriginalGroup ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            Programar Cita
+          </button>
         </form>
       </div>
 
@@ -1314,7 +1315,7 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
             ) : filteredGroupedCitas.length === 0 ? (
               <div className="flex items-center justify-center py-20 text-gray-400 font-bold">No se encontraron citas con los filtros actuales.</div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-h-[600px] overflow-y-auto pr-1">
                 <table className="w-full text-left text-sm border-collapse">
                   <thead>
                     <tr className="border-b border-gray-100 text-gray-400 text-xs font-bold">
@@ -1395,7 +1396,528 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
             )}
           </div>
         )}
+        </div>
+
+        {/* MODAL DE EDICIÓN FLOTANTE */}
+        {editingOriginalGroup && createPortal(
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-tab-active">
+            <div className="bg-white w-full max-w-xl rounded-3xl p-6 shadow-2xl border border-gray-150 relative animate-slide-in my-8 max-h-[95vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-bold text-blush-palmLeaf flex items-center gap-2">
+                  <Calendar size={18} />
+                  Editar Cita
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm({
+                      cliente_id: '',
+                      nuevo_nombre: '',
+                      nuevo_cedula: '',
+                      nuevo_celular: '',
+                      nuevo_correo: '',
+                      nuevo_medio: 'WhatsApp',
+                      nuevo_medio_otro: '',
+                      nuevo_fecha_nacimiento: '',
+                      servicio_id: '',
+                      personal_id: '',
+                      fecha_hora: getLocalDatetimeString(),
+                      valor_pagado: '',
+                      forma_pago: 'Efectivo',
+                      no_transferencia: ''
+                    })
+                    setEsNuevoCliente(false)
+                    setServiciosAgregados([])
+                    setClientSearchText('')
+                    setEditingOriginalGroup(null)
+                    setMsg({ type: '', text: '' })
+                  }}
+                  className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Form inside modal */}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Selector de Cliente */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs font-bold text-gray-500">Cliente</label>
+                  </div>
+
+                  {esNuevoCliente ? (
+                    <div className="p-3 bg-blush-seashell/40 rounded-2xl border border-blush-seashell space-y-2">
+                      <input
+                        type="text"
+                        placeholder="Nombre completo"
+                        value={form.nuevo_nombre}
+                        onChange={(e) => setForm({ ...form, nuevo_nombre: e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '') })}
+                        className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl outline-none focus:border-blush-palmLeaf"
+                        required
+                      />
+                      <input
+                        type="text"
+                        placeholder="Cédula"
+                        value={form.nuevo_cedula}
+                        onChange={(e) => setForm({ ...form, nuevo_cedula: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                        className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl outline-none focus:border-blush-palmLeaf"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Celular"
+                        value={form.nuevo_celular}
+                        onChange={(e) => setForm({ ...form, nuevo_celular: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                        className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl outline-none focus:border-blush-palmLeaf"
+                      />
+                      <input
+                        type="email"
+                        placeholder="Correo electrónico"
+                        value={form.nuevo_correo}
+                        onChange={(e) => setForm({ ...form, nuevo_correo: e.target.value })}
+                        className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:border-blush-palmLeaf outline-none"
+                      />
+                      <div className="flex flex-col">
+                        <label className="text-[10px] text-gray-400 font-bold ml-1 mb-0.5">Fecha de Nacimiento / Cumpleaños</label>
+                        <input
+                          type="date"
+                          value={form.nuevo_fecha_nacimiento}
+                          onChange={(e) => setForm({ ...form, nuevo_fecha_nacimiento: e.target.value })}
+                          max={new Date().toISOString().split('T')[0]}
+                          className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl text-gray-700 focus:border-blush-palmLeaf outline-none"
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <label className="text-[10px] text-gray-400 font-bold ml-1 mb-0.5">¿Cómo nos conoció?</label>
+                        <select
+                          value={form.nuevo_medio}
+                          onChange={(e) => setForm({ ...form, nuevo_medio: e.target.value })}
+                          className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl outline-none focus:border-blush-palmLeaf"
+                        >
+                          <option value="WhatsApp">WhatsApp</option>
+                          <option value="Instagram">Instagram</option>
+                          <option value="Facebook">Facebook</option>
+                          <option value="TikTok">TikTok</option>
+                          <option value="Recomendación">Recomendación</option>
+                          <option value="Otro">Otro</option>
+                        </select>
+                      </div>
+
+                      {form.nuevo_medio === 'Otro' && (
+                        <div className="animate-slide-in flex flex-col">
+                          <label className="text-[10px] text-gray-400 font-bold ml-1 mb-0.5">Especificar medio</label>
+                          <input
+                            type="text"
+                            placeholder="Ej. Rótulo, Volante, Evento..."
+                            value={form.nuevo_medio_otro}
+                            onChange={(e) => setForm({ ...form, nuevo_medio_otro: e.target.value })}
+                            className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl outline-none focus:border-blush-palmLeaf"
+                            required
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      {form.cliente_id ? (
+                        <div className="flex justify-between items-center bg-blush-seashell/40 border border-blush-seashell-dark/30 px-3 py-2 rounded-xl text-sm">
+                          <div>
+                            <span className="font-bold text-gray-800">
+                              {clientes.find(c => c.id === form.cliente_id)?.nombre || 'Cliente seleccionado'}
+                            </span>
+                            <span className="block text-[10px] text-gray-400">
+                              Cédula: {clientes.find(c => c.id === form.cliente_id)?.cedula || 'Consumidor Final'}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setForm(prev => ({ ...prev, cliente_id: '' }))
+                              setClientSearchText('')
+                            }}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              placeholder="Buscar cliente por nombre o cédula..."
+                              value={clientSearchText}
+                              onChange={(e) => {
+                                setClientSearchText(e.target.value)
+                                setShowClientSuggestions(true)
+                              }}
+                              onFocus={() => setShowClientSuggestions(true)}
+                              className="w-full !pl-10 pr-4 py-2 bg-gray-50 border border-gray-205 rounded-xl text-sm outline-none focus:border-blush-palmLeaf font-semibold text-gray-700"
+                            />
+                            <Search className="absolute left-3 top-2.5 text-gray-400" size={15} />
+                          </div>
+
+                          {showClientSuggestions && clientSearchText.trim() !== '' && (
+                            <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-2xl shadow-lg z-50 max-h-48 overflow-y-auto divide-y divide-gray-50">
+                              {filteredClientSuggestions.map(c => (
+                                <div
+                                  key={c.id}
+                                  onClick={() => {
+                                    setForm(prev => ({ ...prev, cliente_id: c.id }))
+                                    setClientSearchText(c.nombre)
+                                    setShowClientSuggestions(false)
+                                  }}
+                                  className="p-2.5 hover:bg-blush-seashell/30 cursor-pointer text-xs font-bold text-gray-700 flex justify-between"
+                                >
+                                  <span>{c.nombre}</span>
+                                  <span className="text-[10px] text-gray-400">{c.cedula || 'S/C'}</span>
+                                </div>
+                              ))}
+                              {filteredClientSuggestions.length === 0 && (
+                                <div className="p-3 text-center text-xs text-gray-400 font-semibold">
+                                  No se encontraron clientes.
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Sección de Servicios */}
+                <div className="p-4 bg-gray-50 border border-gray-250 rounded-2xl space-y-3">
+                  <h4 className="text-xs font-black text-gray-700 uppercase tracking-wider">Añadir Servicios a la Cita</h4>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="text-[10px] font-bold text-gray-400 ml-1">Servicio</label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEsNuevoServicio(!esNuevoServicio)
+                            setForm(prev => ({ ...prev, servicio_id: '', valor_pagado: '' }))
+                          }}
+                          className="text-[10px] text-blush-palmLeaf font-bold hover:underline"
+                        >
+                          {esNuevoServicio ? 'Seleccionar existente' : 'Crear nuevo servicio'}
+                        </button>
+                      </div>
+
+                      {esNuevoServicio ? (
+                        <div className="p-3 bg-blush-seashell/45 rounded-2xl border border-blush-seashell space-y-2">
+                          <input
+                            type="text"
+                            placeholder="Nombre del nuevo servicio"
+                            value={nuevoServicioForm.nombre}
+                            onChange={(e) => setNuevoServicioForm({ ...nuevoServicioForm, nombre: e.target.value })}
+                            className="w-full px-3 py-2 text-xs bg-white border border-gray-250 rounded-xl outline-none focus:border-blush-palmLeaf font-semibold"
+                            required
+                          />
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[9px] text-gray-400 font-bold ml-1">Precio Base ($)</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={nuevoServicioForm.precio_base}
+                                onChange={(e) => setNuevoServicioForm({ ...nuevoServicioForm, precio_base: e.target.value })}
+                                className="w-full px-3 py-2 text-xs bg-white border border-gray-250 rounded-xl outline-none focus:border-blush-palmLeaf font-black text-blush-palmLeaf"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[9px] text-gray-400 font-bold ml-1">Duración (min)</label>
+                              <input
+                                type="number"
+                                min="5"
+                                placeholder="30"
+                                value={nuevoServicioForm.duracion_minutos}
+                                onChange={(e) => setNuevoServicioForm({ ...nuevoServicioForm, duracion_minutos: e.target.value })}
+                                className="w-full px-3 py-2 text-xs bg-white border border-gray-250 rounded-xl outline-none focus:border-blush-palmLeaf text-gray-700"
+                                required
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[9px] text-gray-400 font-bold ml-1">Frecuencia (días, opcional)</label>
+                            <input
+                              type="number"
+                              placeholder="Ej. 21"
+                              value={nuevoServicioForm.frecuencia_recomendada_dias}
+                              onChange={(e) => setNuevoServicioForm({ ...nuevoServicioForm, frecuencia_recomendada_dias: e.target.value })}
+                              className="w-full px-3 py-2 text-xs bg-white border border-gray-255 rounded-xl outline-none focus:border-blush-palmLeaf text-gray-700"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          {form.servicio_id ? (
+                            <div className="flex justify-between items-center bg-blush-seashell/40 border border-blush-seashell-dark/30 px-3 py-2 rounded-xl text-xs">
+                              <div className="min-w-0 flex-1 pr-2">
+                                <span className="font-bold text-gray-800 block truncate">
+                                  {servicios.find(s => s.id === form.servicio_id)?.nombre || 'Servicio seleccionado'}
+                                </span>
+                                <span className="block text-[10px] text-gray-400">
+                                  Precio Base: ${Number(servicios.find(s => s.id === form.servicio_id)?.precio_base || 0).toFixed(2)}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setForm(prev => ({ ...prev, servicio_id: '', valor_pagado: '' }))
+                                  setServiceSearchText('')
+                                }}
+                                className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                              >
+                                <X size={16} />
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  placeholder="Escribe para buscar un servicio..."
+                                  value={serviceSearchText}
+                                  onChange={(e) => {
+                                    setServiceSearchText(e.target.value)
+                                    setShowServiceSuggestions(true)
+                                  }}
+                                  onFocus={() => setShowServiceSuggestions(true)}
+                                  className="w-full !pl-10 pr-4 py-2 bg-white border border-gray-205 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf text-gray-700 font-bold"
+                                />
+                                <Search className="absolute left-3 top-2.5 text-gray-400" size={14} />
+                              </div>
+
+                              {showServiceSuggestions && serviceSearchText.trim() !== '' && (
+                                <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-2xl shadow-lg z-50 max-h-48 overflow-y-auto divide-y divide-gray-50">
+                                  {servicios
+                                    .filter(s => s.nombre.toLowerCase().includes(serviceSearchText.toLowerCase()))
+                                    .map(s => (
+                                      <div
+                                        key={s.id}
+                                        onClick={() => {
+                                          setForm(prev => ({ 
+                                            ...prev, 
+                                            servicio_id: s.id, 
+                                            valor_pagado: s.precio_base 
+                                          }))
+                                          setServiceSearchText(s.nombre)
+                                          setShowServiceSuggestions(false)
+                                        }}
+                                        className="p-2.5 hover:bg-blush-seashell/30 cursor-pointer text-xs font-bold text-gray-700 flex justify-between"
+                                      >
+                                        <span>{s.nombre}</span>
+                                        <span className="text-[10px] text-blush-palmLeaf font-extrabold">${Number(s.precio_base).toFixed(2)}</span>
+                                      </div>
+                                    ))}
+                                  {servicios.filter(s => s.nombre.toLowerCase().includes(serviceSearchText.toLowerCase())).length === 0 && (
+                                    <div className="p-3 text-center text-xs text-gray-400 font-semibold">
+                                      No se encontraron servicios.
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Colaboradora</label>
+                        <select
+                          value={form.personal_id}
+                          onChange={(e) => setForm({ ...form, personal_id: e.target.value })}
+                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 outline-none"
+                        >
+                          <option value="">Asignar...</option>
+                          {personal.filter(p => p.activo).map(p => (
+                            <option key={p.id} value={p.id}>{p.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Precio Cobrado</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={esNuevoServicio ? nuevoServicioForm.precio_base : form.valor_pagado}
+                          onChange={(e) => {
+                            if (esNuevoServicio) {
+                              setNuevoServicioForm({ ...nuevoServicioForm, precio_base: e.target.value })
+                            } else {
+                              setForm({ ...form, valor_pagado: e.target.value })
+                            }
+                          }}
+                          disabled={esNuevoServicio}
+                          className={`w-full px-3 py-2 border rounded-xl text-xs font-black text-blush-palmLeaf outline-none ${
+                            esNuevoServicio ? 'bg-gray-100/70 border-gray-250 text-blush-palmLeaf/60' : 'bg-white border-gray-250'
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleAddServicio}
+                      className="w-full bg-blush-palmLeaf/10 hover:bg-blush-palmLeaf/20 text-blush-palmLeaf text-xs font-black py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus size={14} /> Agregar Servicio
+                    </button>
+                  </div>
+
+                  {/* Listado de Servicios Agregados a la Cita */}
+                  {serviciosAgregados.length > 0 && (
+                    <div className="pt-3 border-t border-gray-250/70 space-y-1.5">
+                      <span className="text-[10px] font-black text-gray-400 uppercase block mb-1">Servicios Agregados:</span>
+                      {serviciosAgregados.map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-center bg-white border border-gray-250 px-3 py-2 rounded-xl text-xs">
+                          <div className="min-w-0 flex-1 pr-2">
+                            <span className="font-bold text-gray-800 block truncate">{item.nombre_servicio}</span>
+                            <span className="text-[10px] text-gray-400 block truncate">Prof: {item.nombre_personal}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-blush-palmLeaf">${item.valor_pagado.toFixed(2)}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveServicio(idx)}
+                              className="text-rose-500 hover:text-rose-700 p-0.5 hover:bg-rose-50 rounded-lg cursor-pointer"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="text-right font-black text-xs text-blush-palmLeaf border-t border-gray-100 pt-1.5 pr-1">
+                        Total: ${serviciosAgregados.reduce((sum, item) => sum + item.valor_pagado, 0).toFixed(2)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Fecha y Hora */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Fecha y Hora</label>
+                  <input
+                    type="datetime-local"
+                    value={form.fecha_hora}
+                    onChange={(e) => setForm({ ...form, fecha_hora: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-sm outline-none"
+                    required
+                  />
+                </div>
+
+                {/* Forma de Pago */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Forma de Pago</label>
+                    <select
+                      value={form.forma_pago}
+                      onChange={(e) => setForm({ ...form, forma_pago: e.target.value, no_transferencia: '' })}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-sm outline-none focus:border-blush-palmLeaf"
+                    >
+                      <option value="Efectivo">Efectivo</option>
+                      <option value="Deuna">Deuna</option>
+                      <option value="Transferencia">Transferencia</option>
+                      <option value="Tarjeta">Tarjeta</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Total a Pagar</label>
+                    <div className="w-full px-3 py-2 bg-gray-100 border border-gray-250 rounded-xl text-sm font-black text-blush-palmLeaf">
+                      ${serviciosAgregados.reduce((sum, item) => sum + item.valor_pagado, 0).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Código de tarjeta de 3 dígitos */}
+                {form.forma_pago === 'Tarjeta' && (
+                  <div className="animate-slide-in">
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Código de Tarjeta (3 dígitos)</label>
+                    <input
+                      type="text"
+                      maxLength="3"
+                      placeholder="Ej. 123"
+                      value={form.no_transferencia}
+                      onChange={(e) => setForm({ ...form, no_transferencia: e.target.value.replace(/\D/g, '').slice(0, 3) })}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-sm font-semibold focus:outline-none focus:border-blush-palmLeaf"
+                    />
+                  </div>
+                )}
+
+                {/* Referencia digital (Opcional) */}
+                {['Deuna', 'Transferencia'].includes(form.forma_pago) && (
+                  <div className="animate-slide-in">
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Número de Transferencia / Referencia (Opcional)</label>
+                    <input
+                      type="text"
+                      placeholder="Ej. Ref 1009827 (Opcional)"
+                      value={form.no_transferencia}
+                      onChange={(e) => setForm({ ...form, no_transferencia: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-sm font-semibold focus:outline-none focus:border-blush-palmLeaf"
+                    />
+                  </div>
+                )}
+
+                {msg.text && (
+                  <div className={`p-3 rounded-2xl text-xs font-semibold ${msg.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-rose-50 text-rose-800'}`}>
+                    {msg.text}
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="submit"
+                    className="flex-1 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer"
+                  >
+                    Guardar Cambios
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForm({
+                        cliente_id: '',
+                        nuevo_nombre: '',
+                        nuevo_cedula: '',
+                        nuevo_celular: '',
+                        nuevo_correo: '',
+                        nuevo_medio: 'WhatsApp',
+                        nuevo_medio_otro: '',
+                        nuevo_fecha_nacimiento: '',
+                        servicio_id: '',
+                        personal_id: '',
+                        fecha_hora: getLocalDatetimeString(),
+                        valor_pagado: '',
+                        forma_pago: 'Efectivo',
+                        no_transferencia: ''
+                      })
+                      setEsNuevoCliente(false)
+                      setServiciosAgregados([])
+                      setClientSearchText('')
+                      setEditingOriginalGroup(null)
+                      setMsg({ type: '', text: '' })
+                    }}
+                    className="bg-gray-150 hover:bg-gray-200 text-gray-700 font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
       </div>
+    )}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { Plus, Edit3, Trash2, Package, Archive, AlertTriangle, CheckCircle, Calendar, ArrowUpRight, FileSpreadsheet, Search } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { Plus, Edit3, Trash2, Package, Archive, AlertTriangle, CheckCircle, Calendar, ArrowUpRight, FileSpreadsheet, Search, X } from 'lucide-react'
 import { dataService } from '../dataService'
 import XLSX from 'xlsx-js-style'
 import { exportExcelJS } from '../excelExporter'
@@ -332,7 +333,7 @@ export default function InventarioTab({ activeTab, selectedBranchId }) {
         <div className="lg:col-span-1 bg-white p-6 rounded-3xl shadow-sm border border-gray-100 h-fit">
           <h3 className="text-lg font-bold text-blush-palmLeaf mb-1 flex items-center gap-2">
             <Package size={18} />
-            {editingId ? 'Editar Producto' : 'Crear Producto'}
+            Crear Producto
           </h3>
           <p className="text-xs text-gray-400 mb-6">Administra insumos técnicos o productos retail de reventa</p>
 
@@ -342,10 +343,11 @@ export default function InventarioTab({ activeTab, selectedBranchId }) {
               <input
                 type="text"
                 placeholder="Ej. Lima OPI 100/180"
-                value={form.nombre}
+                value={editingId ? '' : form.nombre}
                 onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:border-blush-palmLeaf outline-none"
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700"
                 required
+                disabled={!!editingId}
               />
             </div>
 
@@ -353,10 +355,11 @@ export default function InventarioTab({ activeTab, selectedBranchId }) {
               <label className="block text-xs font-bold text-gray-500 mb-1">Descripción</label>
               <textarea
                 placeholder="Detalle o marca..."
-                value={form.descripcion}
+                value={editingId ? '' : form.descripcion}
                 onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-blush-palmLeaf outline-none"
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-255 rounded-xl text-xs outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700"
                 rows={2}
+                disabled={!!editingId}
               />
             </div>
 
@@ -364,40 +367,43 @@ export default function InventarioTab({ activeTab, selectedBranchId }) {
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Tipo</label>
                 <select
-                  value={form.tipo}
+                  value={editingId ? 'insumo' : form.tipo}
                   onChange={(e) => setForm({ ...form, tipo: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-255 rounded-xl text-xs outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700 font-semibold"
+                  disabled={!!editingId}
                 >
                   <option value="insumo">Insumo Local</option>
                   <option value="reventa">Reventa (Retail)</option>
                 </select>
               </div>
 
-              {form.tipo === 'reventa' ? (
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1">Precio Venta</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={form.precio_venta}
-                    onChange={(e) => setForm({ ...form, precio_venta: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold"
-                    required
-                  />
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1">Precio Costo</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={form.precio_costo}
-                    onChange={(e) => setForm({ ...form, precio_costo: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold"
-                  />
-                </div>
+              {!editingId && (
+                form.tipo === 'reventa' ? (
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Precio Venta</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={form.precio_venta}
+                      onChange={(e) => setForm({ ...form, precio_venta: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-255 rounded-xl text-xs font-bold focus:bg-white text-gray-700 outline-none focus:border-blush-palmLeaf"
+                      required
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Precio Costo</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={form.precio_costo}
+                      onChange={(e) => setForm({ ...form, precio_costo: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-255 rounded-xl text-xs font-semibold focus:bg-white text-gray-700 outline-none focus:border-blush-palmLeaf"
+                    />
+                  </div>
+                )
               )}
             </div>
 
@@ -407,9 +413,10 @@ export default function InventarioTab({ activeTab, selectedBranchId }) {
                 <input
                   type="text"
                   placeholder="Ej. Belleza S.A."
-                  value={form.proveedor}
+                  value={editingId ? '' : form.proveedor}
                   onChange={(e) => setForm({ ...form, proveedor: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:border-blush-palmLeaf outline-none"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-255 rounded-xl text-xs font-semibold focus:border-blush-palmLeaf outline-none focus:bg-white text-gray-700"
+                  disabled={!!editingId}
                 />
               </div>
               <div>
@@ -417,9 +424,10 @@ export default function InventarioTab({ activeTab, selectedBranchId }) {
                 <input
                   type="text"
                   placeholder="Ej. 1792..."
-                  value={form.proveedor_ruc}
+                  value={editingId ? '' : form.proveedor_ruc}
                   onChange={(e) => setForm({ ...form, proveedor_ruc: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:border-blush-palmLeaf outline-none"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-255 rounded-xl text-xs font-semibold focus:border-blush-palmLeaf outline-none focus:bg-white text-gray-700"
+                  disabled={!!editingId}
                 />
               </div>
             </div>
@@ -429,9 +437,10 @@ export default function InventarioTab({ activeTab, selectedBranchId }) {
                 <label className="block text-xs font-bold text-gray-500 mb-1">Fecha Compra</label>
                 <input
                   type="date"
-                  value={form.fecha_compra}
+                  value={editingId ? '' : form.fecha_compra}
                   onChange={(e) => setForm({ ...form, fecha_compra: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-255 rounded-xl text-xs font-semibold focus:bg-white text-gray-700 outline-none"
+                  disabled={!!editingId}
                 />
               </div>
               <div>
@@ -439,10 +448,11 @@ export default function InventarioTab({ activeTab, selectedBranchId }) {
                 <input
                   type="number"
                   min="0"
-                  value={form.stock_minimo}
+                  value={editingId ? 4 : form.stock_minimo}
                   onChange={(e) => setForm({ ...form, stock_minimo: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-amber-700"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-255 rounded-xl text-xs font-bold text-amber-700 focus:bg-white outline-none focus:border-blush-palmLeaf"
                   required
+                  disabled={!!editingId}
                 />
               </div>
             </div>
@@ -455,26 +465,40 @@ export default function InventarioTab({ activeTab, selectedBranchId }) {
                   min="0"
                   value={form.stock_actual}
                   onChange={(e) => setForm({ ...form, stock_actual: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-255 rounded-xl text-xs font-bold focus:bg-white outline-none"
                   required
                 />
               </div>
             )}
 
-            {msg.text && (
+            {!editingId && msg.text && (
               <div className={`p-3 rounded-2xl text-xs font-semibold ${msg.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
                 {msg.text}
               </div>
             )}
 
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                className="flex-1 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer"
-              >
-                {editingId ? 'Actualizar' : 'Crear Producto'}
-              </button>
-              {editingId && (
+            <button
+              type="submit"
+              disabled={!!editingId}
+              className={`w-full bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer ${
+                editingId ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              Crear Producto
+            </button>
+          </form>
+        </div>
+
+        {/* MODAL DE EDICIÓN FLOTANTE */}
+        {editingId && createPortal(
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-tab-active">
+            <div className="bg-white w-full max-w-lg rounded-3xl p-6 shadow-2xl border border-gray-150 relative animate-slide-in my-8 max-h-[95vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-bold text-blush-palmLeaf flex items-center gap-2">
+                  <Package size={18} />
+                  Editar Producto
+                </h3>
                 <button
                   type="button"
                   onClick={() => {
@@ -491,15 +515,167 @@ export default function InventarioTab({ activeTab, selectedBranchId }) {
                       precio_costo: '',
                       fecha_compra: new Date().toISOString().split('T')[0]
                     })
+                    setMsg({ type: '', text: '' })
                   }}
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer"
+                  className="text-gray-400 hover:text-gray-600 cursor-pointer"
                 >
-                  Cancelar
+                  <X size={18} />
                 </button>
-              )}
+              </div>
+
+              {/* Modal Form */}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Nombre</label>
+                  <input
+                    type="text"
+                    placeholder="Ej. Lima OPI 100/180"
+                    value={form.nombre}
+                    onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Descripción</label>
+                  <textarea
+                    placeholder="Detalle o marca..."
+                    value={form.descripcion}
+                    onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700"
+                    rows={2}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Tipo</label>
+                    <select
+                      value={form.tipo}
+                      onChange={(e) => setForm({ ...form, tipo: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700 font-semibold"
+                    >
+                      <option value="insumo">Insumo Local</option>
+                      <option value="reventa">Reventa (Retail)</option>
+                    </select>
+                  </div>
+
+                  {form.tipo === 'reventa' ? (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 mb-1">Precio Venta</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={form.precio_venta}
+                        onChange={(e) => setForm({ ...form, precio_venta: e.target.value })}
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-bold focus:bg-white text-gray-700 outline-none focus:border-blush-palmLeaf"
+                        required
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 mb-1">Precio Costo</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={form.precio_costo}
+                        onChange={(e) => setForm({ ...form, precio_costo: e.target.value })}
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold focus:bg-white text-gray-700 outline-none focus:border-blush-palmLeaf"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Proveedor</label>
+                    <input
+                      type="text"
+                      placeholder="Ej. Belleza S.A."
+                      value={form.proveedor}
+                      onChange={(e) => setForm({ ...form, proveedor: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold focus:border-blush-palmLeaf outline-none focus:bg-white text-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">RUC del Proveedor</label>
+                    <input
+                      type="text"
+                      placeholder="Ej. 1792..."
+                      value={form.proveedor_ruc}
+                      onChange={(e) => setForm({ ...form, proveedor_ruc: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold focus:border-blush-palmLeaf outline-none focus:bg-white text-gray-700"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Fecha Compra</label>
+                    <input
+                      type="date"
+                      value={form.fecha_compra}
+                      onChange={(e) => setForm({ ...form, fecha_compra: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold focus:bg-white text-gray-700 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Stock Mínimo</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.stock_minimo}
+                      onChange={(e) => setForm({ ...form, stock_minimo: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-bold text-amber-700 focus:bg-white outline-none focus:border-blush-palmLeaf"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {msg.text && (
+                  <div className={`p-3 rounded-2xl text-xs font-semibold ${msg.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                    {msg.text}
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="submit"
+                    className="flex-1 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer"
+                  >
+                    Guardar Cambios
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingId(null)
+                      setForm({
+                        nombre: '',
+                        descripcion: '',
+                        tipo: 'insumo',
+                        stock_actual: 0,
+                        stock_minimo: 4,
+                        precio_venta: '',
+                        proveedor: '',
+                        proveedor_ruc: '',
+                        precio_costo: '',
+                        fecha_compra: new Date().toISOString().split('T')[0]
+                      })
+                      setMsg({ type: '', text: '' })
+                    }}
+                    className="bg-gray-150 hover:bg-gray-200 text-gray-700 font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
             </div>
-          </form>
-        </div>
+          </div>,
+          document.body
+        )}
 
         {/* Grid del Listado */}
         <div className="lg:col-span-2 bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col">

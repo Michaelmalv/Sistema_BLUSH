@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { Plus, Edit3, Trash2, Scissors, Award, Clock, Search } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { Plus, Edit3, Trash2, Scissors, Award, Clock, Search, X } from 'lucide-react'
 import { dataService } from '../dataService'
 
 export default function ServiciosTab({ activeTab }) {
@@ -7,7 +8,7 @@ export default function ServiciosTab({ activeTab }) {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Formulario
+  // Formulario de Creación
   const [form, setForm] = useState({
     nombre: '',
     precio_base: '',
@@ -101,11 +102,11 @@ export default function ServiciosTab({ activeTab }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Formulario */}
+      {/* Formulario de Creación (Fijo en el lateral) */}
       <div className="lg:col-span-1 bg-white p-6 rounded-3xl shadow-sm border border-gray-100 h-fit">
         <h3 className="text-lg font-bold text-blush-palmLeaf mb-1 flex items-center gap-2">
           <Scissors size={18} />
-          {editingId ? 'Editar Servicio' : 'Crear Servicio'}
+          Crear Servicio
         </h3>
         <p className="text-xs text-gray-400 mb-6">Administra el catálogo y define los intervalos sugeridos de contacto</p>
 
@@ -115,10 +116,11 @@ export default function ServiciosTab({ activeTab }) {
             <input
               type="text"
               placeholder="Ej. Uñas Acrílicas Esculpidas"
-              value={form.nombre}
+              value={editingId ? '' : form.nombre}
               onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold"
+              className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700"
               required
+              disabled={!!editingId}
             />
           </div>
 
@@ -129,10 +131,11 @@ export default function ServiciosTab({ activeTab }) {
                 type="number"
                 step="0.01"
                 placeholder="0.00"
-                value={form.precio_base}
+                value={editingId ? '' : form.precio_base}
                 onChange={(e) => setForm({ ...form, precio_base: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-blush-palmLeaf"
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-bold text-blush-palmLeaf outline-none focus:border-blush-palmLeaf focus:bg-white"
                 required
+                disabled={!!editingId}
               />
             </div>
             <div>
@@ -140,10 +143,11 @@ export default function ServiciosTab({ activeTab }) {
               <input
                 type="number"
                 min="5"
-                value={form.duracion_minutos}
+                value={editingId ? 30 : form.duracion_minutos}
                 onChange={(e) => setForm({ ...form, duracion_minutos: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700"
                 required
+                disabled={!!editingId}
               />
             </div>
           </div>
@@ -155,41 +159,138 @@ export default function ServiciosTab({ activeTab }) {
             <input
               type="number"
               placeholder="Ej. 21 para acrílicas (Opcional)"
-              value={form.frecuencia_recomendada_dias}
+              value={editingId ? '' : form.frecuencia_recomendada_dias}
               onChange={(e) => setForm({ ...form, frecuencia_recomendada_dias: e.target.value })}
-              className="w-full px-3 py-2 bg-amber-50/40 border border-amber-200 rounded-xl text-sm font-semibold text-amber-900"
+              className="w-full px-3 py-2 bg-amber-50/40 border border-amber-200 rounded-xl text-xs font-semibold text-amber-900 outline-none focus:border-blush-palmLeaf focus:bg-white"
+              disabled={!!editingId}
             />
             <p className="text-xxs text-amber-700 mt-1">Define cuántos días deben pasar para contactar al cliente para su mantenimiento.</p>
           </div>
 
-          {msg.text && (
+          {!editingId && msg.text && (
             <div className={`p-3 rounded-2xl text-xs font-semibold ${msg.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
               {msg.text}
             </div>
           )}
 
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              className="flex-1 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2.5 px-4 rounded-xl transition-colors text-sm"
-            >
-              {editingId ? 'Actualizar' : 'Crear Servicio'}
-            </button>
-            {editingId && (
+          <button
+            type="submit"
+            disabled={!!editingId}
+            className={`w-full bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer ${
+              editingId ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            Crear Servicio
+          </button>
+        </form>
+      </div>
+
+      {/* MODAL DE EDICIÓN FLOTANTE */}
+      {editingId && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-tab-active">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-gray-150 relative animate-slide-in my-8 max-h-[95vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-bold text-blush-palmLeaf flex items-center gap-2">
+                <Scissors size={18} />
+                Editar Servicio
+              </h3>
               <button
                 type="button"
                 onClick={() => {
                   setEditingId(null)
                   setForm({ nombre: '', precio_base: '', duracion_minutos: 30, frecuencia_recomendada_dias: '' })
+                  setMsg({ type: '', text: '' })
                 }}
-                className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2.5 px-4 rounded-xl transition-colors text-sm"
+                className="text-gray-400 hover:text-gray-600 cursor-pointer"
               >
-                Cancelar
+                <X size={18} />
               </button>
-            )}
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Nombre del Servicio</label>
+                <input
+                  type="text"
+                  placeholder="Ej. Uñas Acrílicas Esculpidas"
+                  value={form.nombre}
+                  onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Precio Base</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={form.precio_base}
+                    onChange={(e) => setForm({ ...form, precio_base: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-bold text-blush-palmLeaf outline-none focus:border-blush-palmLeaf focus:bg-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Duración (min)</label>
+                  <input
+                    type="number"
+                    min="5"
+                    value={form.duracion_minutos}
+                    onChange={(e) => setForm({ ...form, duracion_minutos: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-amber-800 mb-1">
+                  Frecuencia Recomendada (días)
+                </label>
+                <input
+                  type="number"
+                  placeholder="Ej. 21 para acrílicas (Opcional)"
+                  value={form.frecuencia_recomendada_dias}
+                  onChange={(e) => setForm({ ...form, frecuencia_recomendada_dias: e.target.value })}
+                  className="w-full px-3 py-2 bg-amber-50/40 border border-amber-200 rounded-xl text-xs font-semibold text-amber-900 outline-none focus:border-blush-palmLeaf focus:bg-white"
+                />
+              </div>
+
+              {msg.text && (
+                <div className={`p-3 rounded-2xl text-xs font-semibold ${msg.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                  {msg.text}
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer"
+                >
+                  Guardar Cambios
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingId(null)
+                    setForm({ nombre: '', precio_base: '', duracion_minutos: 30, frecuencia_recomendada_dias: '' })
+                    setMsg({ type: '', text: '' })
+                  }}
+                  className="bg-gray-150 hover:bg-gray-200 text-gray-700 font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
           </div>
-        </form>
-      </div>
+        </div>,
+        document.body
+      )}
 
       {/* Grid del Listado */}
       <div className="lg:col-span-2 bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col">

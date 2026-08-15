@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { Search, Phone, Mail, UserPlus, Users, BellRing, ExternalLink, Cake, Edit3, Trash2, Download } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { Search, Phone, Mail, UserPlus, Users, BellRing, ExternalLink, Cake, Edit3, Trash2, Download, X } from 'lucide-react'
 import { dataService } from '../dataService'
 import * as XLSX from 'xlsx-js-style'
 import { exportExcelJS } from '../excelExporter'
@@ -152,59 +153,31 @@ export default function ClientesTab({ activeTab }) {
         return cell
       }
 
-      const baseFont = { name: 'Segoe UI', size: 9.5 }
       const headerStyle = {
-        font: { name: 'Segoe UI', size: 10, bold: true, color: { rgb: 'FFFFFF' } },
+        font: { bold: true, color: { rgb: 'FFFFFF' }, size: 10 },
         fill: { fgColor: { rgb: '748843' } },
-        alignment: { horizontal: 'center', vertical: 'middle' },
-        border: {
-          top: { style: 'thin', color: { rgb: '748843' } },
-          bottom: { style: 'thin', color: { rgb: '748843' } },
-          left: { style: 'thin', color: { rgb: '748843' } },
-          right: { style: 'thin', color: { rgb: '748843' } }
-        }
-      }
-      
-      const tableBorder = {
-        top: { style: 'thin', color: { rgb: 'D1D5DB' } },
-        bottom: { style: 'thin', color: { rgb: 'D1D5DB' } },
-        left: { style: 'thin', color: { rgb: 'D1D5DB' } },
-        right: { style: 'thin', color: { rgb: 'D1D5DB' } }
+        alignment: { horizontal: 'center' }
       }
 
-      const cellStyleLeft = { font: baseFont, alignment: { horizontal: 'left', vertical: 'middle' }, border: tableBorder }
-      const cellStyleCenter = { font: baseFont, alignment: { horizontal: 'center', vertical: 'middle' }, border: tableBorder }
+      const cellStyleLeft = { alignment: { horizontal: 'left' } }
+      const cellStyleCenter = { alignment: { horizontal: 'center' } }
 
       const ws = {}
-      ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: filteredClientes.length + 3, c: 5 } })
-      
       ws['!cols'] = [
-        { wch: 25 },
+        { wch: 30 },
         { wch: 15 },
         { wch: 15 },
-        { wch: 25 },
-        { wch: 15 },
+        { wch: 30 },
+        { wch: 20 },
         { wch: 20 }
       ]
 
-      ws['!rows'] = [
-        { hpt: 45 },
-        { hpt: 20 },
-        { hpt: 25 }
-      ]
-
-      ws['A1'] = makeCell('DIRECTORIO DE CLIENTES - BLUSH BEAUTY STUDIO', 's', {
-        font: { name: 'Playfair Display', size: 14, bold: true, color: { rgb: '748843' } },
-        alignment: { horizontal: 'left', vertical: 'middle' }
+      ws['A1'] = makeCell('REPORTE CRM - CLIENTES BLUSH', 's', {
+        font: { name: 'Playfair Display', size: 14, bold: true, color: { rgb: '748843' } }
       })
       ws['A2'] = makeCell(`Generado el: ${new Date().toLocaleDateString('es-EC')} | Total registros: ${filteredClientes.length} clientes`, 's', {
         font: { name: 'Segoe UI', size: 9, italic: true, color: { rgb: '6B7280' } }
       })
-
-      ws['!merges'] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } }
-      ]
 
       const headers = ['Nombre Completo', 'Cédula', 'Celular', 'Correo Electrónico', 'Canal de Contacto', 'Fecha de Nacimiento']
       headers.forEach((h, cIdx) => {
@@ -246,16 +219,15 @@ export default function ClientesTab({ activeTab }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Columna Izquierda: Registro/Edición */}
+      {/* Columna Izquierda: Registro de Nuevos Clientes */}
       <div className="lg:col-span-1">
-        {/* Registrar/Editar Cliente */}
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-bold text-blush-palmLeaf mb-1 flex items-center gap-2">
             <UserPlus size={18} />
-            {editingId ? 'Editar Ficha de Cliente' : 'Crear Ficha de Cliente'}
+            Crear Ficha de Cliente
           </h3>
           <p className="text-xs text-gray-400 mb-6">
-            {editingId ? 'Modifica los datos de la ficha del cliente' : 'Agrega una nueva ficha de cliente en el directorio de Blush'}
+            Agrega una nueva ficha de cliente en el directorio de Blush
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -264,10 +236,11 @@ export default function ClientesTab({ activeTab }) {
               <input
                 type="text"
                 placeholder="Nombre y Apellidos"
-                value={form.nombre}
+                value={editingId ? '' : form.nombre}
                 onChange={(e) => setForm({ ...form, nombre: e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '') })}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold"
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700"
                 required
+                disabled={!!editingId}
               />
             </div>
             <div>
@@ -275,9 +248,10 @@ export default function ClientesTab({ activeTab }) {
               <input
                 type="text"
                 placeholder="Cédula de identidad"
-                value={form.cedula}
+                value={editingId ? '' : form.cedula}
                 onChange={(e) => setForm({ ...form, cedula: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700"
+                disabled={!!editingId}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -286,17 +260,19 @@ export default function ClientesTab({ activeTab }) {
                 <input
                   type="text"
                   placeholder="Ej. 0987654321"
-                  value={form.celular}
+                  value={editingId ? '' : form.celular}
                   onChange={(e) => setForm({ ...form, celular: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:border-blush-palmLeaf outline-none"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold focus:border-blush-palmLeaf outline-none text-gray-700 focus:bg-white"
+                  disabled={!!editingId}
                 />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">¿Cómo nos conoció?</label>
                 <select
-                  value={form.medio_contacto}
+                  value={editingId ? 'WhatsApp' : form.medio_contacto}
                   onChange={(e) => setForm({ ...form, medio_contacto: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-blush-palmLeaf outline-none"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700 font-semibold"
+                  disabled={!!editingId}
                 >
                   <option value="WhatsApp">WhatsApp</option>
                   <option value="Instagram">Instagram</option>
@@ -308,7 +284,7 @@ export default function ClientesTab({ activeTab }) {
               </div>
             </div>
 
-            {form.medio_contacto === 'Otro' && (
+            {!editingId && form.medio_contacto === 'Otro' && (
               <div className="animate-slide-in">
                 <label className="block text-xs font-bold text-gray-500 mb-1">Especificar por dónde nos conoció</label>
                 <input
@@ -316,7 +292,7 @@ export default function ClientesTab({ activeTab }) {
                   placeholder="Ej. Rótulo, Volante, Evento..."
                   value={form.medio_contacto_otro}
                   onChange={(e) => setForm({ ...form, medio_contacto_otro: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:border-blush-palmLeaf outline-none"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold focus:border-blush-palmLeaf outline-none text-gray-700 focus:bg-white"
                   required
                 />
               </div>
@@ -326,32 +302,156 @@ export default function ClientesTab({ activeTab }) {
               <input
                 type="email"
                 placeholder="correo@ejemplo.com"
-                value={form.correo}
+                value={editingId ? '' : form.correo}
                 onChange={(e) => setForm({ ...form, correo: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-blush-palmLeaf outline-none font-semibold text-gray-700"
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs outline-none focus:border-blush-palmLeaf focus:bg-white font-semibold text-gray-700"
+                disabled={!!editingId}
               />
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-500 mb-1">Cumpleaños</label>
               <input
                 type="date"
-                value={form.fecha_nacimiento}
+                value={editingId ? '' : form.fecha_nacimiento}
                 onChange={(e) => setForm({ ...form, fecha_nacimiento: e.target.value })}
                 max={new Date().toISOString().split('T')[0]}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-blush-palmLeaf outline-none font-semibold text-gray-700"
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs outline-none focus:border-blush-palmLeaf focus:bg-white font-semibold text-gray-700"
+                disabled={!!editingId}
               />
             </div>
 
-            {msg && <div className="p-2 bg-gray-50 border border-gray-100 text-xs rounded-xl font-bold">{msg}</div>}
+            {!editingId && msg && <div className="p-2 bg-gray-50 border border-gray-100 text-xs rounded-xl font-bold">{msg}</div>}
 
-            <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={!!editingId}
+              className={`w-full bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer ${
+                editingId ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              Registrar Cliente
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* MODAL DE EDICIÓN FLOTANTE */}
+      {editingId && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-tab-active">
+          <div className="bg-white w-full max-w-lg rounded-3xl p-6 shadow-2xl border border-gray-150 relative animate-slide-in my-8 max-h-[95vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-bold text-blush-palmLeaf flex items-center gap-2">
+                <UserPlus size={18} />
+                Editar Ficha de Cliente
+              </h3>
               <button
-                type="submit"
-                className="flex-1 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2 px-4 rounded-xl transition-colors text-sm cursor-pointer"
+                type="button"
+                onClick={() => {
+                  setEditingId(null)
+                  setForm({ nombre: '', cedula: '', celular: '', correo: '', medio_contacto: 'WhatsApp', medio_contacto_otro: '', fecha_nacimiento: '' })
+                  setMsg('')
+                }}
+                className="text-gray-400 hover:text-gray-600 cursor-pointer"
               >
-                {editingId ? 'Guardar Cambios' : 'Registrar Cliente'}
+                <X size={18} />
               </button>
-              {editingId && (
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Nombre Completo</label>
+                <input
+                  type="text"
+                  placeholder="Nombre y Apellidos"
+                  value={form.nombre}
+                  onChange={(e) => setForm({ ...form, nombre: e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '') })}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Cédula</label>
+                <input
+                  type="text"
+                  placeholder="Cédula de identidad"
+                  value={form.cedula}
+                  onChange={(e) => setForm({ ...form, cedula: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Celular</label>
+                  <input
+                    type="text"
+                    placeholder="Ej. 0987654321"
+                    value={form.celular}
+                    onChange={(e) => setForm({ ...form, celular: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold focus:border-blush-palmLeaf outline-none text-gray-700 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">¿Cómo nos conoció?</label>
+                  <select
+                    value={form.medio_contacto}
+                    onChange={(e) => setForm({ ...form, medio_contacto: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700 font-semibold"
+                  >
+                    <option value="WhatsApp">WhatsApp</option>
+                    <option value="Instagram">Instagram</option>
+                    <option value="Facebook">Facebook</option>
+                    <option value="TikTok">TikTok</option>
+                    <option value="Recomendación">Recomendación</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+              </div>
+
+              {form.medio_contacto === 'Otro' && (
+                <div className="animate-slide-in">
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Especificar por dónde nos conoció</label>
+                  <input
+                    type="text"
+                    placeholder="Ej. Rótulo, Volante, Evento..."
+                    value={form.medio_contacto_otro}
+                    onChange={(e) => setForm({ ...form, medio_contacto_otro: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold focus:border-blush-palmLeaf outline-none text-gray-700 focus:bg-white"
+                    required
+                  />
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Correo Electrónico</label>
+                <input
+                  type="email"
+                  placeholder="correo@ejemplo.com"
+                  value={form.correo}
+                  onChange={(e) => setForm({ ...form, correo: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs outline-none focus:border-blush-palmLeaf focus:bg-white font-semibold text-gray-700"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Cumpleaños</label>
+                <input
+                  type="date"
+                  value={form.fecha_nacimiento}
+                  onChange={(e) => setForm({ ...form, fecha_nacimiento: e.target.value })}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs outline-none focus:border-blush-palmLeaf focus:bg-white font-semibold text-gray-700"
+                />
+              </div>
+
+              {msg && <div className="p-2 bg-gray-50 border border-gray-100 text-xs rounded-xl font-bold">{msg}</div>}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer"
+                >
+                  Guardar Cambios
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -359,15 +459,16 @@ export default function ClientesTab({ activeTab }) {
                     setForm({ nombre: '', cedula: '', celular: '', correo: '', medio_contacto: 'WhatsApp', medio_contacto_otro: '', fecha_nacimiento: '' })
                     setMsg('')
                   }}
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-xl transition-colors text-sm cursor-pointer"
+                  className="bg-gray-150 hover:bg-gray-200 text-gray-700 font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer"
                 >
                   Cancelar
                 </button>
-              )}
-            </div>
-          </form>
-        </div>
-      </div>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Columna Derecha: Directorio de Clientes */}
       <div className="lg:col-span-2 bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col">

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { 
   DollarSign, 
   Calendar, 
@@ -11,7 +12,8 @@ import {
   UserCheck, 
   UserX, 
   Users, 
-  Briefcase 
+  Briefcase,
+  X
 } from 'lucide-react'
 import { dataService } from '../dataService'
 import * as XLSX from 'xlsx-js-style'
@@ -473,11 +475,11 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
 
       {subTab === 'colaboradoras' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
-          {/* Formulario de Registro / Edición */}
+          {/* Formulario de Registro / Creación */}
           <div className="lg:col-span-1 bg-white p-6 rounded-3xl border border-gray-150 h-fit">
             <h3 className="text-lg font-black text-blush-palmLeaf mb-1 flex items-center gap-2 uppercase tracking-wide">
               <Users size={18} />
-              {editingPersonalId ? 'Editar Colaboradora' : 'Registrar Colaboradora'}
+              Registrar Colaboradora
             </h3>
             <p className="text-xs text-gray-400 mb-6 font-medium">
               Agrega nuevas estilistas, manicuristas o personal técnico sucursal.
@@ -489,10 +491,11 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
                 <input
                   type="text"
                   placeholder="Ej. Pamela Armendariz"
-                  value={formColaboradora.nombre}
+                  value={editingPersonalId ? '' : formColaboradora.nombre}
                   onChange={(e) => setFormColaboradora({ ...formColaboradora, nombre: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-xl outline-none transition-all text-xs text-gray-700"
+                  className="w-full px-3 py-2.5 bg-gray-50 border-2 border-gray-250 focus:border-blush-palmLeaf focus:bg-white rounded-xl outline-none transition-all text-xs text-gray-700"
                   required
+                  disabled={!!editingPersonalId}
                 />
               </div>
 
@@ -501,18 +504,20 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
                 <input
                   type="text"
                   placeholder="Ej. 1723456789"
-                  value={formColaboradora.cedula}
+                  value={editingPersonalId ? '' : formColaboradora.cedula}
                   onChange={(e) => setFormColaboradora({ ...formColaboradora, cedula: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                  className="w-full px-3 py-2.5 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-xl outline-none transition-all text-xs text-gray-700"
+                  className="w-full px-3 py-2.5 bg-gray-50 border-2 border-gray-250 focus:border-blush-palmLeaf focus:bg-white rounded-xl outline-none transition-all text-xs text-gray-700"
+                  disabled={!!editingPersonalId}
                 />
               </div>
 
               <div>
                 <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Cargo / Especialidad</label>
                 <select
-                  value={formColaboradora.cargo}
+                  value={editingPersonalId ? 'Manicurista' : formColaboradora.cargo}
                   onChange={(e) => setFormColaboradora({ ...formColaboradora, cargo: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-xl outline-none transition-all text-xs text-gray-700 cursor-pointer"
+                  className="w-full px-3 py-2.5 bg-gray-50 border-2 border-gray-250 focus:border-blush-palmLeaf focus:bg-white rounded-xl outline-none transition-all text-xs text-gray-700 cursor-pointer"
+                  disabled={!!editingPersonalId}
                 >
                   <option value="Manicurista">Manicurista</option>
                   <option value="Pedicurista">Pedicurista</option>
@@ -521,21 +526,7 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
                 </select>
               </div>
 
-              {editingPersonalId && (
-                <div>
-                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Estado</label>
-                  <select
-                    value={formColaboradora.activo ? "true" : "false"}
-                    onChange={(e) => setFormColaboradora({ ...formColaboradora, activo: e.target.value === "true" })}
-                    className="w-full px-3 py-2.5 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-xl outline-none transition-all text-xs text-gray-700 cursor-pointer"
-                  >
-                    <option value="true">Activa (Aparece en agendas y liquidaciones)</option>
-                    <option value="false">Inactiva (Baja de la sucursal)</option>
-                  </select>
-                </div>
-              )}
-
-              {msgCol.text && (
+              {!editingPersonalId && msgCol.text && (
                 <div className={`p-3 rounded-xl text-xs font-bold text-center ${
                   msgCol.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
                 }`}>
@@ -543,28 +534,124 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
                 </div>
               )}
 
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  className="flex-1 py-3 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2"
-                >
-                  {editingPersonalId ? 'Guardar Cambios' : 'Agregar'}
-                </button>
-                {editingPersonalId && (
+              <button
+                type="submit"
+                disabled={!!editingPersonalId}
+                className={`w-full py-3 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2 ${
+                  editingPersonalId ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                Agregar Colaboradora
+              </button>
+            </form>
+          </div>
+
+          {/* MODAL DE EDICIÓN FLOTANTE */}
+          {editingPersonalId && createPortal(
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-tab-active">
+              <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-gray-150 relative animate-slide-in my-8 max-h-[95vh] overflow-y-auto text-xs font-bold text-gray-700">
+                {/* Modal Header */}
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-lg font-black text-blush-palmLeaf flex items-center gap-2 uppercase tracking-wide">
+                    <Users size={18} />
+                    Editar Colaboradora
+                  </h3>
                   <button
                     type="button"
                     onClick={() => {
                       setEditingPersonalId(null)
                       setFormColaboradora({ nombre: '', cedula: '', cargo: 'Manicurista', activo: true })
+                      setMsgCol({ type: '', text: '' })
                     }}
-                    className="py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer"
+                    className="text-gray-400 hover:text-gray-600 cursor-pointer"
                   >
-                    Cancelar
+                    <X size={18} />
                   </button>
-                )}
+                </div>
+
+                {/* Modal Form */}
+                <form onSubmit={handleSubmitColaboradora} className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Nombre Completo</label>
+                    <input
+                      type="text"
+                      placeholder="Ej. Pamela Armendariz"
+                      value={formColaboradora.nombre}
+                      onChange={(e) => setFormColaboradora({ ...formColaboradora, nombre: e.target.value })}
+                      className="w-full px-3 py-2.5 bg-gray-50 border-2 border-gray-250 focus:border-blush-palmLeaf focus:bg-white rounded-xl outline-none transition-all text-xs text-gray-700"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Número de Cédula</label>
+                    <input
+                      type="text"
+                      placeholder="Ej. 1723456789"
+                      value={formColaboradora.cedula}
+                      onChange={(e) => setFormColaboradora({ ...formColaboradora, cedula: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                      className="w-full px-3 py-2.5 bg-gray-50 border-2 border-gray-250 focus:border-blush-palmLeaf focus:bg-white rounded-xl outline-none transition-all text-xs text-gray-700"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Cargo / Especialidad</label>
+                    <select
+                      value={formColaboradora.cargo}
+                      onChange={(e) => setFormColaboradora({ ...formColaboradora, cargo: e.target.value })}
+                      className="w-full px-3 py-2.5 bg-gray-50 border-2 border-gray-250 focus:border-blush-palmLeaf focus:bg-white rounded-xl outline-none transition-all text-xs text-gray-700 cursor-pointer"
+                    >
+                      <option value="Manicurista">Manicurista</option>
+                      <option value="Pedicurista">Pedicurista</option>
+                      <option value="Estilista">Estilista</option>
+                      <option value="Administradora">Administradora</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Estado</label>
+                    <select
+                      value={formColaboradora.activo ? "true" : "false"}
+                      onChange={(e) => setFormColaboradora({ ...formColaboradora, activo: e.target.value === "true" })}
+                      className="w-full px-3 py-2.5 bg-gray-50 border-2 border-gray-250 focus:border-blush-palmLeaf focus:bg-white rounded-xl outline-none transition-all text-xs text-gray-700 cursor-pointer"
+                    >
+                      <option value="true">Activa (Aparece en agendas y liquidaciones)</option>
+                      <option value="false">Inactiva (Baja de la sucursal)</option>
+                    </select>
+                  </div>
+
+                  {msgCol.text && (
+                    <div className={`p-3 rounded-xl text-xs font-bold text-center ${
+                      msgCol.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+                    }`}>
+                      {msgCol.text}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="submit"
+                      className="flex-1 py-3 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      Guardar Cambios
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingPersonalId(null)
+                        setFormColaboradora({ nombre: '', cedula: '', cargo: 'Manicurista', activo: true })
+                        setMsgCol({ type: '', text: '' })
+                      }}
+                      className="py-3 px-4 bg-gray-150 hover:bg-gray-200 text-gray-750 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
               </div>
-            </form>
-          </div>
+            </div>,
+            document.body
+          )}
 
           {/* Listado de Colaboradoras */}
           <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-gray-150 flex flex-col">

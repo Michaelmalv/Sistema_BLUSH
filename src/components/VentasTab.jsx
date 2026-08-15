@@ -104,6 +104,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
     const groups = {}
     citas.forEach(c => {
       if (c.tipo !== 'cita' && c.tipo !== 'venta') return
+      if (!c.forma_pago) return // Omitir citas pendientes de pago
 
       const clientKey = c.cliente_id || 'anonymous'
       const dateKey = new Date(c.fecha_hora).toISOString()

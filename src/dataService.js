@@ -447,6 +447,65 @@ export const dataService = {
     return true
   },
 
+  async registrarPagoCita(clienteId, fechaHora, formaPago, valorTotal, noTransferencia) {
+    if (isSupabaseConfigured) {
+      const { data: group, error: fetchError } = await supabase
+        .from('citas_ventas')
+        .select('id, servicio_id')
+        .eq('cliente_id', clienteId)
+        .eq('fecha_hora', fechaHora)
+      if (fetchError) throw fetchError
+
+      const { data: services, error: svcError } = await supabase.from('servicios').select('id, precio_base')
+      if (svcError) throw svcError
+      const svcMap = new Map(services.map(s => [s.id, s.precio_base]))
+
+      const totalBase = group.reduce((sum, item) => sum + (svcMap.get(item.servicio_id) || 0), 0)
+
+      for (const item of group) {
+        const basePrice = svcMap.get(item.servicio_id) || 0
+        const propVal = totalBase === 0 ? (valorTotal / group.length) : (valorTotal * (basePrice / totalBase))
+        const finalVal = Math.round(propVal * 100) / 100
+
+        const { error: updateError } = await supabase
+          .from('citas_ventas')
+          .update({
+            forma_pago: formaPago,
+            valor_pagado: finalVal,
+            no_transferencia: noTransferencia || null
+          })
+          .eq('id', item.id)
+        if (updateError) throw updateError
+      }
+      this.clearCache('citas_ventas')
+      return true
+    }
+
+    const list = getLocal('blush_citas') || []
+    const group = list.filter(c => c.cliente_id === clienteId && c.fecha_hora === fechaHora)
+    const localSvcs = getLocal('blush_servicios') || []
+    const svcMap = new Map(localSvcs.map(s => [s.id, s.precio_base]))
+    const totalBase = group.reduce((sum, item) => sum + (svcMap.get(item.servicio_id) || 0), 0)
+
+    const updated = list.map(c => {
+      if (c.cliente_id === clienteId && c.fecha_hora === fechaHora) {
+        const basePrice = svcMap.get(c.servicio_id) || 0
+        const propVal = totalBase === 0 ? (valorTotal / group.length) : (valorTotal * (basePrice / totalBase))
+        const finalVal = Math.round(propVal * 100) / 100
+        return {
+          ...c,
+          forma_pago: formaPago,
+          valor_pagado: finalVal,
+          no_transferencia: noTransferencia || null
+        }
+      }
+      return c
+    })
+    setLocal('blush_citas', updated)
+    this.clearCache('citas_ventas')
+    return true
+  },
+
   // --- CLIENTES ---
   async getClientes() {
     if (this._cache.clientes) return this._cache.clientes

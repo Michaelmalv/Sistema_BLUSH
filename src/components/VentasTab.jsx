@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, Calendar, DollarSign, CreditCard, User, Sparkles, Receipt, X, Edit3, Trash2, Search } from 'lucide-react'
 import { dataService } from '../dataService'
-import ExcelPlanillaView from './ExcelPlanillaView'
+
 
 const getLocalDatetimeString = () => {
   const tzoffset = (new Date()).getTimezoneOffset() * 60000;
@@ -18,8 +18,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
   const [loading, setLoading] = useState(true)
 
   const [currentUser] = useState(() => dataService.getCurrentUser())
-  const [modoExcel, setModoExcel] = useState(() => currentUser?.username === '1707963227')
-
+  
   // Estados del Formulario
   const [esNuevoCliente, setEsNuevoCliente] = useState(false)
   const [form, setForm] = useState({
@@ -391,31 +390,9 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
 
   return (
     <div className="flex flex-col gap-6">
-      {(currentUser?.rol === 'Dueño' || currentUser?.rol === 'Gerente' || currentUser?.rol === 'Administrador') && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => {
-              setModoExcel(!modoExcel)
-              setMsg({ type: '', text: '' })
-            }}
-            className="px-4 py-2 bg-blush-palmLeaf/10 hover:bg-blush-palmLeaf/20 text-blush-palmLeaf font-black rounded-xl text-xs transition-all cursor-pointer flex items-center gap-1.5"
-          >
-            {modoExcel ? '📋 Cambiar a Vista Estándar (Formulario/Historial)' : '📊 Cambiar a Modo Planilla Excel (Carga Rápida)'}
-          </button>
-        </div>
-      )}
+      
 
-      {modoExcel ? (
-        <ExcelPlanillaView
-          activeTab="ventas"
-          clientes={clientes}
-          servicios={servicios}
-          personal={personal}
-          loadData={loadData}
-        />
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Formulario de registro */}
       <div className="lg:col-span-1 bg-white p-6 rounded-3xl shadow-sm border border-gray-100 h-fit">
         <h3 className="text-lg font-bold text-blush-palmLeaf mb-1 flex items-center gap-2">
@@ -1274,7 +1251,6 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
         document.body
       )}
     </div>
-  )}
   </div>
 )
 }

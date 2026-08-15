@@ -491,7 +491,7 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
         personal_id: s.personal_id,
         fecha_hora: dateObj.toISOString(),
         valor_pagado: 0.00,
-        forma_pago: null,
+        forma_pago: 'Pendiente',
         no_transferencia: null,
         tipo: 'cita'
       }))
@@ -1318,7 +1318,7 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
                         </td>
                         <td className="py-3.5 px-2">
                           <span className="inline-flex flex-col items-start">
-                            {group.forma_pago ? (
+                            {group.forma_pago && group.forma_pago !== 'Pendiente' ? (
                               <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
                                 group.forma_pago === 'Efectivo' ? 'bg-green-50 text-green-700 border border-green-200' :
                                 group.forma_pago === 'Tarjeta' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
@@ -1327,7 +1327,7 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
                                 {group.forma_pago}
                               </span>
                             ) : (
-                              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 animate-pulse">
                                 Pendiente
                               </span>
                             )}
@@ -1343,7 +1343,7 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
                         </td>
                         <td className="py-3.5 px-2">
                           <div className="flex items-center justify-center gap-1">
-                            {!group.forma_pago && (
+                            {(!group.forma_pago || group.forma_pago === 'Pendiente') && (
                               <button
                                 type="button"
                                 onClick={() => handleCobrarCita(group)}
@@ -1905,7 +1905,7 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
                 </div>
 
                 {/* Detalle de Pago en Edición (Solo para citas ya pagadas) */}
-                {editingOriginalGroup && editingOriginalGroup.forma_pago && (
+                {editingOriginalGroup && editingOriginalGroup.forma_pago && editingOriginalGroup.forma_pago !== 'Pendiente' && (
                   <>
                     <div className="grid grid-cols-2 gap-4">
                       <div>

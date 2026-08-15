@@ -90,7 +90,7 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
     // Filtrar ventas de este período
     const periodVentas = ventas.filter(v => {
       const d = new Date(v.fecha_hora)
-      return d >= startDate && d <= endDate && v.forma_pago
+      return d >= startDate && d <= endDate && v.forma_pago && v.forma_pago !== 'Pendiente'
     })
 
     // Agrupar por manicuristas activos

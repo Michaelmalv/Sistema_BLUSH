@@ -17,6 +17,9 @@ export default function ServiciosTab({ activeTab }) {
   })
 
   const [editingId, setEditingId] = useState(null)
+  const [showMergeModal, setShowMergeModal] = useState(false)
+  const [serviceToMerge, setServiceToMerge] = useState(null)
+  const [mergeTargetId, setMergeTargetId] = useState('')
   const [msg, setMsg] = useState({ type: '', text: '' })
 
   const loadData = async () => {
@@ -84,13 +87,33 @@ export default function ServiciosTab({ activeTab }) {
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Está seguro de que desea eliminar este servicio? No se podrán registrar nuevas citas con este servicio.')) return
+    const svc = servicios.find(s => s.id === id)
+    if (!svc) return
+    if (!window.confirm(`¿Está seguro de que desea eliminar el servicio "${svc.nombre}"? No se podrán registrar nuevas citas con este servicio.`)) return
     try {
       await dataService.eliminarServicio(id)
       setMsg({ type: 'success', text: '🗑️ Servicio eliminado.' })
       loadData()
     } catch (err) {
-      setMsg({ type: 'error', text: 'No se pudo eliminar el servicio (puede estar enlazado a citas históricas).' })
+      setServiceToMerge(svc)
+      setMergeTargetId('')
+      setShowMergeModal(true)
+    }
+  }
+
+  const handleMergeSubmit = async (e) => {
+    e.preventDefault()
+    if (!serviceToMerge || !mergeTargetId) return
+    try {
+      await dataService.fusionarServicios(serviceToMerge.id, mergeTargetId)
+      setMsg({ type: 'success', text: '👍 Servicios fusionados y eliminados correctamente.' })
+      setShowMergeModal(false)
+      setServiceToMerge(null)
+      setMergeTargetId('')
+      loadData()
+    } catch (err) {
+      console.error(err)
+      setMsg({ type: 'error', text: 'Ocurrió un error al fusionar los servicios.' })
     }
   }
 
@@ -372,6 +395,78 @@ export default function ServiciosTab({ activeTab }) {
           </div>
         )}
       </div>
+
+      {/* MODAL DE FUSIÓN FLOTANTE */}
+      {showMergeModal && serviceToMerge && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-tab-active">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-gray-150 relative animate-slide-in my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-base font-black text-blush-palmLeaf flex items-center gap-2">
+                <Scissors size={18} />
+                Fusionar y Eliminar Servicio
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMergeModal(false)
+                  setServiceToMerge(null)
+                  setMergeTargetId('')
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+              El servicio <strong className="text-gray-800">"{serviceToMerge.nombre}"</strong> tiene citas registradas.
+              Selecciona el servicio correcto con el que deseas unificar el historial de citas antes de eliminarlo:
+            </p>
+
+            <form onSubmit={handleMergeSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Servicio Destino</label>
+                <select
+                  value={mergeTargetId}
+                  onChange={(e) => setMergeTargetId(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold focus:outline-none focus:border-blush-palmLeaf"
+                  required
+                >
+                  <option value="">Selecciona el servicio destino...</option>
+                  {servicios
+                    .filter(s => s.id !== serviceToMerge.id)
+                    .map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.nombre} (${s.precio_base})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2 px-4 rounded-xl transition-colors text-xs cursor-pointer"
+                >
+                  Confirmar Fusión
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMergeModal(false)
+                    setServiceToMerge(null)
+                    setMergeTargetId('')
+                  }}
+                  className="bg-gray-150 hover:bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-xl transition-colors text-xs cursor-pointer"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }

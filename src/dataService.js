@@ -420,6 +420,33 @@ export const dataService = {
     return true
   },
 
+  async fusionarServicios(idOrigen, idDestino) {
+    if (isSupabaseConfigured) {
+      const { error: updateError } = await supabase
+        .from('citas_ventas')
+        .update({ servicio_id: idDestino })
+        .eq('servicio_id', idOrigen)
+      if (updateError) throw updateError
+
+      const { error: deleteError } = await supabase
+        .from('servicios')
+        .delete()
+        .eq('id', idOrigen)
+      if (deleteError) throw deleteError
+
+      this.clearCache('servicios')
+      return true
+    }
+    const citas = getLocal('blush_citas') || []
+    const updatedCitas = citas.map(c => c.servicio_id === idOrigen ? { ...c, servicio_id: idDestino } : c)
+    setLocal('blush_citas', updatedCitas)
+    const servicios = getLocal('blush_servicios') || []
+    const filteredSvc = servicios.filter(s => s.id !== idOrigen)
+    setLocal('blush_servicios', filteredSvc)
+    this.clearCache('servicios')
+    return true
+  },
+
   // --- CLIENTES ---
   async getClientes() {
     if (this._cache.clientes) return this._cache.clientes

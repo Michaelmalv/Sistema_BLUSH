@@ -47,6 +47,13 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
   const [showClientSuggestions, setShowClientSuggestions] = useState(false)
   const [showServiceSuggestions, setShowServiceSuggestions] = useState(false)
   const [serviceSearchText, setServiceSearchText] = useState('')
+  const [esNuevoServicio, setEsNuevoServicio] = useState(false)
+  const [nuevoServicioForm, setNuevoServicioForm] = useState({
+    nombre: '',
+    precio_base: '',
+    duracion_minutos: 30,
+    frecuencia_recomendada_dias: ''
+  })
   const [editingOriginalGroup, setEditingOriginalGroup] = useState(null)
 
   // Estados para cobro de citas (checkout)
@@ -370,6 +377,101 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
     }
   }
 
+  const handleAddServicio = async () => {
+    if (esNuevoServicio) {
+      const nombreLimpio = nuevoServicioForm.nombre.trim()
+      if (!nombreLimpio) {
+        return alert('El nombre del nuevo servicio es obligatorio.')
+      }
+      const precioVal = Number(nuevoServicioForm.precio_base)
+      if (isNaN(precioVal) || precioVal < 0) {
+        return alert('El precio base debe ser mayor o igual a 0.')
+      }
+      const duracionVal = Number(nuevoServicioForm.duracion_minutos)
+      if (isNaN(duracionVal) || duracionVal < 5) {
+        return alert('La duración debe ser de al menos 5 minutos.')
+      }
+      if (!form.personal_id) {
+        return alert('Debe seleccionar la colaboradora para el servicio.')
+      }
+
+      try {
+        const nuevoSvc = await dataService.registrarServicio({
+          nombre: nombreLimpio,
+          precio_base: precioVal,
+          duracion_minutos: duracionVal,
+          frecuencia_recomendada_dias: nuevoServicioForm.frecuencia_recomendada_dias ? Number(nuevoServicioForm.frecuencia_recomendada_dias) : null
+        })
+
+        const pers = personal.find(p => p.id === form.personal_id)
+        setServiciosAgregados([
+          ...serviciosAgregados,
+          {
+            id: 'temp_' + Date.now() + '_' + Math.random(),
+            servicio_id: nuevoSvc.id,
+            nombre_servicio: nuevoSvc.nombre,
+            personal_id: form.personal_id,
+            nombre_personal: pers.nombre,
+            valor_pagado: precioVal
+          }
+        ])
+
+        const updatedServicios = await dataService.getServicios()
+        setServicios(updatedServicios)
+
+        setNuevoServicioForm({
+          nombre: '',
+          precio_base: '',
+          duracion_minutos: 30,
+          frecuencia_recomendada_dias: ''
+        })
+        setEsNuevoServicio(false)
+        setForm(prev => ({
+          ...prev,
+          servicio_id: '',
+          personal_id: '',
+          valor_pagado: ''
+        }))
+        setServiceSearchText('')
+      } catch (err) {
+        alert(err.message || 'No se pudo crear el servicio.')
+      }
+    } else {
+      if (!form.servicio_id) {
+        return alert('Debe seleccionar un servicio.')
+      }
+      if (!form.personal_id) {
+        return alert('Debe seleccionar una colaboradora.')
+      }
+      const svc = servicios.find(s => s.id === form.servicio_id)
+      const pers = personal.find(p => p.id === form.personal_id)
+      const val = Number(form.valor_pagado)
+      if (isNaN(val) || val <= 0) {
+        return alert('El valor cobrado debe ser mayor a 0.')
+      }
+
+      setServiciosAgregados([
+        ...serviciosAgregados,
+        {
+          id: 'temp_' + Date.now() + '_' + Math.random(),
+          servicio_id: form.servicio_id,
+          nombre_servicio: svc.nombre,
+          personal_id: form.personal_id,
+          nombre_personal: pers.nombre,
+          valor_pagado: val
+        }
+      ])
+
+      setForm(prev => ({
+        ...prev,
+        servicio_id: '',
+        personal_id: '',
+        valor_pagado: ''
+      }))
+      setServiceSearchText('')
+    }
+  }
+
   const handleCobrarCita = (group) => {
     setCheckoutGroup(group)
     setCheckoutForm({
@@ -607,77 +709,140 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
           </div>
 
           {/* Formulario de Servicio Interno para agregar múltiples */}
-          <div className="bg-gray-50/50 p-3.5 rounded-2xl border border-gray-150 space-y-3">
-            <div className="font-bold text-xs text-blush-palmLeaf flex items-center gap-1">
-              <Sparkles size={14} />
-              Agregar servicios a esta venta:
-            </div>
+          {/* Sección de Servicios */}
+          <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-3">
+            <h4 className="text-xs font-black text-gray-700 uppercase tracking-wider">Añadir Servicios a la Venta</h4>
             
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
               <div>
-                <label className="block text-[10px] font-bold text-gray-400 ml-1 mb-0.5">Servicio</label>
-                {form.servicio_id ? (
-                  <div className="flex justify-between items-center bg-blush-seashell/40 border border-blush-seashell-dark/30 px-3 py-1.5 rounded-xl text-xs">
-                    <div className="min-w-0 flex-1 pr-2">
-                      <span className="font-bold text-gray-800 block truncate">
-                        {servicios.find(s => s.id === form.servicio_id)?.nombre || 'Servicio seleccionado'}
-                      </span>
-                      <span className="block text-[10px] text-gray-400">
-                        Precio Base: ${Number(servicios.find(s => s.id === form.servicio_id)?.precio_base || 0).toFixed(2)}
-                      </span>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-[10px] font-bold text-gray-400 ml-1">Servicio</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEsNuevoServicio(!esNuevoServicio)
+                      setForm(prev => ({ ...prev, servicio_id: '', valor_pagado: '' }))
+                      setServiceSearchText('')
+                    }}
+                    className="text-[10px] text-blush-palmLeaf font-bold hover:underline"
+                  >
+                    {esNuevoServicio ? 'Seleccionar existente' : 'Crear nuevo servicio'}
+                  </button>
+                </div>
+
+                {esNuevoServicio ? (
+                  <div className="p-3 bg-blush-seashell/45 rounded-2xl border border-blush-seashell space-y-2">
+                    <input
+                      type="text"
+                      placeholder="Nombre del nuevo servicio"
+                      value={nuevoServicioForm.nombre}
+                      onChange={(e) => setNuevoServicioForm({ ...nuevoServicioForm, nombre: e.target.value })}
+                      className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-xl outline-none focus:border-blush-palmLeaf font-semibold"
+                      required
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold ml-1">Precio Base ($)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={nuevoServicioForm.precio_base}
+                          onChange={(e) => setNuevoServicioForm({ ...nuevoServicioForm, precio_base: e.target.value })}
+                          className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-xl outline-none focus:border-blush-palmLeaf font-black text-blush-palmLeaf"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold ml-1">Duración (min)</label>
+                        <input
+                          type="number"
+                          min="5"
+                          placeholder="30"
+                          value={nuevoServicioForm.duracion_minutos}
+                          onChange={(e) => setNuevoServicioForm({ ...nuevoServicioForm, duracion_minutos: e.target.value })}
+                          className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-xl outline-none focus:border-blush-palmLeaf text-gray-700"
+                          required
+                        />
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setForm(prev => ({ ...prev, servicio_id: '', valor_pagado: '' }))
-                        setServiceSearchText('')
-                      }}
-                      className="text-gray-400 hover:text-rose-600 font-bold p-1 cursor-pointer animate-fade-in"
-                    >
-                      <X size={16} />
-                    </button>
+                    <div>
+                      <label className="text-[9px] text-gray-400 font-bold ml-1">Frecuencia (días, opcional)</label>
+                      <input
+                        type="number"
+                        placeholder="Ej. 21"
+                        value={nuevoServicioForm.frecuencia_recomendada_dias}
+                        onChange={(e) => setNuevoServicioForm({ ...nuevoServicioForm, frecuencia_recomendada_dias: e.target.value })}
+                        className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-xl outline-none focus:border-blush-palmLeaf text-gray-700"
+                      />
+                    </div>
                   </div>
                 ) : (
                   <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Escribe para buscar..."
-                      value={serviceSearchText}
-                      onChange={(e) => {
-                        setServiceSearchText(e.target.value)
-                        setShowServiceSuggestions(true)
-                      }}
-                      onFocus={() => setShowServiceSuggestions(true)}
-                      onBlur={() => setTimeout(() => setShowServiceSuggestions(false), 200)}
-                      className="w-full !pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf text-gray-700 font-bold"
-                    />
-                    <Search className="absolute left-2.5 top-2.5 text-gray-400" size={12} />
-                    {showServiceSuggestions && serviceSearchText.trim() !== '' && (
-                      <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto divide-y divide-gray-50">
-                        {servicios
-                          .filter(s => s.nombre.toLowerCase().includes(serviceSearchText.toLowerCase()))
-                          .map(s => (
-                            <button
-                              key={s.id}
-                              type="button"
-                              onClick={() => {
-                                setForm(prev => ({ 
-                                  ...prev, 
-                                  servicio_id: s.id, 
-                                  valor_pagado: s.precio_base.toString() 
-                                }))
-                                setServiceSearchText(s.nombre)
-                                setShowServiceSuggestions(false)
-                              }}
-                              className="w-full text-left p-2.5 hover:bg-blush-seashell/30 cursor-pointer text-xs font-bold text-gray-700 flex justify-between border-b border-gray-100 last:border-0"
-                            >
-                              <span>{s.nombre}</span>
-                              <span className="text-[10px] text-blush-palmLeaf font-extrabold">${Number(s.precio_base).toFixed(2)}</span>
-                            </button>
-                          ))}
-                        {servicios.filter(s => s.nombre.toLowerCase().includes(serviceSearchText.toLowerCase())).length === 0 && (
-                          <div className="p-3 text-center text-xs text-gray-400 font-semibold bg-white rounded-xl">
-                            No se encontraron servicios.
+                    {form.servicio_id ? (
+                      <div className="flex justify-between items-center bg-blush-seashell/40 border border-blush-seashell-dark/30 px-3 py-1.5 rounded-xl text-xs">
+                        <div className="min-w-0 flex-1 pr-2">
+                          <span className="font-bold text-gray-800 block truncate">
+                            {servicios.find(s => s.id === form.servicio_id)?.nombre || 'Servicio seleccionado'}
+                          </span>
+                          <span className="block text-[10px] text-gray-400">
+                            Precio Base: ${Number(servicios.find(s => s.id === form.servicio_id)?.precio_base || 0).toFixed(2)}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForm(prev => ({ ...prev, servicio_id: '', valor_pagado: '' }))
+                            setServiceSearchText('')
+                          }}
+                          className="text-gray-400 hover:text-rose-600 font-bold p-1 cursor-pointer animate-fade-in"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Escribe para buscar un servicio..."
+                          value={serviceSearchText}
+                          onChange={(e) => {
+                            setServiceSearchText(e.target.value)
+                            setShowServiceSuggestions(true)
+                          }}
+                          onFocus={() => setShowServiceSuggestions(true)}
+                          onBlur={() => setTimeout(() => setShowServiceSuggestions(false), 200)}
+                          className="w-full !pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf text-gray-700 font-bold"
+                        />
+                        <Search className="absolute left-2.5 top-2.5 text-gray-400" size={12} />
+                        {showServiceSuggestions && serviceSearchText.trim() !== '' && (
+                          <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto divide-y divide-gray-50">
+                            {servicios
+                              .filter(s => s.nombre.toLowerCase().includes(serviceSearchText.toLowerCase()))
+                              .map(s => (
+                                <button
+                                  key={s.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setForm(prev => ({ 
+                                      ...prev, 
+                                      servicio_id: s.id, 
+                                      valor_pagado: s.precio_base.toString() 
+                                    }))
+                                    setServiceSearchText(s.nombre)
+                                    setShowServiceSuggestions(false)
+                                  }}
+                                  className="w-full text-left p-2.5 hover:bg-blush-seashell/30 cursor-pointer text-xs font-bold text-gray-700 flex justify-between border-b border-gray-100 last:border-0"
+                                >
+                                  <span>{s.nombre}</span>
+                                  <span className="text-[10px] text-blush-palmLeaf font-extrabold">${Number(s.precio_base).toFixed(2)}</span>
+                                </button>
+                              ))}
+                            {servicios.filter(s => s.nombre.toLowerCase().includes(serviceSearchText.toLowerCase())).length === 0 && (
+                              <div className="p-3 text-center text-xs text-gray-400 font-semibold bg-white rounded-xl">
+                                No se encontraron servicios.
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -686,64 +851,49 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
                 )}
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 ml-1 mb-0.5">Manicurista</label>
-                <select
-                  value={form.personal_id}
-                  onChange={(e) => setForm({ ...form, personal_id: e.target.value })}
-                  className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none"
-                >
-                  <option value="">Seleccione...</option>
-                  {personal.filter(p => p.activo).map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.nombre}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Colaboradora</label>
+                  <select
+                    value={form.personal_id}
+                    onChange={(e) => setForm({ ...form, personal_id: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 outline-none"
+                  >
+                    <option value="">Seleccione...</option>
+                    {personal.filter(p => p.activo).map(p => (
+                      <option key={p.id} value={p.id}>{p.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Precio Cobrado</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={esNuevoServicio ? nuevoServicioForm.precio_base : form.valor_pagado}
+                    onChange={(e) => {
+                      if (esNuevoServicio) {
+                        setNuevoServicioForm({ ...nuevoServicioForm, precio_base: e.target.value })
+                      } else {
+                        setForm({ ...form, valor_pagado: e.target.value })
+                      }
+                    }}
+                    disabled={esNuevoServicio}
+                    className={`w-full px-3 py-2 border rounded-xl text-xs font-black text-blush-palmLeaf outline-none ${
+                      esNuevoServicio ? 'bg-gray-100/70 border-gray-200 text-blush-palmLeaf/60' : 'bg-white border-gray-200'
+                    }`}
+                  />
+                </div>
               </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 ml-1 mb-0.5">Valor Cobrado ($)</label>
-              <input
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={form.valor_pagado}
-                onChange={(e) => setForm({ ...form, valor_pagado: e.target.value })}
-                className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-bold outline-none"
-              />
             </div>
 
             <button
               type="button"
-              onClick={() => {
-                if (!form.servicio_id) return alert('Por favor seleccione un servicio.')
-                if (!form.personal_id) return alert('Por favor asigne una manicurista.')
-                const val = Number(form.valor_pagado)
-                if (isNaN(val) || val <= 0) return alert('El valor cobrado debe ser mayor a 0.')
-                
-                const svc = servicios.find(s => s.id === form.servicio_id)
-                const pers = personal.find(p => p.id === form.personal_id)
-                
-                setServiciosAgregados([
-                  ...serviciosAgregados,
-                  {
-                    id: 'temp_' + Date.now() + '_' + Math.random(),
-                    servicio_id: form.servicio_id,
-                    nombre_servicio: svc.nombre,
-                    personal_id: form.personal_id,
-                    nombre_personal: pers.nombre,
-                    valor_pagado: val
-                  }
-                ])
-                setForm(prev => ({ ...prev, servicio_id: '', personal_id: '', valor_pagado: '' }))
-                setServiceSearchText('')
-              }}
-              className="w-full bg-blush-palmLeaf/10 hover:bg-blush-palmLeaf/20 text-blush-palmLeaf font-bold py-1.5 rounded-xl transition-all text-xs flex items-center justify-center gap-1 cursor-pointer"
+              onClick={handleAddServicio}
+              className="w-full bg-blush-palmLeaf/10 hover:bg-blush-palmLeaf/20 text-blush-palmLeaf text-xs font-black py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <Plus size={14} />
-              Agregar a la lista
+              <Plus size={14} /> Agregar Servicio
             </button>
           </div>
 

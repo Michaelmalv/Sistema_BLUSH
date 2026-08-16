@@ -95,13 +95,7 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
     }
 
     try {
-      // Clear cache silently to force revalidation from Supabase
-      dataService.clearCache('citas')
-      dataService.clearCache('clientes')
-      dataService.clearCache('servicios')
-      dataService.clearCache('personal')
-
-      // Fetch concurrently in background using Promise.all
+      // Fetch concurrently in background using Promise.all (without invalidating existing cache)
       const [c, cl, s, p] = await Promise.all([
         dataService.getCitasVentas(),
         dataService.getClientes(),
@@ -135,6 +129,12 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
       }
     }
   }, [form.servicio_id, servicios])
+
+  const [visibleCitasRows, setVisibleCitasRows] = useState(50)
+
+  useEffect(() => {
+    setVisibleCitasRows(50)
+  }, [historySearch, filterStartDate, filterEndDate])
 
   const filteredClientSuggestions = useMemo(() => {
     const term = clientSearchText.toLowerCase().trim()
@@ -1321,7 +1321,7 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {filteredGroupedCitas.map((group) => (
+                    {filteredGroupedCitas.slice(0, visibleCitasRows).map((group) => (
                       <tr key={group.key} className="hover:bg-gray-50/50 transition-colors align-top">
                         <td className="py-3.5 px-2 font-medium text-gray-600 text-xs">
                           <span className="block font-bold">{new Date(group.fecha_hora).toLocaleDateString('es-EC')}</span>
@@ -1401,6 +1401,18 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {filteredGroupedCitas.length > visibleCitasRows && (
+              <div className="flex justify-center pt-4">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCitasRows(prev => prev + 50)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer border border-gray-200"
+                >
+                  Ver más citas ({filteredGroupedCitas.length - visibleCitasRows} restantes)
+                </button>
               </div>
             )}
           </div>

@@ -242,7 +242,15 @@ export const dataService = {
 
   clearCache(key) {
     if (key) {
-      this._cache[key] = null
+      if (key === 'citas') {
+        Object.keys(this._cache).forEach(k => {
+          if (k.startsWith('citas')) {
+            this._cache[k] = null
+          }
+        })
+      } else {
+        this._cache[key] = null
+      }
     } else {
       Object.keys(this._cache).forEach(k => {
         this._cache[k] = null
@@ -596,10 +604,12 @@ export const dataService = {
 
   // --- CITAS / VENTAS ---
   async getCitasVentas() {
-    const branchId = this.getSelectedBranchId()
+    const rawBranchId = this.getSelectedBranchId();
+    const branchId = rawBranchId || 'todas';
+    const cacheKey = `citas_${branchId}`;
     let data;
-    if (this._cache.citas) {
-      data = this._cache.citas
+    if (this._cache[cacheKey]) {
+      data = this._cache[cacheKey]
     } else {
       if (isSupabaseConfigured) {
         let dbData = [];
@@ -607,7 +617,7 @@ export const dataService = {
         const limit = 1000;
         let hasMore = true;
         while (hasMore) {
-          const { data: batch, error } = await supabase
+          let query = supabase
             .from('citas_ventas')
             .select(`
               id, fecha_hora, valor_pagado, forma_pago, no_transferencia, sucursal_id, tipo,
@@ -615,7 +625,13 @@ export const dataService = {
               clientes (id, nombre, cedula, celular, correo),
               servicios (id, nombre, precio_base, frecuencia_recomendada_dias),
               personal (id, nombre)
-            `)
+            `);
+            
+          if (rawBranchId) {
+            query = query.eq('sucursal_id', rawBranchId);
+          }
+          
+          const { data: batch, error } = await query
             .range(offset, offset + limit - 1);
           if (error) throw error;
           if (!batch || batch.length === 0) {
@@ -635,7 +651,7 @@ export const dataService = {
           c.tipo = c.tipo || 'cita'
           return c
         })
-        this._cache.citas = mapped
+        this._cache[cacheKey] = mapped
         data = mapped
       } else {
         const citas = getLocal('blush_citas') || []

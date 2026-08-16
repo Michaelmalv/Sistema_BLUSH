@@ -602,16 +602,32 @@ export const dataService = {
       data = this._cache.citas
     } else {
       if (isSupabaseConfigured) {
-        const { data: dbData, error } = await supabase
-          .from('citas_ventas')
-          .select(`
-            id, fecha_hora, valor_pagado, forma_pago, no_transferencia, sucursal_id, tipo,
-            cliente_id, servicio_id, personal_id,
-            clientes (id, nombre, cedula, celular, correo),
-            servicios (id, nombre, precio_base, frecuencia_recomendada_dias),
-            personal (id, nombre)
-          `)
-        if (error) throw error
+        let dbData = [];
+        let offset = 0;
+        const limit = 1000;
+        let hasMore = true;
+        while (hasMore) {
+          const { data: batch, error } = await supabase
+            .from('citas_ventas')
+            .select(`
+              id, fecha_hora, valor_pagado, forma_pago, no_transferencia, sucursal_id, tipo,
+              cliente_id, servicio_id, personal_id,
+              clientes (id, nombre, cedula, celular, correo),
+              servicios (id, nombre, precio_base, frecuencia_recomendada_dias),
+              personal (id, nombre)
+            `)
+            .range(offset, offset + limit - 1);
+          if (error) throw error;
+          if (!batch || batch.length === 0) {
+            hasMore = false;
+          } else {
+            dbData = [...dbData, ...batch];
+            offset += limit;
+            if (batch.length < limit) {
+              hasMore = false;
+            }
+          }
+        }
         const mapped = dbData.map(c => {
           if (c.personal && c.personal.nombre) {
             c.personal.nombre = this.resolverNombreEstandar(c.personal.nombre)

@@ -125,7 +125,7 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
     const groups = {}
     citas.forEach(c => {
       // Filtrar únicamente las del tipo 'cita'
-      if (c.tipo !== 'cita') return
+      if (c.tipo !== 'cita' && c.tipo !== 'venta') return
 
       const clientKey = c.cliente_id || 'anonymous'
       const dateKey = new Date(c.fecha_hora).toISOString()

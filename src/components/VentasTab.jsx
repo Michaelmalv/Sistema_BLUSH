@@ -45,6 +45,8 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
   const [serviciosAgregados, setServiciosAgregados] = useState([])
   const [clientSearchText, setClientSearchText] = useState('')
   const [showClientSuggestions, setShowClientSuggestions] = useState(false)
+  const [showServiceSuggestions, setShowServiceSuggestions] = useState(false)
+  const [serviceSearchText, setServiceSearchText] = useState('')
   const [editingOriginalGroup, setEditingOriginalGroup] = useState(null)
 
   // Estados para cobro de citas (checkout)
@@ -330,6 +332,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
       setEsNuevoCliente(false)
       setServiciosAgregados([])
       setClientSearchText('')
+      setServiceSearchText('')
       setEditingOriginalGroup(null)
       loadData()
     } catch (err) {
@@ -613,18 +616,74 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[10px] font-bold text-gray-400 ml-1 mb-0.5">Servicio</label>
-                <select
-                  value={form.servicio_id}
-                  onChange={(e) => setForm({ ...form, servicio_id: e.target.value })}
-                  className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none"
-                >
-                  <option value="">Seleccione...</option>
-                  {servicios.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.nombre} - ${s.precio_base}
-                    </option>
-                  ))}
-                </select>
+                {form.servicio_id ? (
+                  <div className="flex justify-between items-center bg-blush-seashell/40 border border-blush-seashell-dark/30 px-3 py-1.5 rounded-xl text-xs">
+                    <div className="min-w-0 flex-1 pr-2">
+                      <span className="font-bold text-gray-800 block truncate">
+                        {servicios.find(s => s.id === form.servicio_id)?.nombre || 'Servicio seleccionado'}
+                      </span>
+                      <span className="block text-[10px] text-gray-400">
+                        Precio Base: ${Number(servicios.find(s => s.id === form.servicio_id)?.precio_base || 0).toFixed(2)}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm(prev => ({ ...prev, servicio_id: '', valor_pagado: '' }))
+                        setServiceSearchText('')
+                      }}
+                      className="text-gray-400 hover:text-rose-600 font-bold p-1 cursor-pointer animate-fade-in"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Escribe para buscar..."
+                      value={serviceSearchText}
+                      onChange={(e) => {
+                        setServiceSearchText(e.target.value)
+                        setShowServiceSuggestions(true)
+                      }}
+                      onFocus={() => setShowServiceSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowServiceSuggestions(false), 200)}
+                      className="w-full !pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf text-gray-700 font-bold"
+                    />
+                    <Search className="absolute left-2.5 top-2.5 text-gray-400" size={12} />
+                    {showServiceSuggestions && serviceSearchText.trim() !== '' && (
+                      <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto divide-y divide-gray-50">
+                        {servicios
+                          .filter(s => s.nombre.toLowerCase().includes(serviceSearchText.toLowerCase()))
+                          .map(s => (
+                            <button
+                              key={s.id}
+                              type="button"
+                              onClick={() => {
+                                setForm(prev => ({ 
+                                  ...prev, 
+                                  servicio_id: s.id, 
+                                  valor_pagado: s.precio_base.toString() 
+                                }))
+                                setServiceSearchText(s.nombre)
+                                setShowServiceSuggestions(false)
+                              }}
+                              className="w-full text-left p-2.5 hover:bg-blush-seashell/30 cursor-pointer text-xs font-bold text-gray-700 flex justify-between border-b border-gray-100 last:border-0"
+                            >
+                              <span>{s.nombre}</span>
+                              <span className="text-[10px] text-blush-palmLeaf font-extrabold">${Number(s.precio_base).toFixed(2)}</span>
+                            </button>
+                          ))}
+                        {servicios.filter(s => s.nombre.toLowerCase().includes(serviceSearchText.toLowerCase())).length === 0 && (
+                          <div className="p-3 text-center text-xs text-gray-400 font-semibold bg-white rounded-xl">
+                            No se encontraron servicios.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -679,6 +738,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
                   }
                 ])
                 setForm(prev => ({ ...prev, servicio_id: '', personal_id: '', valor_pagado: '' }))
+                setServiceSearchText('')
               }}
               className="w-full bg-blush-palmLeaf/10 hover:bg-blush-palmLeaf/20 text-blush-palmLeaf font-bold py-1.5 rounded-xl transition-all text-xs flex items-center justify-center gap-1 cursor-pointer"
             >
@@ -856,6 +916,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
                   setEsNuevoCliente(false)
                   setServiciosAgregados([])
                   setClientSearchText('')
+                  setServiceSearchText('')
                   setEditingOriginalGroup(null)
                   setMsg({ type: '', text: '' })
                 }}

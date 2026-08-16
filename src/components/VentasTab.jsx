@@ -47,6 +47,15 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
   const [showClientSuggestions, setShowClientSuggestions] = useState(false)
   const [editingOriginalGroup, setEditingOriginalGroup] = useState(null)
 
+  // Estados para cobro de citas (checkout)
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false)
+  const [checkoutGroup, setCheckoutGroup] = useState(null)
+  const [checkoutForm, setCheckoutForm] = useState({
+    forma_pago: 'Efectivo',
+    no_transferencia: '',
+    valor_total: ''
+  })
+
   // Filtros de Historial
   const [filterStartDate, setFilterStartDate] = useState('')
   const [filterEndDate, setFilterEndDate] = useState('')
@@ -104,7 +113,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
     const groups = {}
     citas.forEach(c => {
       if (c.tipo !== 'cita' && c.tipo !== 'venta') return
-      if (!c.forma_pago || c.forma_pago === 'Pendiente') return // Omitir citas pendientes de pago
+      // Citas pendientes se incluyen en el historial
 
       const clientKey = c.cliente_id || 'anonymous'
       const dateKey = new Date(c.fecha_hora).toISOString()
@@ -355,6 +364,41 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
       } catch (err) {
         alert(`Error al eliminar: ${err.message}`)
       }
+    }
+  }
+
+  const handleCobrarCita = (group) => {
+    setCheckoutGroup(group)
+    setCheckoutForm({
+      forma_pago: 'Efectivo',
+      valor_total: group.total.toString(),
+      no_transferencia: ''
+    })
+    setShowCheckoutModal(true)
+  }
+
+  const handleCheckoutSubmit = async (e) => {
+    e.preventDefault()
+    if (!checkoutGroup) return
+    try {
+      const val = Number(checkoutForm.valor_total)
+      if (isNaN(val) || val <= 0) {
+        return alert('El valor cobrado debe ser mayor a 0.')
+      }
+      await dataService.registrarPagoCita(
+        checkoutGroup.cliente_id,
+        checkoutGroup.fecha_hora,
+        checkoutForm.forma_pago,
+        val,
+        checkoutForm.no_transferencia
+      )
+      setMsg({ type: 'success', text: 'Pago registrado con éxito.' })
+      setShowCheckoutModal(false)
+      setCheckoutGroup(null)
+      loadData()
+    } catch (err) {
+      console.error(err)
+      alert('Ocurrió un error al registrar el pago.')
     }
   }
 
@@ -771,6 +815,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
         handleApplyMassVoucher={handleApplyMassVoucher}
         handleEditGroup={handleEditGroup}
         handleDeleteGroup={handleDeleteGroup}
+        handleCobrarCita={handleCobrarCita}
         historySearch={historySearch}
         setHistorySearch={setHistorySearch}
         filterStartDate={filterStartDate}
@@ -1251,6 +1296,112 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
         </div>,
         document.body
       )}
+
+      {/* MODAL DE COBRO (CHECKOUT) */}
+      {showCheckoutModal && checkoutGroup && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-tab-active">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-gray-150 relative animate-slide-in my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-base font-black text-blush-palmLeaf flex items-center gap-2">
+                <DollarSign size={18} />
+                Registrar Pago de Cita
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCheckoutModal(false)
+                  setCheckoutGroup(null)
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+              Registra el pago para la cita de <strong className="text-gray-800">{checkoutGroup.cliente?.nombre}</strong>.
+              Completa los datos de cobro a continuación:
+            </p>
+
+            <form onSubmit={handleCheckoutSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Forma de Pago</label>
+                  <select
+                    value={checkoutForm.forma_pago}
+                    onChange={(e) => setCheckoutForm({ ...checkoutForm, forma_pago: e.target.value, no_transferencia: '' })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold focus:outline-none focus:border-blush-palmLeaf text-gray-700"
+                  >
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Deuna">Deuna</option>
+                    <option value="Transferencia">Transferencia</option>
+                    <option value="Tarjeta">Tarjeta</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Total Cobrado ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="Monto cobrado"
+                    value={checkoutForm.valor_total}
+                    onChange={(e) => setCheckoutForm({ ...checkoutForm, valor_total: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-black text-blush-palmLeaf outline-none focus:border-blush-palmLeaf"
+                    required
+                  />
+                </div>
+              </div>
+
+              {checkoutForm.forma_pago === 'Tarjeta' && (
+                <div className="animate-slide-in">
+                  <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Código de Tarjeta (3 dígitos)</label>
+                  <input
+                    type="text"
+                    maxLength="3"
+                    placeholder="Ej. 123"
+                    value={checkoutForm.no_transferencia}
+                    onChange={(e) => setCheckoutForm({ ...checkoutForm, no_transferencia: e.target.value.replace(/\D/g, '').slice(0, 3) })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold focus:outline-none focus:border-blush-palmLeaf"
+                  />
+                </div>
+              )}
+
+              {['Deuna', 'Transferencia'].includes(checkoutForm.forma_pago) && (
+                <div className="animate-slide-in">
+                  <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Número de Referencia / Transferencia (Opcional)</label>
+                  <input
+                    type="text"
+                    placeholder="Ej. Ref 1009827"
+                    value={checkoutForm.no_transferencia}
+                    onChange={(e) => setCheckoutForm({ ...checkoutForm, no_transferencia: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold focus:outline-none focus:border-blush-palmLeaf"
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2 px-4 rounded-xl transition-colors text-xs cursor-pointer"
+                >
+                  Confirmar Cobro
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCheckoutModal(false)
+                    setCheckoutGroup(null)
+                  }}
+                  className="bg-gray-150 hover:bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-xl transition-colors text-xs cursor-pointer"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   </div>
 )
@@ -1269,6 +1420,7 @@ const TransactionHistory = React.memo(({
   handleApplyMassVoucher,
   handleEditGroup,
   handleDeleteGroup,
+  handleCobrarCita,
   historySearch,
   setHistorySearch,
   filterStartDate,
@@ -1503,6 +1655,16 @@ const TransactionHistory = React.memo(({
                   </td>
                   <td className="py-3.5 px-2">
                     <div className="flex items-center justify-center gap-1">
+                      {(!group.forma_pago || group.forma_pago === 'Pendiente') && (
+                        <button
+                          type="button"
+                          onClick={() => handleCobrarCita(group)}
+                          className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-black rounded-lg transition-colors cursor-pointer border border-amber-200 animate-pulse animate-duration-1000 mr-1"
+                          title="Registrar Pago"
+                        >
+                          Cobrar
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleEditGroup(group)}

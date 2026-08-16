@@ -477,7 +477,7 @@ export const dataService = {
           .eq('id', item.id)
         if (updateError) throw updateError
       }
-      this.clearCache('citas_ventas')
+      this.clearCache('citas')
       return true
     }
 
@@ -502,7 +502,7 @@ export const dataService = {
       return c
     })
     setLocal('blush_citas', updated)
-    this.clearCache('citas_ventas')
+    this.clearCache('citas')
     return true
   },
 

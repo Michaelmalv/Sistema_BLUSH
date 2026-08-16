@@ -345,8 +345,8 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
         alert(err.message || 'No se pudo crear el servicio.')
       }
     } else {
-      if (!form.servicio_id || !form.personal_id) {
-        return alert('Debe seleccionar servicio y colaborador.')
+      if (!form.servicio_id) {
+        return alert('Debe seleccionar un servicio.')
       }
       const svc = servicios.find(s => s.id === form.servicio_id)
       const pers = personal.find(p => p.id === form.personal_id)
@@ -357,8 +357,8 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
         {
           servicio_id: form.servicio_id,
           nombre_servicio: svc.nombre,
-          personal_id: form.personal_id,
-          nombre_personal: pers.nombre,
+          personal_id: form.personal_id || null,
+          nombre_personal: pers ? pers.nombre : 'Sin asignar',
           valor_pagado: val
         }
       ])
@@ -444,19 +444,16 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
       // Validar servicios
       let listToSave = [...serviciosAgregados]
       if (listToSave.length === 0) {
-        if (form.servicio_id && form.personal_id) {
+        if (form.servicio_id) {
           const val = Number(form.valor_pagado)
-          if (isNaN(val) || val <= 0) {
-            throw new Error('El valor cobrado debe ser mayor a 0.')
-          }
           const svc = servicios.find(s => s.id === form.servicio_id)
           const pers = personal.find(p => p.id === form.personal_id)
           listToSave.push({
             servicio_id: form.servicio_id,
             nombre_servicio: svc.nombre,
-            personal_id: form.personal_id,
-            nombre_personal: pers.nombre,
-            valor_pagado: val
+            personal_id: form.personal_id || null,
+            nombre_personal: pers ? pers.nombre : 'Sin asignar',
+            valor_pagado: val || 0.00
           })
         } else {
           throw new Error('Debe agregar al menos un servicio a la cita.')

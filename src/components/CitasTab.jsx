@@ -348,6 +348,9 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
       if (!form.servicio_id) {
         return alert('Debe seleccionar un servicio.')
       }
+      if (!form.personal_id) {
+        return alert('Debe seleccionar una colaboradora.')
+      }
       const svc = servicios.find(s => s.id === form.servicio_id)
       const pers = personal.find(p => p.id === form.personal_id)
       const val = svc ? svc.precio_base : 0
@@ -357,8 +360,8 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
         {
           servicio_id: form.servicio_id,
           nombre_servicio: svc.nombre,
-          personal_id: form.personal_id || null,
-          nombre_personal: pers ? pers.nombre : 'Sin asignar',
+          personal_id: form.personal_id,
+          nombre_personal: pers.nombre,
           valor_pagado: val
         }
       ])
@@ -445,14 +448,17 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
       let listToSave = [...serviciosAgregados]
       if (listToSave.length === 0) {
         if (form.servicio_id) {
+          if (!form.personal_id) {
+            throw new Error('Debe seleccionar una colaboradora.')
+          }
           const val = Number(form.valor_pagado)
           const svc = servicios.find(s => s.id === form.servicio_id)
           const pers = personal.find(p => p.id === form.personal_id)
           listToSave.push({
             servicio_id: form.servicio_id,
             nombre_servicio: svc.nombre,
-            personal_id: form.personal_id || null,
-            nombre_personal: pers ? pers.nombre : 'Sin asignar',
+            personal_id: form.personal_id,
+            nombre_personal: pers.nombre,
             valor_pagado: val || 0.00
           })
         } else {

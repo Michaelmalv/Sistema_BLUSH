@@ -76,12 +76,35 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
   const [selectedCashIds, setSelectedCashIds] = useState([])
 
   const loadData = async () => {
-    try {
+    const hasCache = dataService._cache && 
+                     dataService._cache.citas && 
+                     dataService._cache.clientes && 
+                     dataService._cache.servicios && 
+                     dataService._cache.personal;
+    
+    if (hasCache) {
+      setCitas(dataService._cache.citas)
+      setClientes(dataService._cache.clientes)
+      setServicios(dataService._cache.servicios)
+      setPersonal(dataService._cache.personal)
+    } else {
       setLoading(true)
-      const c = await dataService.getCitasVentas()
-      const cl = await dataService.getClientes()
-      const s = await dataService.getServicios()
-      const p = await dataService.getPersonal()
+    }
+
+    try {
+      // Clear cache silently to force revalidation from Supabase
+      dataService.clearCache('citas')
+      dataService.clearCache('clientes')
+      dataService.clearCache('servicios')
+      dataService.clearCache('personal')
+
+      // Fetch concurrently in background using Promise.all
+      const [c, cl, s, p] = await Promise.all([
+        dataService.getCitasVentas(),
+        dataService.getClientes(),
+        dataService.getServicios(),
+        dataService.getPersonal()
+      ])
 
       setCitas(c)
       setClientes(cl)

@@ -1043,6 +1043,41 @@ export const dataService = {
   },
 
   async registrarReposicion(productoId, cantidad, fecha) {
+    if (isSupabaseConfigured) {
+      const { data: prod, error: errFetch } = await supabase
+        .from('productos')
+        .select('*')
+        .eq('id', productoId)
+        .single();
+      if (errFetch || !prod) throw new Error('Producto no encontrado.');
+      
+      const stockAnterior = prod.stock_actual;
+      const fechaAnterior = prod.fecha_actualizacion_stock || prod.fecha_compra || new Date().toISOString().split('T')[0];
+      const nuevoStock = stockAnterior + cantidad;
+
+      const { error: err1 } = await supabase
+        .from('productos')
+        .update({ stock_actual: nuevoStock, fecha_actualizacion_stock: fecha })
+        .eq('id', productoId);
+      if (err1) throw err1;
+
+      const nuevaReposicionDb = {
+        producto_id: productoId,
+        stock_anterior: stockAnterior,
+        fecha_anterior: fechaAnterior,
+        cantidad_reposicion: cantidad,
+        fecha_reposicion: fecha
+      };
+
+      const { error: err2 } = await supabase
+        .from('registro_reposiciones_inventario')
+        .insert([nuevaReposicionDb]);
+      if (err2) throw err2;
+
+      this.clearCache('productos');
+      return { ...nuevaReposicionDb, creado_en: new Date().toISOString() };
+    }
+
     const reposiciones = getLocal('blush_reposiciones') || []
     const productos = getLocal('blush_productos') || []
     
@@ -1069,13 +1104,6 @@ export const dataService = {
       cantidad_reposicion: cantidad,
       fecha_reposicion: fecha,
       creado_en: new Date().toISOString()
-    }
-
-    if (isSupabaseConfigured) {
-      const { error: err1 } = await supabase.from('productos').update({ stock_actual: nuevoStock, fecha_actualizacion_stock: fecha }).eq('id', productoId)
-      if (err1) throw err1
-      const { error: err2 } = await supabase.from('registro_reposiciones_inventario').insert([nuevaReposicion])
-      if (err2) throw err2
     }
 
     reposiciones.push(nuevaReposicion)

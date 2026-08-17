@@ -321,22 +321,16 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
       }
 
       // Registrar los servicios del grupo
-      const citasToRegister = listToSave.map(s => {
-        const isEditing = !!editingOriginalGroup;
-        const finalFormaPago = isEditing ? (form.forma_pago || 'Pendiente') : 'Pendiente';
-        const finalNoTrans = isEditing ? (form.no_transferencia || null) : null;
-        const finalValorPagado = finalFormaPago === 'Pendiente' ? 0.00 : Number(s.valor_pagado);
-        return {
-          cliente_id: finalClienteId,
-          servicio_id: s.servicio_id,
-          personal_id: s.personal_id,
-          fecha_hora: dateObj.toISOString(),
-          valor_pagado: finalValorPagado,
-          forma_pago: finalFormaPago,
-          no_transferencia: finalNoTrans,
-          tipo: 'venta'
-        };
-      })
+      const citasToRegister = listToSave.map(s => ({
+        cliente_id: finalClienteId,
+        servicio_id: s.servicio_id,
+        personal_id: s.personal_id,
+        fecha_hora: dateObj.toISOString(),
+        valor_pagado: Number(s.valor_pagado),
+        forma_pago: form.forma_pago || 'Efectivo',
+        no_transferencia: form.no_transferencia ? form.no_transferencia.trim() : null,
+        tipo: 'venta'
+      }))
 
       await dataService.registrarGrupoCitas(citasToRegister)
 
@@ -962,13 +956,61 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
               className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
               required
             />
-          </div>{/* Total Estimado */}
-          <div>
-            <label className="block text-xs font-bold text-gray-500 mb-1">Total Estimado</label>
-            <div className="w-full px-3 py-2 bg-gray-100 border border-gray-200 rounded-xl text-sm font-black text-blush-palmLeaf">
-              ${serviciosAgregados.reduce((sum, item) => sum + item.valor_pagado, 0).toFixed(2)}
+          </div>
+
+          {/* Forma de Pago y Total */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1">Forma de Pago</label>
+              <select
+                value={form.forma_pago}
+                onChange={(e) => setForm({ ...form, forma_pago: e.target.value, no_transferencia: '' })}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-blush-palmLeaf"
+              >
+                <option value="Efectivo">Efectivo</option>
+                <option value="Deuna">Deuna</option>
+                <option value="Transferencia">Transferencia</option>
+                <option value="Tarjeta">Tarjeta</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1">Total a Pagar</label>
+              <div className="w-full px-3 py-2 bg-gray-100 border border-gray-200 rounded-xl text-sm font-black text-blush-palmLeaf">
+                ${serviciosAgregados.reduce((sum, item) => sum + item.valor_pagado, 0).toFixed(2)}
+              </div>
             </div>
           </div>
+
+          {/* Código de tarjeta de 3 dígitos */}
+          {form.forma_pago === 'Tarjeta' && (
+            <div className="animate-slide-in">
+              <label className="block text-xs font-bold text-gray-500 mb-1">Código de Tarjeta (3 dígitos)</label>
+              <input
+                type="text"
+                maxLength="3"
+                placeholder="Ej. 123"
+                value={form.no_transferencia}
+                onChange={(e) => setForm({ ...form, no_transferencia: e.target.value.replace(/\D/g, '').slice(0, 3) })}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-blush-palmLeaf"
+              />
+            </div>
+          )}
+
+          {/* Nro Referencia o Comprobante */}
+          {['Deuna', 'Transferencia', 'Efectivo'].includes(form.forma_pago) && (
+            <div className="transition-all duration-300">
+              <label className="block text-xs font-bold text-gray-500 mb-1">
+                {form.forma_pago === 'Efectivo' ? 'No. Depósito / Comprobante (Opcional)' : 'No. Transferencia / Referencia (Opcional)'}
+              </label>
+              <input
+                type="text"
+                placeholder={form.forma_pago === 'Efectivo' ? "Ej. DEP-998822" : "Ej. REF129482"}
+                value={form.no_transferencia}
+                onChange={(e) => setForm({ ...form, no_transferencia: e.target.value })}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-blush-palmLeaf text-gray-700"
+              />
+            </div>
+          )}
 
           {/* Mensajes de feedback */}
           {msg.text && (
@@ -979,8 +1021,9 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
 
           <button
             type="submit"
-            className="w-full bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2.5 px-4 rounded-xl transition-colors text-sm cursor-pointer"
+            className="w-full bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-bold py-2.5 px-4 rounded-xl transition-colors text-sm flex items-center justify-center gap-2 shadow-sm cursor-pointer"
           >
+            <Plus size={18} />
             Confirmar Venta
           </button>
         </form>

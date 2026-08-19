@@ -93,7 +93,18 @@ export default function SeguimientoTab({ activeTab, selectedBranchId }) {
     }
 
     const nombrePila = cliente.nombre.split(' ')[0]
-    const mensaje = `¡Hola ${nombrePila}! Te saludamos de Blush Beauty Studio. 🌸 Queremos desearte un muy feliz cumpleaños. 🎂 Que pases un día maravilloso rodeada de tus seres queridos. Como regalo especial de nuestra parte, tienes un 15% de descuento en cualquiera de nuestros servicios durante tu mes de cumpleaños. ¡Te esperamos para consentirte! 💖`
+        const mensaje = `🎂✨ ¡Feliz cumpleaños de parte de BLUSH! ✨🎂
+
+¡Hola ${nombrePila}! Te deseamos un día maravilloso, lleno de momentos bonitos y mucho amor. 💗
+Queremos invitarte a regalarte un momento para ti y disfrutar de alguno de nuestros servicios. Y como detalle especial por tu cumpleaños, tienes un 15% de descuento en cualquiera de ellos. ✨
+
+💅 Manicure
+🦶 Pedicure
+✨ Depilación de cejas
+👁️ Lifting de pestañas
+
+📲 Agenda tu cita y déjanos consentirte.
+Con cariño, BLUSH 💗`
     
     const tel = cliente.celular.replace(/\D/g, '')
     let formattedTel = tel

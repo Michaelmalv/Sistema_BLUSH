@@ -53,6 +53,9 @@ export async function exportExcelJS(wb, filename, logoCellInfo = null) {
           } else {
             exceljsCell.value = sjsCell.v
           }
+          if (sjsCell.z) {
+            exceljsCell.numFmt = sjsCell.z
+          }
           
           // Translate styles
           if (sjsCell.s) {

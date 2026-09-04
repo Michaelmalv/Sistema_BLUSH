@@ -114,133 +114,432 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
     setComisiones(comms.sort((a, b) => b.comision - a.comision))
   }
 
-  // Exportar comisiones (por colaboradora o general con detalle)
+  // Exportar comisiones con formato profesional, colores de marca y bordeado
   const handleExportExcel = async (customColab = null) => {
     try {
-      const targetColab = customColab || selectedManicuristaDetail
+      const isColabObject = customColab && typeof customColab === 'object' && customColab.nombre && !customColab.nativeEvent;
+      const targetColab = isColabObject ? customColab : null;
+
+      const makeCell = (val, type, format = null, style = {}) => {
+        const cell = { v: val, t: type };
+        if (format) cell.z = format;
+        cell.s = {
+          font: { name: 'Segoe UI', size: 9.5, ...style.font },
+          alignment: { vertical: 'middle', ...style.alignment },
+          fill: style.fill || undefined,
+          border: style.border || undefined
+        };
+        return cell;
+      };
+
+      const baseFont = { name: 'Segoe UI', size: 9.5 };
+      const tableBorder = {
+        top: { style: 'thin', color: { rgb: 'E5E7EB' } },
+        bottom: { style: 'thin', color: { rgb: 'E5E7EB' } },
+        left: { style: 'thin', color: { rgb: 'E5E7EB' } },
+        right: { style: 'thin', color: { rgb: 'E5E7EB' } }
+      };
+
+      const headerStyle = (bgColorHex = '748843') => ({
+        font: { name: 'Segoe UI', size: 10, bold: true, color: { rgb: 'FFFFFF' } },
+        fill: { fgColor: { rgb: bgColorHex } },
+        alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+        border: {
+          top: { style: 'thin', color: { rgb: bgColorHex } },
+          bottom: { style: 'thin', color: { rgb: bgColorHex } },
+          left: { style: 'thin', color: { rgb: bgColorHex } },
+          right: { style: 'thin', color: { rgb: bgColorHex } }
+        }
+      });
+
+      const cellTextLeft = (bg = 'FFFFFF') => ({
+        font: baseFont,
+        fill: bg !== 'FFFFFF' ? { fgColor: { rgb: bg } } : undefined,
+        alignment: { horizontal: 'left', vertical: 'middle' },
+        border: tableBorder
+      });
+
+      const cellTextCenter = (bg = 'FFFFFF') => ({
+        font: baseFont,
+        fill: bg !== 'FFFFFF' ? { fgColor: { rgb: bg } } : undefined,
+        alignment: { horizontal: 'center', vertical: 'middle' },
+        border: tableBorder
+      });
+
+      const cellCurrency = (bg = 'FFFFFF') => ({
+        font: baseFont,
+        fill: bg !== 'FFFFFF' ? { fgColor: { rgb: bg } } : undefined,
+        alignment: { horizontal: 'right', vertical: 'middle' },
+        border: tableBorder
+      });
+
+      const cellCurrencyBold = (bg = 'FFFFFF') => ({
+        font: { ...baseFont, bold: true, color: { rgb: '15803D' } },
+        fill: bg !== 'FFFFFF' ? { fgColor: { rgb: bg } } : undefined,
+        alignment: { horizontal: 'right', vertical: 'middle' },
+        border: tableBorder
+      });
+
+      const cardLabelStyle = {
+        font: { name: 'Segoe UI', size: 9.5, bold: true, color: { rgb: '4B5563' } },
+        fill: { fgColor: { rgb: 'F9FAFB' } },
+        alignment: { horizontal: 'left', vertical: 'middle' },
+        border: tableBorder
+      };
+
+      const cardValStyle = {
+        font: { name: 'Segoe UI', size: 10, bold: true, color: { rgb: '1F2937' } },
+        alignment: { horizontal: 'right', vertical: 'middle' },
+        border: tableBorder
+      };
+
+      const cardValGreenStyle = {
+        font: { name: 'Segoe UI', size: 10.5, bold: true, color: { rgb: '15803D' } },
+        fill: { fgColor: { rgb: 'F0FDF4' } },
+        alignment: { horizontal: 'right', vertical: 'middle' },
+        border: tableBorder
+      };
+
+      const totalRowStyle = {
+        font: { name: 'Segoe UI', size: 10, bold: true, color: { rgb: '1F2937' } },
+        fill: { fgColor: { rgb: 'F3F4F6' } },
+        alignment: { vertical: 'middle' },
+        border: {
+          top: { style: 'medium', color: { rgb: '748843' } },
+          bottom: { style: 'double', color: { rgb: '748843' } },
+          left: { style: 'thin', color: { rgb: 'D1D5DB' } },
+          right: { style: 'thin', color: { rgb: 'D1D5DB' } }
+        }
+      };
 
       if (targetColab) {
-        // Exportar detalle específico de la colaboradora seleccionada
-        const rows = [
-          ["REPORTE DETALLADO DE COMISIONES (40%) - BLUSH BEAUTY STUDIO"],
-          [`Colaboradora: ${targetColab.nombre} (${targetColab.cargo || 'Manicurista'})`],
-          [`Período: ${meses[selectedMonth]} ${selectedYear}`],
-          [`Fecha de Emisión: ${new Date().toLocaleString('es-EC')}`],
-          [],
-          ["Fecha", "Cliente", "Servicio Realizado", "Forma de Pago", "Valor Cobrado ($)", "Comisión 40% ($)"]
-        ]
+        // ==========================================
+        // EXPORTAR REPORTE DETALLADO DE 1 COLABORADORA
+        // ==========================================
+        const rows = [];
+        const merges = [];
+        const detalles = targetColab.detalles_ventas || [];
 
-        targetColab.detalles_ventas.forEach(v => {
-          const valCobrado = Number(v.valor_pagado || 0)
-          const comision40 = valCobrado * 0.40
-          const fStr = v.fecha_hora ? new Date(v.fecha_hora).toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
-          rows.push([
-            fStr,
-            v.clientes ? v.clientes.nombre : 'Cliente General',
-            v.servicios ? v.servicios.nombre : 'Servicio',
-            v.forma_pago || 'Efectivo',
-            valCobrado,
-            comision40
-          ])
-        })
+        // Fila 0: Logo y Marca BLUSH
+        merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } });
+        const h0 = [makeCell('BLUSH BEAUTY STUDIO', 's', null, {
+          font: { name: 'Segoe UI', size: 17, bold: true, color: { rgb: '748843' } },
+          alignment: { horizontal: 'left', vertical: 'middle' }
+        })];
+        for (let i = 1; i <= 5; i++) h0.push(makeCell('', 's', null, {}));
+        rows.push(h0);
 
-        const totalFacturado = targetColab.detalles_ventas.reduce((sum, v) => sum + Number(v.valor_pagado || 0), 0)
-        const totalComision = totalFacturado * 0.40
+        // Fila 1: Título de reporte
+        merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 5 } });
+        rows.push([makeCell('LIQUIDACIÓN INDIVIDUAL DE COMISIONES (40%)', 's', null, {
+          font: { name: 'Segoe UI', size: 11, bold: true, color: { rgb: 'BAAB94' } },
+          alignment: { horizontal: 'left', vertical: 'middle' }
+        })]);
 
-        rows.push([])
+        // Fila 2: Subtítulo de metadata
+        merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 5 } });
+        rows.push([makeCell(`Colaboradora: ${targetColab.nombre} (${targetColab.cargo || 'Manicurista'}) | Período: ${meses[selectedMonth]} ${selectedYear} | Emisión: ${new Date().toLocaleString('es-EC')}`, 's', null, {
+          font: { name: 'Segoe UI', size: 9.5, italic: true, color: { rgb: '6B7280' } },
+          alignment: { horizontal: 'left', vertical: 'middle' }
+        })]);
+
+        rows.push([]); // espacio
+
+        // Fila 4-6: Tarjetas de resumen (KPIs)
+        const totalFacturado = detalles.reduce((sum, v) => sum + Number(v.valor_pagado || 0), 0);
+        const totalComision = totalFacturado * 0.40;
+
         rows.push([
-          "TOTAL GENERAL",
-          "",
-          "",
-          `Cant. Servicios: ${targetColab.detalles_ventas.length}`,
-          totalFacturado,
-          totalComision
-        ])
+          makeCell('Cant. Servicios Realizados', 's', null, cardLabelStyle),
+          makeCell(detalles.length, 'n', '#,##0', cardValStyle)
+        ]);
+        rows.push([
+          makeCell('Total Facturado / Cobrado', 's', null, cardLabelStyle),
+          makeCell(totalFacturado, 'n', '"$"#,##0.00', cardValStyle)
+        ]);
+        rows.push([
+          makeCell('Comisión Total a Liquidar (40%)', 's', null, { ...cardLabelStyle, fill: { fgColor: { rgb: 'F0FDF4' } } }),
+          makeCell(totalComision, 'n', '"$"#,##0.00', cardValGreenStyle)
+        ]);
 
-        const wb = XLSX.utils.book_new()
-        const ws = XLSX.utils.aoa_to_sheet(rows)
+        rows.push([]); // espacio
+
+        // Fila 8: Encabezados de tabla
+        rows.push([
+          makeCell('Fecha y Hora', 's', null, headerStyle('748843')),
+          makeCell('Cliente', 's', null, headerStyle('748843')),
+          makeCell('Servicio Realizado', 's', null, headerStyle('748843')),
+          makeCell('Forma de Pago', 's', null, headerStyle('748843')),
+          makeCell('Valor Cobrado ($)', 's', null, headerStyle('748843')),
+          makeCell('Comisión 40% ($)', 's', null, headerStyle('748843'))
+        ]);
+
+        if (detalles.length === 0) {
+          rows.push([
+            makeCell('Sin servicios registrados en este período', 's', null, cellTextCenter()),
+            makeCell('', 's', null, cellTextLeft()),
+            makeCell('', 's', null, cellTextLeft()),
+            makeCell('', 's', null, cellTextCenter()),
+            makeCell(0, 'n', '"$"#,##0.00', cellCurrency()),
+            makeCell(0, 'n', '"$"#,##0.00', cellCurrencyBold())
+          ]);
+        } else {
+          detalles.forEach((v, idx) => {
+            const bg = idx % 2 === 0 ? 'FFFFFF' : 'FBFDF9';
+            const valCobrado = Number(v.valor_pagado || 0);
+            const com40 = valCobrado * 0.40;
+            const fStr = v.fecha_hora ? new Date(v.fecha_hora).toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+            rows.push([
+              makeCell(fStr, 's', null, cellTextCenter(bg)),
+              makeCell(v.clientes ? v.clientes.nombre : 'Cliente General', 's', null, cellTextLeft(bg)),
+              makeCell(v.servicios ? v.servicios.nombre : 'Servicio', 's', null, cellTextLeft(bg)),
+              makeCell(v.forma_pago || 'Efectivo', 's', null, cellTextCenter(bg)),
+              makeCell(valCobrado, 'n', '"$"#,##0.00', cellCurrency(bg)),
+              makeCell(com40, 'n', '"$"#,##0.00', cellCurrencyBold(bg))
+            ]);
+          });
+        }
+
+        // Fila Total
+        rows.push([
+          makeCell('TOTAL GENERAL', 's', null, { ...totalRowStyle, alignment: { horizontal: 'left', vertical: 'middle' } }),
+          makeCell('', 's', null, totalRowStyle),
+          makeCell('', 's', null, totalRowStyle),
+          makeCell(`Cant: ${detalles.length}`, 's', null, { ...totalRowStyle, alignment: { horizontal: 'center', vertical: 'middle' } }),
+          makeCell(totalFacturado, 'n', '"$"#,##0.00', { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'middle' } }),
+          makeCell(totalComision, 'n', '"$"#,##0.00', { ...totalRowStyle, font: { ...baseFont, bold: true, color: { rgb: '15803D' } }, alignment: { horizontal: 'right', vertical: 'middle' } })
+        ]);
+
+        // Pie de página oficial
+        const lastRowIdx = rows.length;
+        merges.push({ s: { r: lastRowIdx, c: 0 }, e: { r: lastRowIdx, c: 5 } });
+        const footerRow = [makeCell('★ DOCUMENTO OFICIAL GENERADO POR EL SISTEMA BLUSH BEAUTY STUDIO - CONTROL DE COMISIONES ★', 's', null, {
+          font: { name: 'Segoe UI', size: 8, italic: true, color: { rgb: '9CA3AF' } },
+          alignment: { horizontal: 'center', vertical: 'middle' }
+        })];
+        for (let i = 1; i <= 5; i++) footerRow.push(makeCell('', 's', null, {}));
+        rows.push(footerRow);
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        ws['!merges'] = merges;
         ws['!cols'] = [
           { wch: 20 }, // Fecha
           { wch: 28 }, // Cliente
           { wch: 30 }, // Servicio
-          { wch: 16 }, // Forma de Pago
+          { wch: 18 }, // Forma de Pago
           { wch: 18 }, // Valor Cobrado
           { wch: 18 }  // Comisión 40%
-        ]
+        ];
+        ws['!rows'] = [{ hpt: 45 }];
 
-        XLSX.utils.book_append_sheet(wb, ws, "Detalle Comisiones")
-        const safeName = targetColab.nombre.replace(/\s+/g, '_')
-        const safeMonthName = meses[selectedMonth].replace(/\s+/g, '_')
-        await exportExcelJS(wb, `Comisiones_${safeName}_${safeMonthName}_${selectedYear}.xlsx`, { sheetName: "Detalle Comisiones", col: 5, row: 0 })
+        XLSX.utils.book_append_sheet(wb, ws, 'Detalle Comisiones');
+        const safeName = targetColab.nombre.replace(/\s+/g, '_');
+        const safeMonthName = meses[selectedMonth].replace(/\s+/g, '_');
+        await exportExcelJS(wb, `Comisiones_${safeName}_${safeMonthName}_${selectedYear}.xlsx`, { sheetName: 'Detalle Comisiones', col: 5, row: 0 });
       } else {
-        // Exportar resumen general de todas las colaboradoras con hoja de desglose
-        const rows = [
-          ["REPORTE DE SUELDOS Y COMISIONES (40%) - BLUSH BEAUTY STUDIO"],
-          [`Período: ${meses[selectedMonth]} ${selectedYear}`],
-          ["Fecha de Emisión:", new Date().toLocaleString('es-EC')],
-          [],
-          ["Colaboradora", "Cargo", "Cant. Servicios", "Total Facturado ($)", "Comisión a Pagar (40% $)"]
-        ]
+        // ==========================================
+        // EXPORTAR REPORTE GENERAL DE TODA LA NÓMINA
+        // ==========================================
+        const wb = XLSX.utils.book_new();
 
-        comisiones.forEach(c => {
-          rows.push([
-            c.nombre,
-            c.cargo,
-            c.total_servicios,
-            c.total_ventas,
-            c.comision
-          ])
-        })
+        // ------------------------------------------
+        // HOJA 1: RESUMEN GENERAL DE COMISIONES
+        // ------------------------------------------
+        const rowsResumen = [];
+        const mergesResumen = [];
 
-        const sumServicios = comisiones.reduce((sum, c) => sum + c.total_servicios, 0)
-        const sumFacturado = comisiones.reduce((sum, c) => sum + c.total_ventas, 0)
-        const sumComision = comisiones.reduce((sum, c) => sum + c.comision, 0)
+        // Fila 0: Logo y Marca BLUSH
+        mergesResumen.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } });
+        const h0 = [makeCell('BLUSH BEAUTY STUDIO', 's', null, {
+          font: { name: 'Segoe UI', size: 17, bold: true, color: { rgb: '748843' } },
+          alignment: { horizontal: 'left', vertical: 'middle' }
+        })];
+        for (let i = 1; i <= 4; i++) h0.push(makeCell('', 's', null, {}));
+        rowsResumen.push(h0);
 
-        rows.push([])
-        rows.push([
-          "TOTALES GENERALES",
-          "",
-          sumServicios,
-          sumFacturado,
-          sumComision
-        ])
+        // Fila 1: Título de reporte
+        mergesResumen.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 4 } });
+        rowsResumen.push([makeCell('REPORTE GENERAL DE SUELDOS Y COMISIONES (40%)', 's', null, {
+          font: { name: 'Segoe UI', size: 11, bold: true, color: { rgb: 'BAAB94' } },
+          alignment: { horizontal: 'left', vertical: 'middle' }
+        })]);
 
-        const wb = XLSX.utils.book_new()
-        const ws = XLSX.utils.aoa_to_sheet(rows)
-        ws['!cols'] = [
+        // Fila 2: Subtítulo
+        mergesResumen.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 4 } });
+        rowsResumen.push([makeCell(`Período: ${meses[selectedMonth]} ${selectedYear} | Emisión: ${new Date().toLocaleString('es-EC')}`, 's', null, {
+          font: { name: 'Segoe UI', size: 9.5, italic: true, color: { rgb: '6B7280' } },
+          alignment: { horizontal: 'left', vertical: 'middle' }
+        })]);
+
+        rowsResumen.push([]); // espacio
+
+        // Fila 4-7: Tarjetas de resumen general (KPIs)
+        const sumServicios = comisiones.reduce((sum, c) => sum + (c.total_servicios || 0), 0);
+        const sumFacturado = comisiones.reduce((sum, c) => sum + (c.total_ventas || 0), 0);
+        const sumComision = comisiones.reduce((sum, c) => sum + (c.comision || 0), 0);
+
+        rowsResumen.push([
+          makeCell('Total Colaboradoras en Nómina', 's', null, cardLabelStyle),
+          makeCell(comisiones.length, 'n', '#,##0', cardValStyle)
+        ]);
+        rowsResumen.push([
+          makeCell('Total Servicios Realizados', 's', null, cardLabelStyle),
+          makeCell(sumServicios, 'n', '#,##0', cardValStyle)
+        ]);
+        rowsResumen.push([
+          makeCell('Total Facturado en el Mes', 's', null, cardLabelStyle),
+          makeCell(sumFacturado, 'n', '"$"#,##0.00', cardValStyle)
+        ]);
+        rowsResumen.push([
+          makeCell('Total Comisiones a Liquidar (40%)', 's', null, { ...cardLabelStyle, fill: { fgColor: { rgb: 'F0FDF4' } } }),
+          makeCell(sumComision, 'n', '"$"#,##0.00', cardValGreenStyle)
+        ]);
+
+        rowsResumen.push([]); // espacio
+
+        // Fila 9: Encabezados de tabla resumen
+        rowsResumen.push([
+          makeCell('Colaboradora', 's', null, headerStyle('748843')),
+          makeCell('Cargo', 's', null, headerStyle('748843')),
+          makeCell('Cant. Servicios', 's', null, headerStyle('748843')),
+          makeCell('Total Facturado ($)', 's', null, headerStyle('748843')),
+          makeCell('Comisión a Pagar (40% $)', 's', null, headerStyle('748843'))
+        ]);
+
+        comisiones.forEach((c, idx) => {
+          const bg = idx % 2 === 0 ? 'FFFFFF' : 'FBFDF9';
+          rowsResumen.push([
+            makeCell(c.nombre, 's', null, cellTextLeft(bg)),
+            makeCell(c.cargo || 'Manicurista', 's', null, cellTextLeft(bg)),
+            makeCell(Number(c.total_servicios || 0), 'n', '#,##0', cellTextCenter(bg)),
+            makeCell(Number(c.total_ventas || 0), 'n', '"$"#,##0.00', cellCurrency(bg)),
+            makeCell(Number(c.comision || 0), 'n', '"$"#,##0.00', cellCurrencyBold(bg))
+          ]);
+        });
+
+        // Fila Totales
+        rowsResumen.push([
+          makeCell('TOTALES GENERALES', 's', null, { ...totalRowStyle, alignment: { horizontal: 'left', vertical: 'middle' } }),
+          makeCell('', 's', null, totalRowStyle),
+          makeCell(sumServicios, 'n', '#,##0', { ...totalRowStyle, alignment: { horizontal: 'center', vertical: 'middle' } }),
+          makeCell(sumFacturado, 'n', '"$"#,##0.00', { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'middle' } }),
+          makeCell(sumComision, 'n', '"$"#,##0.00', { ...totalRowStyle, font: { ...baseFont, bold: true, color: { rgb: '15803D' } }, alignment: { horizontal: 'right', vertical: 'middle' } })
+        ]);
+
+        // Pie de página
+        const lastRowRes = rowsResumen.length;
+        mergesResumen.push({ s: { r: lastRowRes, c: 0 }, e: { r: lastRowRes, c: 4 } });
+        const footerRes = [makeCell('★ DOCUMENTO OFICIAL GENERADO POR EL SISTEMA BLUSH BEAUTY STUDIO - CONTROL DE SUELDOS ★', 's', null, {
+          font: { name: 'Segoe UI', size: 8, italic: true, color: { rgb: '9CA3AF' } },
+          alignment: { horizontal: 'center', vertical: 'middle' }
+        })];
+        for (let i = 1; i <= 4; i++) footerRes.push(makeCell('', 's', null, {}));
+        rowsResumen.push(footerRes);
+
+        const wsResumen = XLSX.utils.aoa_to_sheet(rowsResumen);
+        wsResumen['!merges'] = mergesResumen;
+        wsResumen['!cols'] = [
           { wch: 28 }, // Colaboradora
           { wch: 18 }, // Cargo
-          { wch: 15 }, // Cant. Servicios
+          { wch: 16 }, // Cant. Servicios
           { wch: 20 }, // Total Facturado
-          { wch: 22 }  // Comisión a Pagar
-        ]
-        XLSX.utils.book_append_sheet(wb, ws, "Resumen General")
+          { wch: 24 }  // Comisión a Pagar
+        ];
+        wsResumen['!rows'] = [{ hpt: 45 }];
+        XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen General');
 
-        // Hoja adicional con el desglose de todos los servicios
-        const detailRows = [
-          ["DESGLOSE DETALLADO DE SERVICIOS - BLUSH BEAUTY STUDIO"],
-          [`Período: ${meses[selectedMonth]} ${selectedYear}`],
-          [],
-          ["Colaboradora", "Fecha", "Cliente", "Servicio", "Forma de Pago", "Valor Cobrado ($)", "Comisión 40% ($)"]
-        ]
+        // ------------------------------------------
+        // HOJA 2: DESGLOSE DETALLADO DE SERVICIOS
+        // ------------------------------------------
+        const rowsDetail = [];
+        const mergesDetail = [];
 
+        mergesDetail.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } });
+        const hd0 = [makeCell('BLUSH BEAUTY STUDIO', 's', null, {
+          font: { name: 'Segoe UI', size: 17, bold: true, color: { rgb: '748843' } },
+          alignment: { horizontal: 'left', vertical: 'middle' }
+        })];
+        for (let i = 1; i <= 6; i++) hd0.push(makeCell('', 's', null, {}));
+        rowsDetail.push(hd0);
+
+        mergesDetail.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 6 } });
+        rowsDetail.push([makeCell('DESGLOSE DETALLADO DE SERVICIOS POR COLABORADORA', 's', null, {
+          font: { name: 'Segoe UI', size: 11, bold: true, color: { rgb: 'BAAB94' } },
+          alignment: { horizontal: 'left', vertical: 'middle' }
+        })]);
+
+        mergesDetail.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 6 } });
+        rowsDetail.push([makeCell(`Período: ${meses[selectedMonth]} ${selectedYear} | Detalle completo de servicios realizados`, 's', null, {
+          font: { name: 'Segoe UI', size: 9.5, italic: true, color: { rgb: '6B7280' } },
+          alignment: { horizontal: 'left', vertical: 'middle' }
+        })]);
+
+        rowsDetail.push([]); // espacio
+
+        rowsDetail.push([
+          makeCell('Colaboradora', 's', null, headerStyle('748843')),
+          makeCell('Fecha y Hora', 's', null, headerStyle('748843')),
+          makeCell('Cliente', 's', null, headerStyle('748843')),
+          makeCell('Servicio Realizado', 's', null, headerStyle('748843')),
+          makeCell('Forma de Pago', 's', null, headerStyle('748843')),
+          makeCell('Valor Cobrado ($)', 's', null, headerStyle('748843')),
+          makeCell('Comisión 40% ($)', 's', null, headerStyle('748843'))
+        ]);
+
+        let detailCount = 0;
         comisiones.forEach(c => {
-          c.detalles_ventas.forEach(v => {
-            const val = Number(v.valor_pagado || 0)
-            const fStr = v.fecha_hora ? new Date(v.fecha_hora).toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
-            detailRows.push([
-              c.nombre,
-              fStr,
-              v.clientes ? v.clientes.nombre : 'Cliente General',
-              v.servicios ? v.servicios.nombre : 'Servicio',
-              v.forma_pago || 'Efectivo',
-              val,
-              val * 0.40
-            ])
-          })
-        })
+          (c.detalles_ventas || []).forEach(v => {
+            const bg = detailCount % 2 === 0 ? 'FFFFFF' : 'FBFDF9';
+            detailCount++;
+            const val = Number(v.valor_pagado || 0);
+            const fStr = v.fecha_hora ? new Date(v.fecha_hora).toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+            rowsDetail.push([
+              makeCell(c.nombre, 's', null, cellTextLeft(bg)),
+              makeCell(fStr, 's', null, cellTextCenter(bg)),
+              makeCell(v.clientes ? v.clientes.nombre : 'Cliente General', 's', null, cellTextLeft(bg)),
+              makeCell(v.servicios ? v.servicios.nombre : 'Servicio', 's', null, cellTextLeft(bg)),
+              makeCell(v.forma_pago || 'Efectivo', 's', null, cellTextCenter(bg)),
+              makeCell(val, 'n', '"$"#,##0.00', cellCurrency(bg)),
+              makeCell(val * 0.40, 'n', '"$"#,##0.00', cellCurrencyBold(bg))
+            ]);
+          });
+        });
 
-        const wsDetail = XLSX.utils.aoa_to_sheet(detailRows)
+        if (detailCount === 0) {
+          rowsDetail.push([
+            makeCell('Sin registros de servicios en este período', 's', null, cellTextCenter()),
+            makeCell('', 's', null, cellTextCenter()),
+            makeCell('', 's', null, cellTextLeft()),
+            makeCell('', 's', null, cellTextLeft()),
+            makeCell('', 's', null, cellTextCenter()),
+            makeCell(0, 'n', '"$"#,##0.00', cellCurrency()),
+            makeCell(0, 'n', '"$"#,##0.00', cellCurrencyBold())
+          ]);
+        }
+
+        // Fila Total
+        rowsDetail.push([
+          makeCell('TOTAL GENERAL', 's', null, { ...totalRowStyle, alignment: { horizontal: 'left', vertical: 'middle' } }),
+          makeCell('', 's', null, totalRowStyle),
+          makeCell('', 's', null, totalRowStyle),
+          makeCell('', 's', null, totalRowStyle),
+          makeCell(`Cant: ${detailCount}`, 's', null, { ...totalRowStyle, alignment: { horizontal: 'center', vertical: 'middle' } }),
+          makeCell(sumFacturado, 'n', '"$"#,##0.00', { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'middle' } }),
+          makeCell(sumComision, 'n', '"$"#,##0.00', { ...totalRowStyle, font: { ...baseFont, bold: true, color: { rgb: '15803D' } }, alignment: { horizontal: 'right', vertical: 'middle' } })
+        ]);
+
+        const lastRowDet = rowsDetail.length;
+        mergesDetail.push({ s: { r: lastRowDet, c: 0 }, e: { r: lastRowDet, c: 6 } });
+        const footerDet = [makeCell('★ DOCUMENTO OFICIAL GENERADO POR EL SISTEMA BLUSH BEAUTY STUDIO - DETALLE DE SERVICIOS ★', 's', null, {
+          font: { name: 'Segoe UI', size: 8, italic: true, color: { rgb: '9CA3AF' } },
+          alignment: { horizontal: 'center', vertical: 'middle' }
+        })];
+        for (let i = 1; i <= 6; i++) footerDet.push(makeCell('', 's', null, {}));
+        rowsDetail.push(footerDet);
+
+        const wsDetail = XLSX.utils.aoa_to_sheet(rowsDetail);
+        wsDetail['!merges'] = mergesDetail;
         wsDetail['!cols'] = [
           { wch: 24 }, // Colaboradora
           { wch: 18 }, // Fecha
@@ -249,17 +548,18 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
           { wch: 16 }, // Forma de Pago
           { wch: 18 }, // Valor
           { wch: 18 }  // Comisión
-        ]
-        XLSX.utils.book_append_sheet(wb, wsDetail, "Detalle Servicios")
+        ];
+        wsDetail['!rows'] = [{ hpt: 45 }];
+        XLSX.utils.book_append_sheet(wb, wsDetail, 'Detalle Servicios');
 
-        const safeMonthName = meses[selectedMonth].replace(/\s+/g, '_')
-        await exportExcelJS(wb, `Comisiones_Blush_${safeMonthName}_${selectedYear}.xlsx`, { sheetName: "Resumen General", col: 4, row: 0 })
+        const safeMonthName = meses[selectedMonth].replace(/\s+/g, '_');
+        await exportExcelJS(wb, `Comisiones_Blush_${safeMonthName}_${selectedYear}.xlsx`, { sheetName: 'Resumen General', col: 4, row: 0 });
       }
     } catch (err) {
-      console.error('Error al exportar sueldos:', err)
-      alert('Hubo un error al exportar el reporte.')
+      console.error('Error al exportar sueldos:', err);
+      alert('Hubo un error al exportar el reporte: ' + (err.message || 'Error desconocido'));
     }
-  }
+  };
 
   // Guardar Colaboradora (Nueva / Editar)
   const handleSubmitColaboradora = async (e) => {
@@ -407,7 +707,7 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
 
               <div className="flex flex-col justify-end pt-5 w-full sm:w-auto">
                 <button
-                  onClick={handleExportExcel}
+                  onClick={() => handleExportExcel(null)}
                   disabled={comisiones.length === 0}
                   className="flex items-center justify-center gap-2 py-3 px-5 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white rounded-2xl font-black text-xs uppercase tracking-wide transition-all shadow-md shadow-blush-palmLeaf/25 disabled:opacity-50 cursor-pointer w-full"
                 >

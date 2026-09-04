@@ -616,24 +616,52 @@ export const dataService = {
         let offset = 0;
         const limit = 1000;
         let hasMore = true;
+        let withTipo = true;
+
         while (hasMore) {
+          let selectCols = withTipo
+            ? `id, fecha_hora, valor_pagado, forma_pago, no_transferencia, sucursal_id, tipo,
+               cliente_id, servicio_id, personal_id,
+               clientes (id, nombre, cedula, celular, correo),
+               servicios (id, nombre, precio_base, frecuencia_recomendada_dias),
+               personal (id, nombre)`
+            : `id, fecha_hora, valor_pagado, forma_pago, no_transferencia, sucursal_id,
+               cliente_id, servicio_id, personal_id,
+               clientes (id, nombre, cedula, celular, correo),
+               servicios (id, nombre, precio_base, frecuencia_recomendada_dias),
+               personal (id, nombre)`;
+
           let query = supabase
             .from('citas_ventas')
-            .select(`
-              id, fecha_hora, valor_pagado, forma_pago, no_transferencia, sucursal_id, tipo,
-              cliente_id, servicio_id, personal_id,
-              clientes (id, nombre, cedula, celular, correo),
-              servicios (id, nombre, precio_base, frecuencia_recomendada_dias),
-              personal (id, nombre)
-            `);
+            .select(selectCols);
             
           if (rawBranchId) {
             query = query.eq('sucursal_id', rawBranchId);
           }
           
-          const { data: batch, error } = await query
+          let { data: batch, error } = await query
             .range(offset, offset + limit - 1);
+
+          if (error && withTipo && (error.message?.includes('tipo') || error.code === 'PGRST204' || error.code === '42703')) {
+            // Reintentar sin la columna tipo si no existe en Supabase
+            withTipo = false;
+            selectCols = `id, fecha_hora, valor_pagado, forma_pago, no_transferencia, sucursal_id,
+                          cliente_id, servicio_id, personal_id,
+                          clientes (id, nombre, cedula, celular, correo),
+                          servicios (id, nombre, precio_base, frecuencia_recomendada_dias),
+                          personal (id, nombre)`;
+            query = supabase.from('citas_ventas').select(selectCols);
+            if (rawBranchId) {
+              query = query.eq('sucursal_id', rawBranchId);
+            }
+            const retryRes = await query.range(offset, offset + limit - 1);
+            if (retryRes.error) throw retryRes.error;
+            batch = retryRes.data;
+            error = null;
+          }
+
           if (error) throw error;
+
           if (!batch || batch.length === 0) {
             hasMore = false;
           } else {
@@ -644,6 +672,7 @@ export const dataService = {
             }
           }
         }
+
         const mapped = dbData.map(c => {
           if (c.personal && c.personal.nombre) {
             c.personal.nombre = this.resolverNombreEstandar(c.personal.nombre)
@@ -659,25 +688,23 @@ export const dataService = {
         const servicios = getLocal('blush_servicios') || []
         const personal = getLocal('blush_personal') || []
         
-        const localJoined = citas.map(c => {
-          const pers = personal.find(p => p.id === c.personal_id) || {}
-          if (pers.nombre) {
-            pers.nombre = this.resolverNombreEstandar(pers.nombre)
-          }
+        data = citas.map(c => {
+          const cli = clientes.find(cl => cl.id === c.cliente_id)
+          const ser = servicios.find(s => s.id === c.servicio_id)
+          const per = personal.find(p => p.id === c.personal_id)
           return {
             ...c,
             tipo: c.tipo || 'cita',
-            clientes: clientes.find(cl => cl.id === c.cliente_id) || {},
-            servicios: servicios.find(s => s.id === c.servicio_id) || {},
-            personal: pers
+            clientes: cli ? { id: cli.id, nombre: cli.nombre, cedula: cli.cedula, celular: cli.celular, correo: cli.correo } : null,
+            servicios: ser ? { id: ser.id, nombre: ser.nombre, precio_base: ser.precio_base, frecuencia_recomendada_dias: ser.frecuencia_recomendada_dias } : null,
+            personal: per ? { id: per.id, nombre: this.resolverNombreEstandar(per.nombre) } : null
           }
         })
-        this._cache.citas = localJoined
-        data = localJoined
+        const filtered = rawBranchId ? data.filter(c => c.sucursal_id === rawBranchId) : data
+        return [...filtered].sort((a, b) => new Date(b.fecha_hora) - new Date(a.fecha_hora))
       }
     }
-
-    const filtered = branchId ? data.filter(c => c.sucursal_id === branchId) : data
+    const filtered = rawBranchId ? data.filter(c => c.sucursal_id === rawBranchId) : data
     return [...filtered].sort((a, b) => new Date(b.fecha_hora) - new Date(a.fecha_hora))
   },
 
@@ -714,8 +741,15 @@ export const dataService = {
     }))
 
     if (isSupabaseConfigured) {
-      const { data, error } = await supabase.from('citas_ventas').insert(citasConSucursal).select()
-      if (error) throw error
+      let { data, error } = await supabase.from('citas_ventas').insert(citasConSucursal).select()
+      if (error && (error.message?.includes('tipo') || error.code === '42703' || error.code === 'PGRST204')) {
+        const withoutTipo = citasConSucursal.map(({ tipo, ...rest }) => rest)
+        const retry = await supabase.from('citas_ventas').insert(withoutTipo).select()
+        if (retry.error) throw retry.error
+        data = retry.data
+      } else if (error) {
+        throw error
+      }
       this.clearCache('citas')
       return data
     }
@@ -787,8 +821,15 @@ export const dataService = {
     }
 
     if (isSupabaseConfigured) {
-      const { data, error } = await supabase.from('gastos').insert([gastoConSucursal]).select()
-      if (error) throw error
+      let { data, error } = await supabase.from('gastos').insert([gastoConSucursal]).select()
+      if (error && (error.message?.includes('proveedor') || error.code === '42703' || error.code === 'PGRST204')) {
+        const { proveedor, proveedor_ruc, ...withoutProv } = gastoConSucursal
+        const retry = await supabase.from('gastos').insert([withoutProv]).select()
+        if (retry.error) throw retry.error
+        data = retry.data
+      } else if (error) {
+        throw error
+      }
       this.clearCache('gastos')
       return data[0]
     }
@@ -998,11 +1039,7 @@ export const dataService = {
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
 
-    // Considerar sólo visitas de los últimos 3 meses (90 días)
-    const hace90Dias = new Date(hoy)
-    hace90Dias.setDate(hoy.getDate() - 90)
-
-    // Agrupar última cita de cada cliente para cada servicio dentro de los últimos 3 meses
+    // Agrupar última cita de cada cliente para cada servicio
     const ultimasCitas = {}
     const citasFiltradas = branchId ? citas.filter(c => c.sucursal_id === branchId) : citas
     
@@ -1012,8 +1049,6 @@ export const dataService = {
       if (!clienteId || !servicioId) return
 
       const cDate = new Date(c.fecha_hora)
-      if (cDate < hace90Dias) return
-
       const key = `${clienteId}_${servicioId}`
       if (!ultimasCitas[key] || cDate > new Date(ultimasCitas[key].fecha_hora)) {
         ultimasCitas[key] = {

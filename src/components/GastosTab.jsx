@@ -495,7 +495,7 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
         ruc_retenido: '',
         no_retencion: '',
         tipo_impuesto: 'Renta',
-        porcentaje: '1.75',
+        porcentaje: '2',
         base_imponible: '',
         valor_retenido: ''
       })
@@ -1268,15 +1268,10 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                   <select
                     value={formRetencion.porcentaje}
                     onChange={(e) => setFormRetencion({ ...formRetencion, porcentaje: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-xl outline-none transition-all text-xs text-gray-700 cursor-pointer"
+                    className="w-full px-3 py-2 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-xl outline-none transition-all text-xs text-gray-700 cursor-pointer font-bold"
                   >
-                    <option value="1">1% (Bienes)</option>
-                    <option value="1.75">1.75% (Servicios)</option>
-                    <option value="2.75">2.75% (Cargos locales)</option>
-                    <option value="10">10% (Honorarios Prof.)</option>
-                    <option value="30">30% (Retención IVA)</option>
+                    <option value="2">2% (Retención Renta)</option>
                     <option value="70">70% (Retención IVA)</option>
-                    <option value="100">100% (Retención IVA)</option>
                   </select>
                 </div>
               </div>

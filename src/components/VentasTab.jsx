@@ -428,7 +428,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
             servicio_id: nuevoSvc.id,
             nombre_servicio: nuevoSvc.nombre,
             personal_id: form.personal_id,
-            nombre_personal: pers.nombre,
+            nombre_personal: pers ? pers.nombre : 'Sin asignar',
             valor_pagado: precioVal
           }
         ])
@@ -449,7 +449,6 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
           personal_id: '',
           valor_pagado: ''
         }))
-        setServiceSearchText('')
       } catch (err) {
         alert(err.message || 'No se pudo crear el servicio.')
       }
@@ -462,10 +461,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
       }
       const svc = servicios.find(s => s.id === form.servicio_id)
       const pers = personal.find(p => p.id === form.personal_id)
-      const val = Number(form.valor_pagado)
-      if (isNaN(val) || val <= 0) {
-        return alert('El valor cobrado debe ser mayor a 0.')
-      }
+      const val = svc ? Number(svc.precio_base || 0) : 0
 
       setServiciosAgregados([
         ...serviciosAgregados,
@@ -868,40 +864,18 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Colaboradora</label>
-                  <select
-                    value={form.personal_id}
-                    onChange={(e) => setForm({ ...form, personal_id: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 outline-none"
-                  >
-                    <option value="">Seleccione...</option>
-                    {personal.filter(p => p.activo).map(p => (
-                      <option key={p.id} value={p.id}>{p.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Precio Cobrado</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={esNuevoServicio ? nuevoServicioForm.precio_base : form.valor_pagado}
-                    onChange={(e) => {
-                      if (esNuevoServicio) {
-                        setNuevoServicioForm({ ...nuevoServicioForm, precio_base: e.target.value })
-                      } else {
-                        setForm({ ...form, valor_pagado: e.target.value })
-                      }
-                    }}
-                    disabled={esNuevoServicio}
-                    className={`w-full px-3 py-2 border rounded-xl text-xs font-black text-blush-palmLeaf outline-none ${
-                      esNuevoServicio ? 'bg-gray-100/70 border-gray-200 text-blush-palmLeaf/60' : 'bg-white border-gray-200'
-                    }`}
-                  />
-                </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Colaboradora</label>
+                <select
+                  value={form.personal_id}
+                  onChange={(e) => setForm({ ...form, personal_id: e.target.value })}
+                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 outline-none"
+                >
+                  <option value="">Seleccione...</option>
+                  {personal.filter(p => p.activo).map(p => (
+                    <option key={p.id} value={p.id}>{p.nombre}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -1336,41 +1310,19 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Colaboradora</label>
-                      <select
-                        value={form.personal_id}
-                        onChange={(e) => setForm({ ...form, personal_id: e.target.value })}
-                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 outline-none"
-                      >
-                        <option value="">Asignar...</option>
-                        {personal.filter(p => p.activo).map(p => (
-                          <option key={p.id} value={p.id}>{p.nombre}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Precio Cobrado</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={esNuevoServicio ? nuevoServicioForm.precio_base : form.valor_pagado}
-                        onChange={(e) => {
-                          if (esNuevoServicio) {
-                            setNuevoServicioForm({ ...nuevoServicioForm, precio_base: e.target.value })
-                          } else {
-                            setForm({ ...form, valor_pagado: e.target.value })
-                          }
-                        }}
-                        disabled={esNuevoServicio}
-                        className={`w-full px-3 py-2 border rounded-xl text-xs font-black text-blush-palmLeaf outline-none ${
-                          esNuevoServicio ? 'bg-gray-100/70 border-gray-250 text-blush-palmLeaf/60' : 'bg-white border-gray-250'
-                        }`}
-                      />
-                    </div>
-                  </div>
+                  <div>
+                <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Colaboradora</label>
+                <select
+                  value={form.personal_id}
+                  onChange={(e) => setForm({ ...form, personal_id: e.target.value })}
+                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 outline-none"
+                >
+                  <option value="">Seleccione...</option>
+                  {personal.filter(p => p.activo).map(p => (
+                    <option key={p.id} value={p.id}>{p.nombre}</option>
+                  ))}
+                </select>
+              </div>
 
                   <button
                     type="button"

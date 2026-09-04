@@ -114,54 +114,147 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
     setComisiones(comms.sort((a, b) => b.comision - a.comision))
   }
 
-  // Exportar comisiones corregido
-  const handleExportExcel = async () => {
+  // Exportar comisiones (por colaboradora o general con detalle)
+  const handleExportExcel = async (customColab = null) => {
     try {
-      const rows = [
-        ["REPORTE DE SUELDOS Y COMISIONES (40%) - BLUSH BEAUTY STUDIO"],
-        [`Período: ${meses[selectedMonth]} ${selectedYear}`],
-        ["Fecha de Emisión:", new Date().toLocaleString()],
-        [],
-        ["Colaboradora", "Cargo", "Cant. Servicios", "Total Facturado ($)", "Comisión a Pagar (40% $)"]
-      ]
+      const targetColab = customColab || selectedManicuristaDetail
 
-      comisiones.forEach(c => {
+      if (targetColab) {
+        // Exportar detalle específico de la colaboradora seleccionada
+        const rows = [
+          ["REPORTE DETALLADO DE COMISIONES (40%) - BLUSH BEAUTY STUDIO"],
+          [`Colaboradora: ${targetColab.nombre} (${targetColab.cargo || 'Manicurista'})`],
+          [`Período: ${meses[selectedMonth]} ${selectedYear}`],
+          [`Fecha de Emisión: ${new Date().toLocaleString('es-EC')}`],
+          [],
+          ["Fecha", "Cliente", "Servicio Realizado", "Forma de Pago", "Valor Cobrado ($)", "Comisión 40% ($)"]
+        ]
+
+        targetColab.detalles_ventas.forEach(v => {
+          const valCobrado = Number(v.valor_pagado || 0)
+          const comision40 = valCobrado * 0.40
+          const fStr = v.fecha_hora ? new Date(v.fecha_hora).toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
+          rows.push([
+            fStr,
+            v.clientes ? v.clientes.nombre : 'Cliente General',
+            v.servicios ? v.servicios.nombre : 'Servicio',
+            v.forma_pago || 'Efectivo',
+            valCobrado,
+            comision40
+          ])
+        })
+
+        const totalFacturado = targetColab.detalles_ventas.reduce((sum, v) => sum + Number(v.valor_pagado || 0), 0)
+        const totalComision = totalFacturado * 0.40
+
+        rows.push([])
         rows.push([
-          c.nombre,
-          c.cargo,
-          c.total_servicios,
-          c.total_ventas,
-          c.comision
+          "TOTAL GENERAL",
+          "",
+          "",
+          `Cant. Servicios: ${targetColab.detalles_ventas.length}`,
+          totalFacturado,
+          totalComision
         ])
-      })
 
-      const sumServicios = comisiones.reduce((sum, c) => sum + c.total_servicios, 0)
-      const sumFacturado = comisiones.reduce((sum, c) => sum + c.total_ventas, 0)
-      const sumComision = comisiones.reduce((sum, c) => sum + c.comision, 0)
+        const wb = XLSX.utils.book_new()
+        const ws = XLSX.utils.aoa_to_sheet(rows)
+        ws['!cols'] = [
+          { wch: 20 }, // Fecha
+          { wch: 28 }, // Cliente
+          { wch: 30 }, // Servicio
+          { wch: 16 }, // Forma de Pago
+          { wch: 18 }, // Valor Cobrado
+          { wch: 18 }  // Comisión 40%
+        ]
 
-      rows.push([])
-      rows.push([
-        "TOTALES GENERALES",
-        "",
-        sumServicios,
-        sumFacturado,
-        sumComision
-      ])
+        XLSX.utils.book_append_sheet(wb, ws, "Detalle Comisiones")
+        const safeName = targetColab.nombre.replace(/\s+/g, '_')
+        const safeMonthName = meses[selectedMonth].replace(/\s+/g, '_')
+        await exportExcelJS(wb, `Comisiones_${safeName}_${safeMonthName}_${selectedYear}.xlsx`, { sheetName: "Detalle Comisiones", col: 5, row: 0 })
+      } else {
+        // Exportar resumen general de todas las colaboradoras con hoja de desglose
+        const rows = [
+          ["REPORTE DE SUELDOS Y COMISIONES (40%) - BLUSH BEAUTY STUDIO"],
+          [`Período: ${meses[selectedMonth]} ${selectedYear}`],
+          ["Fecha de Emisión:", new Date().toLocaleString('es-EC')],
+          [],
+          ["Colaboradora", "Cargo", "Cant. Servicios", "Total Facturado ($)", "Comisión a Pagar (40% $)"]
+        ]
 
-      const wb = XLSX.utils.book_new()
-      const ws = XLSX.utils.aoa_to_sheet(rows)
-      
-      ws['!cols'] = [
-        { wch: 28 }, // Colaboradora
-        { wch: 18 }, // Cargo
-        { wch: 15 }, // Cant. Servicios
-        { wch: 20 }, // Total Facturado
-        { wch: 22 }  // Comisión a Pagar
-      ]
+        comisiones.forEach(c => {
+          rows.push([
+            c.nombre,
+            c.cargo,
+            c.total_servicios,
+            c.total_ventas,
+            c.comision
+          ])
+        })
 
-      XLSX.utils.book_append_sheet(wb, ws, "Sueldos y Comisiones")
-      const safeMonthName = meses[selectedMonth].replace(/\s+/g, '_')
-      await exportExcelJS(wb, `Comisiones_Blush_${safeMonthName}_${selectedYear}.xlsx`, { sheetName: "Sueldos y Comisiones", col: 4, row: 0 })
+        const sumServicios = comisiones.reduce((sum, c) => sum + c.total_servicios, 0)
+        const sumFacturado = comisiones.reduce((sum, c) => sum + c.total_ventas, 0)
+        const sumComision = comisiones.reduce((sum, c) => sum + c.comision, 0)
+
+        rows.push([])
+        rows.push([
+          "TOTALES GENERALES",
+          "",
+          sumServicios,
+          sumFacturado,
+          sumComision
+        ])
+
+        const wb = XLSX.utils.book_new()
+        const ws = XLSX.utils.aoa_to_sheet(rows)
+        ws['!cols'] = [
+          { wch: 28 }, // Colaboradora
+          { wch: 18 }, // Cargo
+          { wch: 15 }, // Cant. Servicios
+          { wch: 20 }, // Total Facturado
+          { wch: 22 }  // Comisión a Pagar
+        ]
+        XLSX.utils.book_append_sheet(wb, ws, "Resumen General")
+
+        // Hoja adicional con el desglose de todos los servicios
+        const detailRows = [
+          ["DESGLOSE DETALLADO DE SERVICIOS - BLUSH BEAUTY STUDIO"],
+          [`Período: ${meses[selectedMonth]} ${selectedYear}`],
+          [],
+          ["Colaboradora", "Fecha", "Cliente", "Servicio", "Forma de Pago", "Valor Cobrado ($)", "Comisión 40% ($)"]
+        ]
+
+        comisiones.forEach(c => {
+          c.detalles_ventas.forEach(v => {
+            const val = Number(v.valor_pagado || 0)
+            const fStr = v.fecha_hora ? new Date(v.fecha_hora).toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
+            detailRows.push([
+              c.nombre,
+              fStr,
+              v.clientes ? v.clientes.nombre : 'Cliente General',
+              v.servicios ? v.servicios.nombre : 'Servicio',
+              v.forma_pago || 'Efectivo',
+              val,
+              val * 0.40
+            ])
+          })
+        })
+
+        const wsDetail = XLSX.utils.aoa_to_sheet(detailRows)
+        wsDetail['!cols'] = [
+          { wch: 24 }, // Colaboradora
+          { wch: 18 }, // Fecha
+          { wch: 26 }, // Cliente
+          { wch: 28 }, // Servicio
+          { wch: 16 }, // Forma de Pago
+          { wch: 18 }, // Valor
+          { wch: 18 }  // Comisión
+        ]
+        XLSX.utils.book_append_sheet(wb, wsDetail, "Detalle Servicios")
+
+        const safeMonthName = meses[selectedMonth].replace(/\s+/g, '_')
+        await exportExcelJS(wb, `Comisiones_Blush_${safeMonthName}_${selectedYear}.xlsx`, { sheetName: "Resumen General", col: 4, row: 0 })
+      }
     } catch (err) {
       console.error('Error al exportar sueldos:', err)
       alert('Hubo un error al exportar el reporte.')
@@ -408,13 +501,24 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
               <div className="bg-white rounded-3xl border border-gray-150 shadow-sm p-6 flex flex-col justify-between">
                 {selectedManicuristaDetail ? (
                   <div className="space-y-4">
-                    <div className="pb-3 border-b border-gray-100">
-                      <h4 className="text-sm font-black text-gray-800 uppercase tracking-wide">
-                        Detalle: {selectedManicuristaDetail.nombre}
-                      </h4>
-                      <p className="text-[10px] text-gray-400 font-bold mt-0.5">
-                        Servicios en {meses[selectedMonth]} {selectedYear}
-                      </p>
+                    <div className="pb-3 border-b border-gray-100 flex justify-between items-start">
+                      <div>
+                        <h4 className="text-sm font-black text-gray-800 uppercase tracking-wide">
+                          Detalle: {selectedManicuristaDetail.nombre}
+                        </h4>
+                        <p className="text-[10px] text-gray-400 font-bold mt-0.5">
+                          Servicios en {meses[selectedMonth]} {selectedYear}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleExportExcel(selectedManicuristaDetail)}
+                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                        title="Descargar detalle de comisiones en Excel"
+                      >
+                        <FileSpreadsheet size={12} />
+                        Excel
+                      </button>
                     </div>
 
                     <div className="space-y-3 max-h-96 overflow-y-auto pr-1">

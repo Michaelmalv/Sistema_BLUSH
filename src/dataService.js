@@ -777,9 +777,13 @@ export const dataService = {
 
   async registrarGasto(gasto) {
     const user = this.getCurrentUser()
+    let branch = gasto.sucursal_id
+    if (!branch || branch === 'todas' || branch === '11111111-1111-1111-1111-111111111111') {
+      branch = (user && user.sucursal_id) ? user.sucursal_id : null
+    }
     const gastoConSucursal = { 
       ...gasto, 
-      sucursal_id: gasto.sucursal_id || (user ? user.sucursal_id : null) 
+      sucursal_id: branch 
     }
 
     if (isSupabaseConfigured) {
@@ -794,6 +798,47 @@ export const dataService = {
     setLocal('blush_gastos', list)
     this.clearCache('gastos')
     return nuevo
+  },
+
+  async actualizarGasto(id, gasto) {
+    const user = this.getCurrentUser()
+    let branch = gasto.sucursal_id
+    if (branch === 'todas' || branch === '11111111-1111-1111-1111-111111111111') {
+      branch = (user && user.sucursal_id) ? user.sucursal_id : null
+    }
+    const gastoData = {
+      ...gasto,
+      ...(gasto.hasOwnProperty('sucursal_id') ? { sucursal_id: branch } : {})
+    }
+
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase.from('gastos').update(gastoData).eq('id', id).select()
+      if (error) throw error
+      this.clearCache('gastos')
+      return data[0]
+    }
+    const list = getLocal('blush_gastos')
+    const idx = list.findIndex(g => g.id === id)
+    if (idx !== -1) {
+      list[idx] = { ...list[idx], ...gastoData }
+      setLocal('blush_gastos', list)
+    }
+    this.clearCache('gastos')
+    return list[idx]
+  },
+
+  async eliminarGasto(id) {
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from('gastos').delete().eq('id', id)
+      if (error) throw error
+      this.clearCache('gastos')
+      return true
+    }
+    let list = getLocal('blush_gastos')
+    list = list.filter(g => g.id !== id)
+    setLocal('blush_gastos', list)
+    this.clearCache('gastos')
+    return true
   },
 
   // --- PRODUCTOS (INVENTARIO) ---
@@ -953,7 +998,11 @@ export const dataService = {
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
 
-    // Agrupar última cita de cada cliente para cada servicio
+    // Considerar sólo visitas de los últimos 3 meses (90 días)
+    const hace90Dias = new Date(hoy)
+    hace90Dias.setDate(hoy.getDate() - 90)
+
+    // Agrupar última cita de cada cliente para cada servicio dentro de los últimos 3 meses
     const ultimasCitas = {}
     const citasFiltradas = branchId ? citas.filter(c => c.sucursal_id === branchId) : citas
     
@@ -962,8 +1011,10 @@ export const dataService = {
       const servicioId = c.servicio_id || (c.servicios ? c.servicios.id : null)
       if (!clienteId || !servicioId) return
 
-      const key = `${clienteId}_${servicioId}`
       const cDate = new Date(c.fecha_hora)
+      if (cDate < hace90Dias) return
+
+      const key = `${clienteId}_${servicioId}`
       if (!ultimasCitas[key] || cDate > new Date(ultimasCitas[key].fecha_hora)) {
         ultimasCitas[key] = {
           ...c,

@@ -60,6 +60,7 @@ export default function App() {
   const [showPassword, setShowPassword] = useState(false)
   const [notificaciones, setNotificaciones] = useState([])
   const [toasts, setToasts] = useState([])
+  const [notifCategory, setNotifCategory] = useState("todas")
 
   const notificationsRef = useRef(null)
   const configInfoRef = useRef(null)
@@ -854,44 +855,95 @@ export default function App() {
 
               {/* Dropdown de Alertas */}
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                <div className="absolute right-0 mt-2 w-96 bg-white rounded-2xl shadow-2xl border border-gray-150 z-50 overflow-hidden animate-slide-in">
                   <div className="p-3 bg-gray-50 border-b border-gray-150 flex justify-between items-center">
-                    <span className="font-bold text-xs text-gray-700">Alertas Activas</span>
+                    <span className="font-black text-xs text-gray-800 uppercase tracking-wide">Alertas Activas</span>
                     <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-black">
                       {notificaciones.length} Pendientes
                     </span>
                   </div>
+
+                  {/* Filtro interactivo por Categorías */}
+                  <div className="p-2 bg-gray-100/70 border-b border-gray-150 flex flex-wrap gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setNotifCategory('todas')}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition-all cursor-pointer ${
+                        notifCategory === 'todas'
+                          ? 'bg-blush-palmLeaf text-white shadow-xs'
+                          : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                      }`}
+                    >
+                      Todas ({notificaciones.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNotifCategory('stock')}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition-all cursor-pointer ${
+                        notifCategory === 'stock'
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'bg-white text-amber-800 hover:bg-amber-50 border border-amber-200'
+                      }`}
+                    >
+                      Stock ({notificaciones.filter(n => n.type === 'stock').length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNotifCategory('crm')}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition-all cursor-pointer ${
+                        notifCategory === 'crm'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-white text-emerald-800 hover:bg-emerald-50 border border-emerald-200'
+                      }`}
+                    >
+                      CRM ({notificaciones.filter(n => n.type === 'crm').length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNotifCategory('birthday')}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition-all cursor-pointer ${
+                        notifCategory === 'birthday'
+                          ? 'bg-rose-600 text-white shadow-xs'
+                          : 'bg-white text-rose-800 hover:bg-rose-50 border border-rose-200'
+                      }`}
+                    >
+                      Cumpleaños ({notificaciones.filter(n => n.type === 'birthday').length})
+                    </button>
+                  </div>
+
                   <div className="max-h-72 overflow-y-auto divide-y divide-gray-100">
-                    {notificaciones.length === 0 ? (
+                    {notificaciones.filter(n => notifCategory === 'todas' || n.type === notifCategory).length === 0 ? (
                       <div className="p-6 text-center text-xs text-gray-400 font-bold">
-                        🎉 ¡Al día! Sin alertas pendientes.
+                        🎉 Sin alertas en esta categoría.
                       </div>
                     ) : (
-                      notificaciones.map((n) => (
-                        <div key={n.id} className="p-3 hover:bg-gray-50 transition-colors text-xs flex flex-col gap-1">
-                          <div className="flex justify-between items-start">
-                            <span className={`font-black uppercase text-[9px] tracking-wide px-1.5 py-0.5 rounded ${
-                              n.type === 'stock' 
-                                ? 'bg-amber-100 text-amber-800 border border-amber-200' 
-                                : n.type === 'birthday'
-                                ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                                : 'bg-blush-palmLeaf/10 text-blush-palmLeaf border border-blush-palmLeaf/25'
-                            }`}>
-                              {n.title}
-                            </span>
-                            <button
-                              onClick={() => {
-                                setActiveTab(n.tab)
-                                setShowNotifications(false)
-                              }}
-                              className="text-[10px] text-blush-palmLeaf hover:underline font-black cursor-pointer"
-                            >
-                              Ver
-                            </button>
+                      notificaciones
+                        .filter(n => notifCategory === 'todas' || n.type === notifCategory)
+                        .map((n) => (
+                          <div key={n.id} className="p-3 hover:bg-gray-50 transition-colors text-xs flex flex-col gap-1">
+                            <div className="flex justify-between items-start">
+                              <span className={`font-black uppercase text-[9px] tracking-wide px-1.5 py-0.5 rounded ${
+                                n.type === 'stock' 
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-200' 
+                                  : n.type === 'birthday'
+                                  ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                  : 'bg-blush-palmLeaf/10 text-blush-palmLeaf border border-blush-palmLeaf/25'
+                              }`}>
+                                {n.title}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  setActiveTab(n.tab)
+                                  setShowNotifications(false)
+                                }}
+                                className="text-[10px] text-blush-palmLeaf hover:underline font-black cursor-pointer"
+                              >
+                                Ver
+                              </button>
+                            </div>
+                            <p className="text-gray-600 font-bold leading-tight">{n.desc}</p>
                           </div>
-                          <p className="text-gray-600 font-bold leading-tight">{n.desc}</p>
-                        </div>
-                      ))
+                        ))
                     )}
                   </div>
                   <div className="p-2 bg-gray-50 border-t border-gray-100 text-center">

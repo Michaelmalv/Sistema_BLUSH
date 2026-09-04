@@ -324,9 +324,6 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
       if (isNaN(duracionVal) || duracionVal < 5) {
         return alert('La duración debe ser de al menos 5 minutos.')
       }
-      if (!form.personal_id) {
-        return alert('Debe seleccionar la colaboradora para el servicio.')
-      }
 
       try {
         const nuevoSvc = await dataService.registrarServicio({
@@ -336,14 +333,14 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
           frecuencia_recomendada_dias: nuevoServicioForm.frecuencia_recomendada_dias ? Number(nuevoServicioForm.frecuencia_recomendada_dias) : null
         })
 
-        const pers = personal.find(p => p.id === form.personal_id)
+        const pers = form.personal_id ? personal.find(p => p.id === form.personal_id) : null
         setServiciosAgregados([
           ...serviciosAgregados,
           {
             servicio_id: nuevoSvc.id,
             nombre_servicio: nuevoSvc.nombre,
-            personal_id: form.personal_id,
-            nombre_personal: pers.nombre,
+            personal_id: form.personal_id || null,
+            nombre_personal: pers ? pers.nombre : 'Sin asignar',
             valor_pagado: precioVal
           }
         ])
@@ -371,20 +368,17 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
       if (!form.servicio_id) {
         return alert('Debe seleccionar un servicio.')
       }
-      if (!form.personal_id) {
-        return alert('Debe seleccionar una colaboradora.')
-      }
       const svc = servicios.find(s => s.id === form.servicio_id)
-      const pers = personal.find(p => p.id === form.personal_id)
-      const val = svc ? svc.precio_base : 0
+      const pers = form.personal_id ? personal.find(p => p.id === form.personal_id) : null
+      const val = svc ? Number(svc.precio_base || 0) : 0
 
       setServiciosAgregados([
         ...serviciosAgregados,
         {
           servicio_id: form.servicio_id,
-          nombre_servicio: svc.nombre,
-          personal_id: form.personal_id,
-          nombre_personal: pers.nombre,
+          nombre_servicio: svc ? svc.nombre : 'Servicio',
+          personal_id: form.personal_id || null,
+          nombre_personal: pers ? pers.nombre : 'Sin asignar',
           valor_pagado: val
         }
       ])
@@ -421,26 +415,22 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
           throw new Error('El nombre solo debe contener letras y espacios.');
         }
 
-        const cedulaLimpia = form.nuevo_cedula.trim();
+        const cedulaLimpia = form.nuevo_cedula ? form.nuevo_cedula.trim() : '';
         if (cedulaLimpia) {
           if (/\D/.test(cedulaLimpia)) {
             throw new Error('La cédula solo debe contener números.');
           }
-          if (cedulaLimpia.length !== 10) {
-            throw new Error('La cédula ecuatoriana debe tener exactamente 10 dígitos.');
-          }
-          if (!dataService.validarCedulaEcuatoriana(cedulaLimpia)) {
-            throw new Error('La cédula ingresada no es válida en Ecuador.');
+          if (cedulaLimpia.length === 10) {
+            if (!dataService.validarCedulaEcuatoriana(cedulaLimpia)) {
+              throw new Error('La cédula ingresada no es válida en Ecuador.');
+            }
           }
         }
 
-        const celularLimpio = form.nuevo_celular.trim();
+        const celularLimpio = form.nuevo_celular ? form.nuevo_celular.trim() : '';
         if (celularLimpio) {
           if (/\D/.test(celularLimpio)) {
             throw new Error('El celular solo debe contener números.');
-          }
-          if (celularLimpio.length !== 10) {
-            throw new Error('El celular debe tener exactamente 10 dígitos.');
           }
         }
 
@@ -471,18 +461,15 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
       let listToSave = [...serviciosAgregados]
       if (listToSave.length === 0) {
         if (form.servicio_id) {
-          if (!form.personal_id) {
-            throw new Error('Debe seleccionar una colaboradora.')
-          }
-          const val = Number(form.valor_pagado)
           const svc = servicios.find(s => s.id === form.servicio_id)
-          const pers = personal.find(p => p.id === form.personal_id)
+          const pers = form.personal_id ? personal.find(p => p.id === form.personal_id) : null
+          const val = svc ? Number(svc.precio_base || 0) : 0
           listToSave.push({
             servicio_id: form.servicio_id,
-            nombre_servicio: svc.nombre,
-            personal_id: form.personal_id,
-            nombre_personal: pers.nombre,
-            valor_pagado: val || 0.00
+            nombre_servicio: svc ? svc.nombre : 'Servicio',
+            personal_id: form.personal_id || null,
+            nombre_personal: pers ? pers.nombre : 'Sin asignar',
+            valor_pagado: val
           })
         } else {
           throw new Error('Debe agregar al menos un servicio a la cita.')
@@ -944,40 +931,18 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Colaboradora</label>
-                  <select
-                    value={form.personal_id}
-                    onChange={(e) => setForm({ ...form, personal_id: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 outline-none"
-                  >
-                    <option value="">Asignar...</option>
-                    {personal.filter(p => p.activo).map(p => (
-                      <option key={p.id} value={p.id}>{p.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Precio Cobrado</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={esNuevoServicio ? nuevoServicioForm.precio_base : form.valor_pagado}
-                    onChange={(e) => {
-                      if (esNuevoServicio) {
-                        setNuevoServicioForm({ ...nuevoServicioForm, precio_base: e.target.value })
-                      } else {
-                        setForm({ ...form, valor_pagado: e.target.value })
-                      }
-                    }}
-                    disabled={esNuevoServicio}
-                    className={`w-full px-3 py-2 border rounded-xl text-xs font-black text-blush-palmLeaf outline-none ${
-                      esNuevoServicio ? 'bg-gray-100/70 border-gray-200 text-blush-palmLeaf/60' : 'bg-white border-gray-200'
-                    }`}
-                  />
-                </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Colaboradora (Opcional)</label>
+                <select
+                  value={form.personal_id}
+                  onChange={(e) => setForm({ ...form, personal_id: e.target.value })}
+                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 outline-none"
+                >
+                  <option value="">Sin asignar / Opcional</option>
+                  {personal.filter(p => p.activo).map(p => (
+                    <option key={p.id} value={p.id}>{p.nombre}</option>
+                  ))}
+                </select>
               </div>
 
               <button
@@ -1856,41 +1821,19 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Colaboradora</label>
-                        <select
-                          value={form.personal_id}
-                          onChange={(e) => setForm({ ...form, personal_id: e.target.value })}
-                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 outline-none"
-                        >
-                          <option value="">Asignar...</option>
-                          {personal.filter(p => p.activo).map(p => (
-                            <option key={p.id} value={p.id}>{p.nombre}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Precio Cobrado</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={esNuevoServicio ? nuevoServicioForm.precio_base : form.valor_pagado}
-                          onChange={(e) => {
-                            if (esNuevoServicio) {
-                              setNuevoServicioForm({ ...nuevoServicioForm, precio_base: e.target.value })
-                            } else {
-                              setForm({ ...form, valor_pagado: e.target.value })
-                            }
-                          }}
-                          disabled={esNuevoServicio}
-                          className={`w-full px-3 py-2 border rounded-xl text-xs font-black text-blush-palmLeaf outline-none ${
-                            esNuevoServicio ? 'bg-gray-100/70 border-gray-250 text-blush-palmLeaf/60' : 'bg-white border-gray-250'
-                          }`}
-                        />
-                      </div>
-                    </div>
+                    <div>
+                <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Colaboradora (Opcional)</label>
+                <select
+                  value={form.personal_id}
+                  onChange={(e) => setForm({ ...form, personal_id: e.target.value })}
+                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 outline-none"
+                >
+                  <option value="">Sin asignar / Opcional</option>
+                  {personal.filter(p => p.activo).map(p => (
+                    <option key={p.id} value={p.id}>{p.nombre}</option>
+                  ))}
+                </select>
+              </div>
 
                     <button
                       type="button"

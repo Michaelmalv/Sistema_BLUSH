@@ -55,26 +55,22 @@ export default function ClientesTab({ activeTab }) {
         throw new Error('El nombre solo debe contener letras y espacios.');
       }
 
-      const cedulaLimpia = form.cedula.trim()
+      const cedulaLimpia = form.cedula ? form.cedula.trim() : ''
       if (cedulaLimpia) {
         if (/\D/.test(cedulaLimpia)) {
           throw new Error('La cédula solo debe contener números.');
         }
-        if (cedulaLimpia.length !== 10) {
-          throw new Error('La cédula ecuatoriana debe tener exactamente 10 dígitos.');
-        }
-        if (!dataService.validarCedulaEcuatoriana(cedulaLimpia)) {
-          throw new Error('La cédula ingresada no es válida en Ecuador.');
+        if (cedulaLimpia.length === 10) {
+          if (!dataService.validarCedulaEcuatoriana(cedulaLimpia)) {
+            throw new Error('La cédula ingresada no es válida en Ecuador.');
+          }
         }
       }
 
-      const celularLimpia = form.celular.trim()
+      const celularLimpia = form.celular ? form.celular.trim() : ''
       if (celularLimpia) {
         if (/\D/.test(celularLimpia)) {
           throw new Error('El celular solo debe contener números.');
-        }
-        if (celularLimpia.length !== 10) {
-          throw new Error('El celular debe tener exactamente 10 dígitos.');
         }
       }
 
@@ -239,7 +235,6 @@ export default function ClientesTab({ activeTab }) {
                 value={editingId ? '' : form.nombre}
                 onChange={(e) => setForm({ ...form, nombre: e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '') })}
                 className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700"
-                required
                 disabled={!!editingId}
               />
             </div>
@@ -368,7 +363,6 @@ export default function ClientesTab({ activeTab }) {
                   value={form.nombre}
                   onChange={(e) => setForm({ ...form, nombre: e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '') })}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf focus:bg-white text-gray-700"
-                  required
                 />
               </div>
               <div>

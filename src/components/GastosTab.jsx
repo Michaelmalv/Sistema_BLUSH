@@ -14,7 +14,8 @@ import {
   TrendingDown,
   Info,
   Scale,
-  Edit3
+  Edit3,
+  X
 } from 'lucide-react'
 import { dataService } from '../dataService'
 import defaultRetenciones from '../retenciones_import.json'
@@ -38,6 +39,8 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
   const [form, setForm] = useState({
     fecha: new Date().toISOString().split('T')[0],
     factura: '',
+    proveedor: '',
+    proveedor_ruc: '',
     concepto: '',
     categoria: 'Otros',
     cantidad: 1,
@@ -59,13 +62,90 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
     ruc_retenido: '',
     no_retencion: '',
     tipo_impuesto: 'Renta',
-    porcentaje: '1.75',
+    porcentaje: '2',
     base_imponible: '',
     valor_retenido: ''
   })
 
   const [msg, setMsg] = useState({ type: '', text: '' })
   const [msgRet, setMsgRet] = useState({ type: '', text: '' })
+  // Estado para Edición de Egreso
+  const [editingGasto, setEditingGasto] = useState(null)
+  const [editGastoForm, setEditGastoForm] = useState({
+    fecha: '',
+    factura: '',
+    proveedor: '',
+    proveedor_ruc: '',
+    concepto: '',
+    categoria: 'Otros',
+    cantidad: 1,
+    valor_unitario: '',
+    total: '',
+    forma_pago: 'Efectivo',
+    cuenta: 'Caja Principal'
+  })
+  const [editGastoMsg, setEditGastoMsg] = useState('')
+
+  const handleStartEditGasto = (g) => {
+    setEditingGasto(g)
+    setEditGastoForm({
+      fecha: g.fecha || new Date().toISOString().split('T')[0],
+      factura: g.factura || '',
+      proveedor: g.proveedor || '',
+      proveedor_ruc: g.proveedor_ruc || '',
+      concepto: g.concepto || '',
+      categoria: g.categoria || 'Otros',
+      cantidad: g.cantidad || 1,
+      valor_unitario: g.valor_unitario !== undefined ? g.valor_unitario : '',
+      total: g.total !== undefined ? g.total : '',
+      forma_pago: g.forma_pago || 'Efectivo',
+      cuenta: g.cuenta || 'Caja Principal'
+    })
+    setEditGastoMsg('')
+  }
+
+  const handleSaveGastoEdit = async (e) => {
+    e.preventDefault()
+    setEditGastoMsg('')
+    try {
+      if (!editGastoForm.fecha) throw new Error('La fecha es requerida.')
+      if (!editGastoForm.concepto.trim()) throw new Error('El concepto es requerido.')
+      if (!editGastoForm.total || Number(editGastoForm.total) <= 0) throw new Error('El total debe ser mayor a 0.')
+
+      const payload = {
+        fecha: editGastoForm.fecha,
+        factura: editGastoForm.factura.trim() || null,
+        proveedor: editGastoForm.proveedor.trim() || null,
+        proveedor_ruc: editGastoForm.proveedor_ruc.trim() || null,
+        concepto: editGastoForm.concepto.trim(),
+        categoria: editGastoForm.categoria,
+        cantidad: Number(editGastoForm.cantidad || 1),
+        valor_unitario: Number(editGastoForm.valor_unitario || editGastoForm.total),
+        total: Number(editGastoForm.total),
+        forma_pago: editGastoForm.forma_pago,
+        cuenta: editGastoForm.cuenta
+      }
+
+      await dataService.actualizarGasto(editingGasto.id, payload)
+      setEditingGasto(null)
+      loadData()
+    } catch (err) {
+      setEditGastoMsg(err.message || 'Error al actualizar egreso.')
+    }
+  }
+
+  const handleDeleteGasto = async (id) => {
+    if (window.confirm('¿Seguro que deseas eliminar este registro de egreso?')) {
+      try {
+        await dataService.eliminarGasto(id)
+        if (editingGasto && editingGasto.id === id) setEditingGasto(null)
+        loadData()
+      } catch (err) {
+        alert('Error al eliminar egreso: ' + err.message)
+      }
+    }
+  }
+
 
   const [editingProduct, setEditingProduct] = useState(null)
   const [editProductForm, setEditProductForm] = useState({
@@ -244,6 +324,14 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
   }
 
   // Auto-calcular total de egreso
+  
+  useEffect(() => {
+    if (editGastoForm.cantidad && editGastoForm.valor_unitario) {
+      const tot = (Number(editGastoForm.cantidad) * Number(editGastoForm.valor_unitario)).toFixed(2)
+      setEditGastoForm(prev => ({ ...prev, total: tot }))
+    }
+  }, [editGastoForm.cantidad, editGastoForm.valor_unitario])
+
   useEffect(() => {
     if (form.cantidad && form.valor_unitario) {
       const tot = (Number(form.cantidad) * Number(form.valor_unitario)).toFixed(2)
@@ -288,7 +376,9 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
           // 1. Registrar gasto
           await dataService.registrarGasto({
             fecha: form.fecha,
-            factura: form.factura || null,
+            factura: form.factura ? form.factura.trim() : null,
+            proveedor: form.proveedor ? form.proveedor.trim() : null,
+            proveedor_ruc: form.proveedor_ruc ? form.proveedor_ruc.trim() : null,
             cantidad: Number(item.cantidad),
             concepto: item.concepto,
             categoria: form.categoria,
@@ -296,7 +386,7 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
             total: itemTotal,
             forma_pago: form.forma_pago,
             cuenta: form.cuenta,
-            sucursal_id: selectedBranchId || '11111111-1111-1111-1111-111111111111'
+            sucursal_id: (selectedBranchId && selectedBranchId !== 'todas' && selectedBranchId !== '11111111-1111-1111-1111-111111111111') ? selectedBranchId : null
           })
 
           // 2. Incrementar stock de inventario
@@ -326,7 +416,9 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
 
         await dataService.registrarGasto({
           fecha: form.fecha,
-          factura: form.factura || null,
+          factura: form.factura ? form.factura.trim() : null,
+          proveedor: form.proveedor ? form.proveedor.trim() : null,
+          proveedor_ruc: form.proveedor_ruc ? form.proveedor_ruc.trim() : null,
           cantidad: Number(form.cantidad),
           concepto: form.concepto,
           categoria: form.categoria,
@@ -334,7 +426,7 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
           total: Number(form.total),
           forma_pago: form.forma_pago,
           cuenta: form.cuenta,
-          sucursal_id: selectedBranchId || '11111111-1111-1111-1111-111111111111'
+          sucursal_id: (selectedBranchId && selectedBranchId !== 'todas' && selectedBranchId !== '11111111-1111-1111-1111-111111111111') ? selectedBranchId : null
         })
 
         setMsg({ type: 'success', text: '✅ Egreso registrado con éxito.' })
@@ -344,6 +436,8 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
       setForm({
         fecha: new Date().toISOString().split('T')[0],
         factura: '',
+        proveedor: '',
+        proveedor_ruc: '',
         concepto: '',
         categoria: 'Otros',
         cantidad: 1,
@@ -420,13 +514,94 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
   }
 
   // Exportar Retenciones a Excel
+  
+  // Exportar Egresos a Excel
+  const handleExportEgresosExcel = async () => {
+    try {
+      const rows = [
+        ["REPORTE GENERAL DE EGRESOS - BLUSH BEAUTY STUDIO"],
+        ["Fecha de Generación:", new Date().toLocaleString('es-EC')],
+        [],
+        [
+          "Fecha",
+          "No. Factura",
+          "Proveedor",
+          "RUC Proveedor",
+          "Concepto / Detalle",
+          "Categoría",
+          "Cantidad",
+          "Valor Unitario ($)",
+          "Total ($)",
+          "Forma de Pago",
+          "Caja / Cuenta"
+        ]
+      ]
+
+      filteredGastos.forEach(g => {
+        rows.push([
+          g.fecha,
+          g.factura || 'S/N',
+          g.proveedor || 'N/A',
+          g.proveedor_ruc || 'N/A',
+          g.concepto || '',
+          g.categoria || 'Otros',
+          Number(g.cantidad || 1),
+          Number(g.valor_unitario || g.total || 0),
+          Number(g.total || 0),
+          g.forma_pago || 'Efectivo',
+          g.cuenta || 'Caja Principal'
+        ])
+      })
+
+      const totalSuma = filteredGastos.reduce((sum, g) => sum + Number(g.total || 0), 0)
+      rows.push([])
+      rows.push([
+        "TOTAL GENERAL",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        totalSuma,
+        "",
+        ""
+      ])
+
+      const wb = XLSX.utils.book_new()
+      const ws = XLSX.utils.aoa_to_sheet(rows)
+
+      ws['!cols'] = [
+        { wch: 14 }, // Fecha
+        { wch: 18 }, // Factura
+        { wch: 25 }, // Proveedor
+        { wch: 18 }, // RUC
+        { wch: 32 }, // Concepto
+        { wch: 20 }, // Categoria
+        { wch: 10 }, // Cantidad
+        { wch: 18 }, // Valor Unitario
+        { wch: 15 }, // Total
+        { wch: 16 }, // Forma Pago
+        { wch: 18 }  // Cuenta
+      ]
+
+      XLSX.utils.book_append_sheet(wb, ws, "Egresos")
+      const filename = "Egresos_Blush_" + new Date().toISOString().split('T')[0] + ".xlsx"
+      await exportExcelJS(wb, filename, { sheetName: "Egresos", col: 8, row: 0 })
+    } catch (e) {
+      console.error('Error al exportar egresos:', e)
+      alert('Error al exportar reporte de egresos.')
+    }
+  }
+
   const handleExportRetenciones = async () => {
     try {
       const rows = [
         ["REPORTE DE RETENCIONES MANUALES - BLUSH BEAUTY STUDIO"],
         ["Fecha de Generación:", new Date().toLocaleString()],
         [],
-        ["Fecha", "RUC Emisor", "RUC Retenido", "No. Retención", "Impuesto", "%", "Base Imponible", "Valor Retenido"]
+        ["Fecha", "RUC Emisor", "Razón Social", "No. Retención", "Impuesto", "%", "Base Imponible", "Valor Retenido"]
       ]
 
       retenciones.forEach(r => {
@@ -460,6 +635,8 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
       return (
         (g.concepto && String(g.concepto).toLowerCase().includes(q)) ||
         (g.factura && String(g.factura).toLowerCase().includes(q)) ||
+        (g.proveedor && String(g.proveedor).toLowerCase().includes(q)) ||
+        (g.proveedor_ruc && String(g.proveedor_ruc).toLowerCase().includes(q)) ||
         (g.categoria && String(g.categoria).toLowerCase().includes(q)) ||
         (g.forma_pago && String(g.forma_pago).toLowerCase().includes(q))
       )
@@ -476,7 +653,9 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
       if (!groups[key]) {
         groups[key] = {
           facturaKey: key,
-          facturaLabel: isNoFact ? 'Gastos sin Factura / Proveedor' : g.factura,
+          facturaLabel: isNoFact ? 'Gastos sin Factura' : g.factura,
+          proveedor: g.proveedor || '',
+          proveedor_ruc: g.proveedor_ruc || '',
           isIndividual: isNoFact,
           fecha: g.fecha,
           forma_pago: g.forma_pago,
@@ -1048,7 +1227,7 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">RUC Retenido</label>
+                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Razón Social</label>
                 <input
                   type="text"
                   placeholder="Ej. 1792223334001"
@@ -1180,7 +1359,7 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                   <tr className="border-b border-gray-200 text-gray-400 text-xxs font-black uppercase tracking-wider bg-gray-50/50">
                     <th className="py-3 px-3">Fecha</th>
                     <th className="py-3 px-2">RUC Emisor</th>
-                    <th className="py-3 px-2">RUC Retenido</th>
+                    <th className="py-3 px-3">Razón Social</th>
                     <th className="py-3 px-2">No. Retención</th>
                     <th className="py-3 px-2 text-center">Impuesto</th>
                     <th className="py-3 px-2 text-right">Base Imponible</th>
@@ -1228,6 +1407,206 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
           </div>
         </div>
       )}
+      
+      {/* MODAL DE EDICIÓN DE EGRESO */}
+      {editingGasto && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white w-full max-w-lg rounded-3xl p-6 shadow-2xl border border-gray-150 relative animate-slide-in my-8">
+            <button
+              onClick={() => setEditingGasto(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="mb-4">
+              <h3 className="text-lg font-black text-blush-palmLeaf flex items-center gap-2 uppercase tracking-wide">
+                <Edit3 size={18} />
+                Editar Registro de Egreso
+              </h3>
+              <p className="text-xs text-gray-400 font-medium">Modifica los detalles del gasto o factura ingresada.</p>
+            </div>
+
+            <form onSubmit={handleSaveGastoEdit} className="space-y-4 text-xs font-bold text-gray-700">
+              <div>
+                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Fecha</label>
+                <input
+                  type="date"
+                  value={editGastoForm.fecha}
+                  onChange={(e) => setEditGastoForm({ ...editGastoForm, fecha: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl outline-none focus:border-blush-palmLeaf focus:bg-white text-xs font-bold text-gray-800"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">No. Factura</label>
+                <input
+                  type="text"
+                  placeholder="Ej. FAC-0034"
+                  value={editGastoForm.factura}
+                  onChange={(e) => setEditGastoForm({ ...editGastoForm, factura: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl outline-none focus:border-blush-palmLeaf focus:bg-white text-xs text-gray-800"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Proveedor</label>
+                  <input
+                    type="text"
+                    placeholder="Ej. Distribuidora OPI"
+                    value={editGastoForm.proveedor}
+                    onChange={(e) => setEditGastoForm({ ...editGastoForm, proveedor: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl outline-none focus:border-blush-palmLeaf focus:bg-white text-xs text-gray-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">RUC Proveedor</label>
+                  <input
+                    type="text"
+                    placeholder="Ej. 1792938475001"
+                    value={editGastoForm.proveedor_ruc}
+                    onChange={(e) => setEditGastoForm({ ...editGastoForm, proveedor_ruc: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl outline-none focus:border-blush-palmLeaf focus:bg-white text-xs text-gray-800"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Concepto / Detalle</label>
+                <input
+                  type="text"
+                  value={editGastoForm.concepto}
+                  onChange={(e) => setEditGastoForm({ ...editGastoForm, concepto: e.target.value })}
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-250 rounded-xl outline-none focus:border-blush-palmLeaf focus:bg-white text-xs font-black text-gray-850"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Categoría</label>
+                  <select
+                    value={editGastoForm.categoria}
+                    onChange={(e) => setEditGastoForm({ ...editGastoForm, categoria: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl outline-none text-xs text-gray-700 cursor-pointer"
+                  >
+                    <option value="Insumos">Insumos (Uñas, Cremas, Algodón)</option>
+                    <option value="Alquiler">Alquiler del Local</option>
+                    <option value="Servicios Básicos">Servicios Básicos</option>
+                    <option value="Nómina / Comisiones">Nómina / Comisiones</option>
+                    <option value="Marketing / Publicidad">Marketing / Publicidad</option>
+                    <option value="Equipos / Mobiliario">Equipos / Mobiliario</option>
+                    <option value="Otros">Otros Egresos</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Cantidad</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editGastoForm.cantidad}
+                    onChange={(e) => setEditGastoForm({ ...editGastoForm, cantidad: e.target.value.replace(/-/g, '') })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl outline-none text-xs text-gray-700 font-bold"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Valor Unitario ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={editGastoForm.valor_unitario}
+                    onChange={(e) => setEditGastoForm({ ...editGastoForm, valor_unitario: e.target.value.replace(/-/g, '') })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl outline-none text-xs text-gray-700 font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Total ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder="0.00"
+                    value={editGastoForm.total}
+                    onChange={(e) => setEditGastoForm({ ...editGastoForm, total: e.target.value.replace(/-/g, '') })}
+                    className="w-full px-3 py-2 bg-rose-50 border-2 border-rose-200 rounded-xl outline-none text-xs text-rose-700 font-black"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Método de Pago</label>
+                  <select
+                    value={editGastoForm.forma_pago}
+                    onChange={(e) => setEditGastoForm({ ...editGastoForm, forma_pago: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl outline-none text-xs text-gray-700 cursor-pointer"
+                  >
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Deuna">Deuna</option>
+                    <option value="Transferencia">Transferencia</option>
+                    <option value="Tarjeta">Tarjeta</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Caja / Fondos</label>
+                  <select
+                    value={editGastoForm.cuenta}
+                    onChange={(e) => setEditGastoForm({ ...editGastoForm, cuenta: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl outline-none text-xs text-gray-700 cursor-pointer"
+                  >
+                    <option value="Caja Principal">Caja Principal</option>
+                    <option value="Cuenta Corriente">Cuenta Corriente</option>
+                  </select>
+                </div>
+              </div>
+
+              {editGastoMsg && (
+                <div className="p-3 bg-red-50 text-red-800 border border-red-200 text-xs rounded-xl font-bold text-center">
+                  {editGastoMsg}
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm text-center"
+                >
+                  Guardar Cambios
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteGasto(editingGasto.id)}
+                  className="py-3 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer border border-rose-200"
+                  title="Eliminar este gasto"
+                >
+                  <Trash2 size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingGasto(null)}
+                  className="py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* MODAL DE EDICIÓN DE PRODUCTO / INSUMO */}
       {editingProduct && createPortal(
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">

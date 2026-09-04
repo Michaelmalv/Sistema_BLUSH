@@ -664,6 +664,8 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
           items: []
         }
       }
+      if (!groups[key].proveedor && g.proveedor) groups[key].proveedor = g.proveedor
+      if (!groups[key].proveedor_ruc && g.proveedor_ruc) groups[key].proveedor_ruc = g.proveedor_ruc
       groups[key].items.push(g)
       groups[key].total += Number(g.total)
     })
@@ -764,13 +766,37 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                 />
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">No. Factura</label>
+                  <input
+                    type="text"
+                    placeholder="Ej. FAC-0034"
+                    value={form.factura}
+                    onChange={(e) => setForm({ ...form, factura: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-2xl outline-none transition-all text-sm font-bold text-gray-700"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Proveedor</label>
+                  <input
+                    type="text"
+                    placeholder="Ej. Distribuidora Belleza S.A."
+                    value={form.proveedor}
+                    onChange={(e) => setForm({ ...form, proveedor: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-2xl outline-none transition-all text-sm font-bold text-gray-700"
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">No. Factura / Proveedor</label>
+                <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">RUC Proveedor (Opcional)</label>
                 <input
                   type="text"
-                  placeholder="Ej. FAC-0034 o Distribuidora"
-                  value={form.factura}
-                  onChange={(e) => setForm({ ...form, factura: e.target.value })}
+                  placeholder="Ej. 1792345678001"
+                  value={form.proveedor_ruc}
+                  onChange={(e) => setForm({ ...form, proveedor_ruc: e.target.value.replace(/\D/g, '').slice(0, 13) })}
                   className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-2xl outline-none transition-all text-sm font-bold text-gray-700"
                 />
               </div>
@@ -1043,10 +1069,20 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                   >
                     <div className="p-4 bg-white border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="font-black text-sm text-gray-800 uppercase tracking-wide">
-                            {group.isIndividual ? 'Gastos Varios' : `Factura / Proveedor: ${group.facturaLabel}`}
+                            {group.isIndividual ? 'Gastos Varios' : `Factura: ${group.facturaLabel}`}
                           </span>
+                          {group.proveedor && (
+                            <span className="px-2 py-0.5 bg-blush-seashell/60 border border-blush-palmLeaf/30 text-blush-palmLeaf font-bold text-xs rounded-lg">
+                              Proveedor: {group.proveedor}
+                            </span>
+                          )}
+                          {group.proveedor_ruc && (
+                            <span className="px-2 py-0.5 bg-gray-100 border border-gray-200 text-gray-600 font-mono text-[10px] rounded-lg">
+                              RUC: {group.proveedor_ruc}
+                            </span>
+                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-3 text-[10px] text-gray-400 font-black uppercase mt-1">
                           <span className="flex items-center gap-1">
@@ -1077,6 +1113,7 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                               <th className="pb-2 text-center">Cantidad</th>
                               <th className="pb-2 text-right">Precio Unit. ($)</th>
                               <th className="pb-2 text-right">Subtotal ($)</th>
+                              <th className="pb-2 text-center">Acciones</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-150 text-gray-700 font-bold">
@@ -1091,6 +1128,26 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                                 <td className="py-2.5 text-center">{Number(item.cantidad)} u</td>
                                 <td className="py-2.5 text-right">${Number(item.valor_unitario).toFixed(2)}</td>
                                 <td className="py-2.5 text-right text-gray-800">${Number(item.total).toFixed(2)}</td>
+                                <td className="py-2.5 text-center">
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleStartEditGasto(item)}
+                                      className="p-1.5 text-blush-palmLeaf hover:bg-blush-seashell/60 rounded-lg transition-colors cursor-pointer"
+                                      title="Editar este Egreso"
+                                    >
+                                      <Edit3 size={15} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteGasto(item.id)}
+                                      className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                      title="Eliminar este Egreso"
+                                    >
+                                      <Trash2 size={15} />
+                                    </button>
+                                  </div>
+                                </td>
                               </tr>
                             ))}
                           </tbody>

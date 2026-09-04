@@ -122,7 +122,7 @@ export default function App() {
       const lowStock = prods.filter(p => p.stock_actual <= p.stock_minimo)
 
       const crmList = await dataService.getClientesPorRecontactar()
-      const pendingCrm = crmList.filter(c => c.dias_retraso >= -1)
+      const pendingCrm = crmList.filter(c => c.dias_retraso >= -1 && c.dias_retraso <= 90 && c.cliente_nombre && !c.cliente_nombre.toLowerCase().includes('consumidor final'))
 
       const allClients = await dataService.getClientes()
       const upcomingBirthdays = allClients.filter(c => {

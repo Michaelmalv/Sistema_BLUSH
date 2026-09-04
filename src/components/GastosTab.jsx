@@ -515,85 +515,242 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
 
   // Exportar Retenciones a Excel
   
-  // Exportar Egresos a Excel
+  // Exportar Egresos a Excel con diseño premium
   const handleExportEgresosExcel = async () => {
     try {
-      const rows = [
-        ["REPORTE GENERAL DE EGRESOS - BLUSH BEAUTY STUDIO"],
-        ["Fecha de Generación:", new Date().toLocaleString('es-EC')],
-        [],
-        [
-          "Fecha",
-          "No. Factura",
-          "Proveedor",
-          "RUC Proveedor",
-          "Concepto / Detalle",
-          "Categoría",
-          "Cantidad",
-          "Valor Unitario ($)",
-          "Total ($)",
-          "Forma de Pago",
-          "Caja / Cuenta"
-        ]
-      ]
+      const makeCell = (val, type, format = null, style = {}) => {
+        const cell = { v: val, t: type };
+        if (format) cell.z = format;
+        cell.s = {
+          font: { name: 'Segoe UI', size: 9.5, ...style.font },
+          alignment: { vertical: 'middle', ...style.alignment },
+          fill: style.fill || undefined,
+          border: style.border || undefined
+        };
+        return cell;
+      };
 
-      filteredGastos.forEach(g => {
-        rows.push([
-          g.fecha,
-          g.factura || 'S/N',
-          g.proveedor || 'N/A',
-          g.proveedor_ruc || 'N/A',
-          g.concepto || '',
-          g.categoria || 'Otros',
-          Number(g.cantidad || 1),
-          Number(g.valor_unitario || g.total || 0),
-          Number(g.total || 0),
-          g.forma_pago || 'Efectivo',
-          g.cuenta || 'Caja Principal'
-        ])
-      })
+      const baseFont = { name: 'Segoe UI', size: 9.5 };
+      const tableBorder = {
+        top: { style: 'thin', color: { rgb: 'E5E7EB' } },
+        bottom: { style: 'thin', color: { rgb: 'E5E7EB' } },
+        left: { style: 'thin', color: { rgb: 'E5E7EB' } },
+        right: { style: 'thin', color: { rgb: 'E5E7EB' } }
+      };
 
-      const totalSuma = filteredGastos.reduce((sum, g) => sum + Number(g.total || 0), 0)
-      rows.push([])
+      const headerStyle = (bgColorHex = '748843') => ({
+        font: { name: 'Segoe UI', size: 10, bold: true, color: { rgb: 'FFFFFF' } },
+        fill: { fgColor: { rgb: bgColorHex } },
+        alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+        border: {
+          top: { style: 'thin', color: { rgb: bgColorHex } },
+          bottom: { style: 'thin', color: { rgb: bgColorHex } },
+          left: { style: 'thin', color: { rgb: bgColorHex } },
+          right: { style: 'thin', color: { rgb: bgColorHex } }
+        }
+      });
+
+      const cellTextLeft = (bg = 'FFFFFF') => ({
+        font: baseFont,
+        fill: bg !== 'FFFFFF' ? { fgColor: { rgb: bg } } : undefined,
+        alignment: { horizontal: 'left', vertical: 'middle' },
+        border: tableBorder
+      });
+
+      const cellTextCenter = (bg = 'FFFFFF') => ({
+        font: baseFont,
+        fill: bg !== 'FFFFFF' ? { fgColor: { rgb: bg } } : undefined,
+        alignment: { horizontal: 'center', vertical: 'middle' },
+        border: tableBorder
+      });
+
+      const cellCurrency = (bg = 'FFFFFF') => ({
+        font: baseFont,
+        fill: bg !== 'FFFFFF' ? { fgColor: { rgb: bg } } : undefined,
+        alignment: { horizontal: 'right', vertical: 'middle' },
+        border: tableBorder
+      });
+
+      const cellCurrencyBold = (bg = 'FFFFFF') => ({
+        font: { ...baseFont, bold: true, color: { rgb: 'B91C1C' } },
+        fill: bg !== 'FFFFFF' ? { fgColor: { rgb: bg } } : undefined,
+        alignment: { horizontal: 'right', vertical: 'middle' },
+        border: tableBorder
+      });
+
+      const cardLabelStyle = {
+        font: { name: 'Segoe UI', size: 9.5, bold: true, color: { rgb: '4B5563' } },
+        fill: { fgColor: { rgb: 'F9FAFB' } },
+        alignment: { horizontal: 'left', vertical: 'middle' },
+        border: tableBorder
+      };
+
+      const cardValStyle = {
+        font: { name: 'Segoe UI', size: 10, bold: true, color: { rgb: '1F2937' } },
+        alignment: { horizontal: 'right', vertical: 'middle' },
+        border: tableBorder
+      };
+
+      const cardValEgresoStyle = {
+        font: { name: 'Segoe UI', size: 10.5, bold: true, color: { rgb: 'B91C1C' } },
+        fill: { fgColor: { rgb: 'FEF2F2' } },
+        alignment: { horizontal: 'right', vertical: 'middle' },
+        border: tableBorder
+      };
+
+      const totalRowStyle = {
+        font: { name: 'Segoe UI', size: 10, bold: true, color: { rgb: '1F2937' } },
+        fill: { fgColor: { rgb: 'F3F4F6' } },
+        alignment: { vertical: 'middle' },
+        border: {
+          top: { style: 'medium', color: { rgb: '748843' } },
+          bottom: { style: 'double', color: { rgb: '748843' } },
+          left: { style: 'thin', color: { rgb: 'D1D5DB' } },
+          right: { style: 'thin', color: { rgb: 'D1D5DB' } }
+        }
+      };
+
+      const rows = [];
+      const merges = [];
+
+      // Fila 0: Logo y Marca BLUSH
+      merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 7 } });
+      const h0 = [makeCell('BLUSH BEAUTY STUDIO', 's', null, {
+        font: { name: 'Segoe UI', size: 17, bold: true, color: { rgb: '748843' } },
+        alignment: { horizontal: 'left', vertical: 'middle' }
+      })];
+      for (let i = 1; i <= 10; i++) h0.push(makeCell('', 's', null, {}));
+      rows.push(h0);
+
+      // Fila 1: Título de reporte
+      merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 10 } });
+      rows.push([makeCell('REPORTE AUDITADO DE EGRESOS Y FACTURAS DE COMPRA', 's', null, {
+        font: { name: 'Segoe UI', size: 11, bold: true, color: { rgb: 'BAAB94' } },
+        alignment: { horizontal: 'left', vertical: 'middle' }
+      })]);
+
+      // Fila 2: Subtítulo
+      merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 10 } });
+      rows.push([makeCell(`Fecha de Generación: ${new Date().toLocaleString('es-EC')} | Total Registros: ${filteredGastos.length}`, 's', null, {
+        font: { name: 'Segoe UI', size: 9.5, italic: true, color: { rgb: '6B7280' } },
+        alignment: { horizontal: 'left', vertical: 'middle' }
+      })]);
+
+      rows.push([]); // espacio
+
+      // Fila 4-5: Indicadores Clave
+      const totalSuma = filteredGastos.reduce((sum, g) => sum + Number(g.total || 0), 0);
+
       rows.push([
-        "TOTAL GENERAL",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        totalSuma,
-        "",
-        ""
-      ])
+        makeCell('Total Ítems de Egreso Registrados', 's', null, cardLabelStyle),
+        makeCell(filteredGastos.length, 'n', '#,##0', cardValStyle)
+      ]);
+      rows.push([
+        makeCell('Monto Total de Egresos Acumulados', 's', null, { ...cardLabelStyle, fill: { fgColor: { rgb: 'FEF2F2' } } }),
+        makeCell(totalSuma, 'n', '"$"#,##0.00', cardValEgresoStyle)
+      ]);
 
-      const wb = XLSX.utils.book_new()
-      const ws = XLSX.utils.aoa_to_sheet(rows)
+      rows.push([]); // espacio
 
+      // Fila 7: Encabezados de tabla
+      rows.push([
+        makeCell('Fecha', 's', null, headerStyle('748843')),
+        makeCell('No. Factura', 's', null, headerStyle('748843')),
+        makeCell('Proveedor', 's', null, headerStyle('748843')),
+        makeCell('RUC Proveedor', 's', null, headerStyle('748843')),
+        makeCell('Concepto / Detalle', 's', null, headerStyle('748843')),
+        makeCell('Categoría', 's', null, headerStyle('748843')),
+        makeCell('Cant.', 's', null, headerStyle('748843')),
+        makeCell('Valor Unit. ($)', 's', null, headerStyle('748843')),
+        makeCell('Total ($)', 's', null, headerStyle('748843')),
+        makeCell('Forma Pago', 's', null, headerStyle('748843')),
+        makeCell('Caja / Cuenta', 's', null, headerStyle('748843'))
+      ]);
+
+      if (filteredGastos.length === 0) {
+        rows.push([
+          makeCell('Sin registros de egresos con los filtros actuales', 's', null, cellTextCenter()),
+          makeCell('', 's', null, cellTextCenter()),
+          makeCell('', 's', null, cellTextLeft()),
+          makeCell('', 's', null, cellTextCenter()),
+          makeCell('', 's', null, cellTextLeft()),
+          makeCell('', 's', null, cellTextLeft()),
+          makeCell(0, 'n', '#,##0', cellTextCenter()),
+          makeCell(0, 'n', '"$"#,##0.00', cellCurrency()),
+          makeCell(0, 'n', '"$"#,##0.00', cellCurrencyBold()),
+          makeCell('', 's', null, cellTextCenter()),
+          makeCell('', 's', null, cellTextCenter())
+        ]);
+      } else {
+        filteredGastos.forEach((g, idx) => {
+          const bg = idx % 2 === 0 ? 'FFFFFF' : 'FDFBFB';
+          rows.push([
+            makeCell(g.fecha || '', 's', null, cellTextCenter(bg)),
+            makeCell(g.factura || 'S/N', 's', null, cellTextCenter(bg)),
+            makeCell(g.proveedor || 'N/A', 's', null, cellTextLeft(bg)),
+            makeCell(g.proveedor_ruc || 'N/A', 's', null, cellTextCenter(bg)),
+            makeCell(g.concepto || '', 's', null, cellTextLeft(bg)),
+            makeCell(g.categoria || 'Otros', 's', null, cellTextLeft(bg)),
+            makeCell(Number(g.cantidad || 1), 'n', '#,##0', cellTextCenter(bg)),
+            makeCell(Number(g.valor_unitario || g.total || 0), 'n', '"$"#,##0.00', cellCurrency(bg)),
+            makeCell(Number(g.total || 0), 'n', '"$"#,##0.00', cellCurrencyBold(bg)),
+            makeCell(g.forma_pago || 'Efectivo', 's', null, cellTextCenter(bg)),
+            makeCell(g.cuenta || 'Caja Principal', 's', null, cellTextCenter(bg))
+          ]);
+        });
+      }
+
+      // Fila Totales
+      rows.push([
+        makeCell('TOTAL GENERAL', 's', null, { ...totalRowStyle, alignment: { horizontal: 'left', vertical: 'middle' } }),
+        makeCell('', 's', null, totalRowStyle),
+        makeCell('', 's', null, totalRowStyle),
+        makeCell('', 's', null, totalRowStyle),
+        makeCell('', 's', null, totalRowStyle),
+        makeCell('', 's', null, totalRowStyle),
+        makeCell(`Cant: ${filteredGastos.length}`, 's', null, { ...totalRowStyle, alignment: { horizontal: 'center', vertical: 'middle' } }),
+        makeCell('', 's', null, totalRowStyle),
+        makeCell(totalSuma, 'n', '"$"#,##0.00', { ...totalRowStyle, font: { ...baseFont, bold: true, color: { rgb: 'B91C1C' } }, alignment: { horizontal: 'right', vertical: 'middle' } }),
+        makeCell('', 's', null, totalRowStyle),
+        makeCell('', 's', null, totalRowStyle)
+      ]);
+
+      // Pie de página
+      const lastRowIdx = rows.length;
+      merges.push({ s: { r: lastRowIdx, c: 0 }, e: { r: lastRowIdx, c: 10 } });
+      const footerRow = [makeCell('★ DOCUMENTO OFICIAL GENERADO POR EL SISTEMA BLUSH BEAUTY STUDIO - CONTROL DE EGRESOS ★', 's', null, {
+        font: { name: 'Segoe UI', size: 8, italic: true, color: { rgb: '9CA3AF' } },
+        alignment: { horizontal: 'center', vertical: 'middle' }
+      })];
+      for (let i = 1; i <= 10; i++) footerRow.push(makeCell('', 's', null, {}));
+      rows.push(footerRow);
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!merges'] = merges;
       ws['!cols'] = [
         { wch: 14 }, // Fecha
         { wch: 18 }, // Factura
-        { wch: 25 }, // Proveedor
+        { wch: 26 }, // Proveedor
         { wch: 18 }, // RUC
         { wch: 32 }, // Concepto
-        { wch: 20 }, // Categoria
+        { wch: 18 }, // Categoria
         { wch: 10 }, // Cantidad
-        { wch: 18 }, // Valor Unitario
-        { wch: 15 }, // Total
+        { wch: 16 }, // Valor Unitario
+        { wch: 16 }, // Total
         { wch: 16 }, // Forma Pago
         { wch: 18 }  // Cuenta
-      ]
+      ];
+      ws['!rows'] = [{ hpt: 45 }];
 
-      XLSX.utils.book_append_sheet(wb, ws, "Egresos")
-      const filename = "Egresos_Blush_" + new Date().toISOString().split('T')[0] + ".xlsx"
-      await exportExcelJS(wb, filename, { sheetName: "Egresos", col: 8, row: 0 })
+      XLSX.utils.book_append_sheet(wb, ws, 'Egresos');
+      const filename = `Egresos_Blush_${new Date().toISOString().split('T')[0]}.xlsx`;
+      await exportExcelJS(wb, filename, { sheetName: 'Egresos', col: 8, row: 0 });
     } catch (e) {
-      console.error('Error al exportar egresos:', e)
-      alert('Error al exportar reporte de egresos.')
+      console.error('Error al exportar egresos:', e);
+      alert('Error al exportar reporte de egresos: ' + (e.message || ''));
     }
-  }
+  };
 
   const handleExportRetenciones = async () => {
     try {
@@ -1038,16 +1195,29 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                 <p className="text-xs text-gray-400 font-medium">Historial y auditoría de egresos con buscador de concepto.</p>
               </div>
 
-              {/* Buscador de Egresos */}
-              <div className="relative w-full md:w-64">
-                <input
-                  type="text"
-                  placeholder="Buscar egreso..."
-                  value={searchGasto}
-                  onChange={(e) => setSearchGasto(e.target.value)}
-                  className="w-full !pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-250 rounded-xl text-xs outline-none focus:border-blush-palmLeaf font-semibold"
-                />
-                <Search className="absolute left-2.5 top-2.5 text-gray-400" size={13} />
+              <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+                <button
+                  type="button"
+                  onClick={handleExportEgresosExcel}
+                  disabled={filteredGastos.length === 0}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white rounded-xl text-xs font-black transition-all shadow-sm disabled:opacity-50 cursor-pointer shrink-0"
+                  title="Descargar Reporte Completo en Excel"
+                >
+                  <FileSpreadsheet size={15} />
+                  <span>Exportar Excel</span>
+                </button>
+
+                {/* Buscador de Egresos */}
+                <div className="relative flex-1 md:w-56">
+                  <input
+                    type="text"
+                    placeholder="Buscar egreso..."
+                    value={searchGasto}
+                    onChange={(e) => setSearchGasto(e.target.value)}
+                    className="w-full !pl-9 pr-3 py-2 bg-gray-50 border border-gray-250 rounded-xl text-xs outline-none focus:border-blush-palmLeaf font-semibold"
+                  />
+                  <Search className="absolute left-2.5 top-2.5 text-gray-400" size={14} />
+                </div>
               </div>
             </div>
 
@@ -1108,27 +1278,27 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                         <table className="w-full text-left text-xs border-collapse">
                           <thead>
                             <tr className="border-b border-gray-200 text-[10px] font-black text-gray-400 uppercase tracking-wider">
-                              <th className="pb-2">Producto / Servicio Comprado</th>
-                              <th className="pb-2">Categoría</th>
-                              <th className="pb-2 text-center">Cantidad</th>
-                              <th className="pb-2 text-right">Precio Unit. ($)</th>
-                              <th className="pb-2 text-right">Subtotal ($)</th>
-                              <th className="pb-2 text-center">Acciones</th>
+                              <th className="pb-2.5 px-2">Producto / Servicio Comprado</th>
+                              <th className="pb-2.5 px-3">Categoría</th>
+                              <th className="pb-2.5 px-3 text-center">Cantidad</th>
+                              <th className="pb-2.5 px-3 text-right">Precio Unit. ($)</th>
+                              <th className="pb-2.5 px-3 text-right">Subtotal ($)</th>
+                              <th className="pb-2.5 px-2 text-center">Acciones</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-150 text-gray-700 font-bold">
                             {group.items.map((item) => (
                               <tr key={item.id} className="hover:bg-white/40 transition-colors">
-                                <td className="py-2.5 font-black text-gray-850">{item.concepto}</td>
-                                <td className="py-2.5">
+                                <td className="py-2.5 px-2 font-black text-gray-850">{item.concepto}</td>
+                                <td className="py-2.5 px-3">
                                   <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 text-[9px] font-black uppercase rounded">
                                     {item.categoria || 'Otros'}
                                   </span>
                                 </td>
-                                <td className="py-2.5 text-center">{Number(item.cantidad)} u</td>
-                                <td className="py-2.5 text-right">${Number(item.valor_unitario).toFixed(2)}</td>
-                                <td className="py-2.5 text-right text-gray-800">${Number(item.total).toFixed(2)}</td>
-                                <td className="py-2.5 text-center">
+                                <td className="py-2.5 px-3 text-center">{Number(item.cantidad)} u</td>
+                                <td className="py-2.5 px-3 text-right">${Number(item.valor_unitario).toFixed(2)}</td>
+                                <td className="py-2.5 px-3 text-right text-gray-800 font-bold">${Number(item.total).toFixed(2)}</td>
+                                <td className="py-2.5 px-2 text-center">
                                   <div className="flex items-center justify-center gap-1.5">
                                     <button
                                       type="button"

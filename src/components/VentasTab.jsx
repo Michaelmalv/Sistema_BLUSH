@@ -280,7 +280,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
       // Validar que tengamos servicios en el array o al menos uno seleccionado en los inputs
       let listToSave = [...serviciosAgregados]
       if (listToSave.length === 0) {
-        if (form.servicio_id && form.personal_id) {
+        if (form.servicio_id) {
           const val = Number(form.valor_pagado)
           if (isNaN(val) || val <= 0) {
             throw new Error('El valor cobrado debe ser mayor a 0.')
@@ -290,8 +290,8 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
           listToSave.push({
             servicio_id: form.servicio_id,
             nombre_servicio: svc.nombre,
-            personal_id: form.personal_id,
-            nombre_personal: pers.nombre,
+            personal_id: form.personal_id || null,
+            nombre_personal: pers ? pers.nombre : 'Sin asignar',
             valor_pagado: val
           })
         } else {
@@ -324,7 +324,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
       const citasToRegister = listToSave.map(s => ({
         cliente_id: finalClienteId,
         servicio_id: s.servicio_id,
-        personal_id: s.personal_id,
+        personal_id: s.personal_id || null,
         fecha_hora: dateObj.toISOString(),
         valor_pagado: Number(s.valor_pagado),
         forma_pago: form.forma_pago || 'Efectivo',
@@ -408,9 +408,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
       if (isNaN(duracionVal) || duracionVal < 5) {
         return alert('La duración debe ser de al menos 5 minutos.')
       }
-      if (!form.personal_id) {
-        return alert('Debe seleccionar la colaboradora para el servicio.')
-      }
+      // colaboradora opcional
 
       try {
         const nuevoSvc = await dataService.registrarServicio({
@@ -427,7 +425,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
             id: 'temp_' + Date.now() + '_' + Math.random(),
             servicio_id: nuevoSvc.id,
             nombre_servicio: nuevoSvc.nombre,
-            personal_id: form.personal_id,
+            personal_id: form.personal_id || null,
             nombre_personal: pers ? pers.nombre : 'Sin asignar',
             valor_pagado: precioVal
           }
@@ -456,11 +454,9 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
       if (!form.servicio_id) {
         return alert('Debe seleccionar un servicio.')
       }
-      if (!form.personal_id) {
-        return alert('Debe seleccionar una colaboradora.')
-      }
+      // colaboradora opcional
       const svc = servicios.find(s => s.id === form.servicio_id)
-      const pers = personal.find(p => p.id === form.personal_id)
+      const pers = form.personal_id ? personal.find(p => p.id === form.personal_id) : null
       const val = svc ? Number(svc.precio_base || 0) : 0
 
       setServiciosAgregados([
@@ -469,8 +465,8 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
           id: 'temp_' + Date.now() + '_' + Math.random(),
           servicio_id: form.servicio_id,
           nombre_servicio: svc.nombre,
-          personal_id: form.personal_id,
-          nombre_personal: pers.nombre,
+          personal_id: form.personal_id || null,
+          nombre_personal: pers ? pers.nombre : 'Sin asignar',
           valor_pagado: val
         }
       ])
@@ -865,7 +861,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Colaboradora</label>
+                <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Colaboradora (Opcional)</label>
                 <select
                   value={form.personal_id}
                   onChange={(e) => setForm({ ...form, personal_id: e.target.value })}
@@ -1311,7 +1307,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
                   </div>
 
                   <div>
-                <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Colaboradora</label>
+                <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Colaboradora (Opcional)</label>
                 <select
                   value={form.personal_id}
                   onChange={(e) => setForm({ ...form, personal_id: e.target.value })}

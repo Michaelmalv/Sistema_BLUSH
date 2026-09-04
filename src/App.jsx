@@ -51,6 +51,7 @@ export default function App() {
   const [selectedBranchId, setSelectedBranchId] = useState(dataService.getSelectedBranchId())
   const [sucursales, setSucursales] = useState([])
   const [activeTab, setActiveTab] = useState('dashboard')
+  const [seguimientoSubTab, setSeguimientoSubTab] = useState('recontacto')
   const [showConfigInfo, setShowConfigInfo] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -167,6 +168,7 @@ export default function App() {
           title: isTomorrow ? 'Recontacto Próximo' : 'Recontacto Pendiente',
           desc: `${c.cliente_nombre} necesita reagendar ${c.servicio_nombre} (${delayText})`,
           tab: 'seguimiento',
+          subTab: 'recontacto',
           data: c
         })
       })
@@ -191,7 +193,8 @@ export default function App() {
           type: 'birthday',
           title: isToday ? '¡Cumpleaños Hoy!' : 'Cumpleaños Cercano',
           desc: `El cliente ${c.nombre} cumple años ${daysText} (${new Date(c.fecha_nacimiento + 'T00:00:00').toLocaleDateString('es-EC', { day: 'numeric', month: 'long' })})`,
-          tab: 'crm'
+          tab: 'seguimiento',
+          subTab: 'cumpleanos'
         })
       })
 
@@ -934,6 +937,9 @@ export default function App() {
                               <button
                                 onClick={() => {
                                   setActiveTab(n.tab)
+                                  if (n.subTab) {
+                                    setSeguimientoSubTab(n.subTab)
+                                  }
                                   setShowNotifications(false)
                                 }}
                                 className="text-[10px] text-blush-palmLeaf hover:underline font-black cursor-pointer"
@@ -1055,13 +1061,13 @@ export default function App() {
           {/* Carga del módulo seleccionado con persistencia de estado (keep-alive) */}
           <div className="transition-all duration-300">
             <div className={activeTab === 'dashboard' && currentUser?.rol !== 'Administrador' ? 'animate-tab-active' : ''} style={{ display: activeTab === 'dashboard' && currentUser?.rol !== 'Administrador' ? 'block' : 'none' }}>
-              <DashboardTab onNavigate={(tab) => setActiveTab(tab)} activeTab={activeTab} selectedBranchId={selectedBranchId} />
+              <DashboardTab onNavigate={(tab, subTab) => { setActiveTab(tab); if (subTab) setSeguimientoSubTab(subTab); }} activeTab={activeTab} selectedBranchId={selectedBranchId} />
             </div>
             <div className={(activeTab === 'crm' || (currentUser?.rol === 'Administrador' && activeTab === 'dashboard')) ? 'animate-tab-active' : ''} style={{ display: activeTab === 'crm' || (currentUser?.rol === 'Administrador' && activeTab === 'dashboard') ? 'block' : 'none' }}>
               <ClientesTab activeTab={currentUser?.rol === 'Administrador' && activeTab === 'dashboard' ? 'crm' : activeTab} />
             </div>
             <div className={activeTab === 'seguimiento' ? 'animate-tab-active' : ''} style={{ display: activeTab === 'seguimiento' ? 'block' : 'none' }}>
-              <SeguimientoTab activeTab={activeTab} selectedBranchId={selectedBranchId} />
+              <SeguimientoTab activeTab={activeTab} selectedBranchId={selectedBranchId} subTab={seguimientoSubTab} onSubTabChange={setSeguimientoSubTab} />
             </div>
             <div className={activeTab === 'sueldos' ? 'animate-tab-active' : ''} style={{ display: activeTab === 'sueldos' ? 'block' : 'none' }}>
               <SueldosTab activeTab={activeTab} selectedBranchId={selectedBranchId} />

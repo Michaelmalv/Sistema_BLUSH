@@ -12,9 +12,17 @@ import {
 } from 'lucide-react'
 import { dataService } from '../dataService'
 
-export default function SeguimientoTab({ activeTab, selectedBranchId }) {
+export default function SeguimientoTab({ activeTab, selectedBranchId, subTab: controlledSubTab, onSubTabChange }) {
   // Sub-tabs: 'recontacto', 'cumpleanos'
-  const [subTab, setSubTab] = useState('recontacto')
+  const [internalSubTab, setInternalSubTab] = useState('recontacto')
+  const subTab = controlledSubTab !== undefined ? controlledSubTab : internalSubTab
+
+  const setSubTab = (tab) => {
+    setInternalSubTab(tab)
+    if (onSubTabChange) {
+      onSubTabChange(tab)
+    }
+  }
 
   const [recontactar, setRecontactar] = useState([])
   const [clientes, setClientes] = useState([])

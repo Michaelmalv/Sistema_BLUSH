@@ -245,10 +245,12 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
     const selMonth = selectedDate.getMonth()
     const selDay = selectedDate.getDate()
     
-    return groupedCitas.filter(g => {
-      const d = new Date(g.fecha_hora)
-      return d.getFullYear() === selYear && d.getMonth() === selMonth && d.getDate() === selDay
-    })
+    return groupedCitas
+      .filter(g => {
+        const d = new Date(g.fecha_hora)
+        return d.getFullYear() === selYear && d.getMonth() === selMonth && d.getDate() === selDay
+      })
+      .sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora))
   }, [groupedCitas, selectedDate])
 
   const appointmentsByHour = useMemo(() => {
@@ -262,6 +264,9 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
       if (map[h]) {
         map[h].push(g)
       }
+    })
+    Object.keys(map).forEach(h => {
+      map[h].sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora))
     })
     return map
   }, [appointmentsForSelectedDate])
@@ -1143,12 +1148,12 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
                       </div>
                       
                       {/* Tarjetas de citas en esta hora */}
-                      <div className="flex-grow p-2 flex flex-wrap gap-2.5 items-stretch relative">
+                      <div className="flex-grow p-2.5 flex flex-col gap-2.5 relative">
                         {hourApps.length > 0 ? (
                           hourApps.map((g, idx) => (
                             <div
                               key={g.key}
-                              className={`flex-1 min-w-[210px] max-w-[450px] p-3 rounded-2xl border-l-4 border shadow-sm transition-all duration-300 flex flex-col justify-between ${getCardColorClass(idx)}`}
+                              className={`w-full p-3.5 rounded-2xl border-l-4 border shadow-sm transition-all duration-300 flex flex-col justify-between ${getCardColorClass(idx)}`}
                             >
                               <div>
                                 <div className="flex justify-between items-start gap-2 mb-1.5">

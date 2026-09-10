@@ -1918,7 +1918,60 @@ const TransactionHistory = React.memo(({
                 </tr>
               )}
             </tbody>
+            {filteredGroupedCitas.length > 0 && (
+              <tfoot className="border-t-2 border-gray-200 bg-gray-50/95 sticky bottom-0 z-10 shadow-sm font-black">
+                <tr>
+                  <td colSpan={4} className="py-3 px-3 text-right text-xs font-black uppercase text-gray-700 tracking-wider">
+                    Total {filterStartDate && filterStartDate === filterEndDate ? `del Día (${filterStartDate.split('-').reverse().join('/')})` : 'del Periodo Seleccionado'} (${filteredGroupedCitas.length} ${filteredGroupedCitas.length === 1 ? 'registro' : 'registros'}):
+                  </td>
+                  <td className="py-3 px-2 text-right font-black text-blush-palmLeaf text-base whitespace-nowrap">
+                    ${filteredGroupedCitas.reduce((acc, g) => acc + (Number(g.total) || 0), 0).toFixed(2)}
+                  </td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            )}
           </table>
+        </div>
+      )}
+
+      {/* Resumen Total del Día Seleccionado */}
+      {!showConciliacionModal && filteredGroupedCitas.length > 0 && (
+        <div className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-blush-seashell/40 to-blush-seashell/15 border border-blush-seashell-dark/15 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2.5 rounded-xl bg-blush-palmLeaf text-white shadow-xs">
+              <DollarSign size={20} />
+            </div>
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 block">
+                Total en Valor {filterStartDate && filterStartDate === filterEndDate ? `del Día (${filterStartDate.split('-').reverse().join('/')})` : 'del Periodo'}
+              </span>
+              <span className="text-2xl font-black text-blush-palmLeaf">
+                ${filteredGroupedCitas.reduce((acc, g) => acc + (Number(g.total) || 0), 0).toFixed(2)}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 text-xs">
+            <div className="bg-white px-3.5 py-2 rounded-xl border border-gray-150 shadow-xxs flex items-center gap-2">
+              <span className="text-gray-400 font-bold text-[10px] uppercase">Transacciones:</span>
+              <span className="font-black text-gray-800">{filteredGroupedCitas.length}</span>
+            </div>
+            <div className="bg-white px-3.5 py-2 rounded-xl border border-gray-150 shadow-xxs flex items-center gap-2">
+              <span className="text-green-600 font-bold text-[10px] uppercase">Cobrado:</span>
+              <span className="font-black text-green-700">
+                ${filteredGroupedCitas.filter(g => g.forma_pago && g.forma_pago !== 'Pendiente').reduce((acc, g) => acc + (Number(g.total) || 0), 0).toFixed(2)}
+              </span>
+            </div>
+            {filteredGroupedCitas.some(g => !g.forma_pago || g.forma_pago === 'Pendiente') && (
+              <div className="bg-white px-3.5 py-2 rounded-xl border border-gray-150 shadow-xxs flex items-center gap-2">
+                <span className="text-amber-600 font-bold text-[10px] uppercase">Pendiente:</span>
+                <span className="font-black text-amber-700">
+                  ${filteredGroupedCitas.filter(g => !g.forma_pago || g.forma_pago === 'Pendiente').reduce((acc, g) => acc + (Number(g.total) || 0), 0).toFixed(2)}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -1258,24 +1258,61 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
             </div>
 
             {/* Filtros de Fecha */}
-            <div className="grid grid-cols-2 gap-4 mb-6 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-              <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1 ml-1">Fecha Inicio</label>
-                <input
-                  type="date"
-                  value={filterStartDate}
-                  onChange={(e) => setFilterStartDate(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-white border border-gray-250 rounded-xl text-xs font-semibold outline-none"
-                />
+            <div className="mb-6 bg-gray-50/50 p-4 rounded-2xl border border-gray-100 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Rango de Fecha</span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const today = getTodayDateString()
+                      setFilterStartDate(today)
+                      setFilterEndDate(today)
+                    }}
+                    className={`px-2.5 py-0.5 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                      filterStartDate === getTodayDateString() && filterEndDate === getTodayDateString()
+                        ? 'bg-blush-palmLeaf text-white shadow-xs'
+                        : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                    }`}
+                  >
+                    Hoy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilterStartDate('')
+                      setFilterEndDate('')
+                    }}
+                    className={`px-2.5 py-0.5 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                      !filterStartDate && !filterEndDate
+                        ? 'bg-blush-palmLeaf text-white shadow-xs'
+                        : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                    }`}
+                  >
+                    Ver Todo
+                  </button>
+                </div>
               </div>
-              <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1 ml-1">Fecha Fin</label>
-                <input
-                  type="date"
-                  value={filterEndDate}
-                  onChange={(e) => setFilterEndDate(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-white border border-gray-250 rounded-xl text-xs font-semibold outline-none"
-                />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1 ml-1">Fecha Inicio</label>
+                  <input
+                    type="date"
+                    value={filterStartDate}
+                    onChange={(e) => setFilterStartDate(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border border-gray-250 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1 ml-1">Fecha Fin</label>
+                  <input
+                    type="date"
+                    value={filterEndDate}
+                    onChange={(e) => setFilterEndDate(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border border-gray-250 rounded-xl text-xs font-semibold outline-none focus:border-blush-palmLeaf"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1376,7 +1413,60 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
                       </tr>
                     ))}
                   </tbody>
+                  {filteredGroupedCitas.length > 0 && (
+                    <tfoot className="border-t-2 border-gray-200 bg-gray-50/95 sticky bottom-0 z-10 shadow-sm font-black">
+                      <tr>
+                        <td colSpan={4} className="py-3 px-3 text-right text-xs font-black uppercase text-gray-700 tracking-wider">
+                          Total {filterStartDate && filterStartDate === filterEndDate ? `del Día (${filterStartDate.split('-').reverse().join('/')})` : 'del Periodo Seleccionado'} (${filteredGroupedCitas.length} ${filteredGroupedCitas.length === 1 ? 'cita' : 'citas'}):
+                        </td>
+                        <td className="py-3 px-2 text-right font-black text-blush-palmLeaf text-base whitespace-nowrap">
+                          ${filteredGroupedCitas.reduce((acc, g) => acc + (Number(g.total) || 0), 0).toFixed(2)}
+                        </td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  )}
                 </table>
+              </div>
+            )}
+
+            {/* Resumen de Total del Día / Periodo */}
+            {filteredGroupedCitas.length > 0 && (
+              <div className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-blush-seashell/40 to-blush-seashell/15 border border-blush-seashell-dark/15 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2.5 rounded-xl bg-blush-palmLeaf text-white shadow-xs">
+                    <DollarSign size={20} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 block">
+                      Total en Valor {filterStartDate && filterStartDate === filterEndDate ? `del Día (${filterStartDate.split('-').reverse().join('/')})` : 'del Periodo'}
+                    </span>
+                    <span className="text-2xl font-black text-blush-palmLeaf">
+                      ${filteredGroupedCitas.reduce((acc, g) => acc + (Number(g.total) || 0), 0).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5 text-xs">
+                  <div className="bg-white px-3.5 py-2 rounded-xl border border-gray-150 shadow-xxs flex items-center gap-2">
+                    <span className="text-gray-400 font-bold text-[10px] uppercase">Citas:</span>
+                    <span className="font-black text-gray-800">{filteredGroupedCitas.length}</span>
+                  </div>
+                  <div className="bg-white px-3.5 py-2 rounded-xl border border-gray-150 shadow-xxs flex items-center gap-2">
+                    <span className="text-green-600 font-bold text-[10px] uppercase">Cobrado:</span>
+                    <span className="font-black text-green-700">
+                      ${filteredGroupedCitas.filter(g => g.forma_pago && g.forma_pago !== 'Pendiente').reduce((acc, g) => acc + (Number(g.total) || 0), 0).toFixed(2)}
+                    </span>
+                  </div>
+                  {filteredGroupedCitas.some(g => !g.forma_pago || g.forma_pago === 'Pendiente') && (
+                    <div className="bg-white px-3.5 py-2 rounded-xl border border-gray-150 shadow-xxs flex items-center gap-2">
+                      <span className="text-amber-600 font-bold text-[10px] uppercase">Pendiente:</span>
+                      <span className="font-black text-amber-700">
+                        ${filteredGroupedCitas.filter(g => !g.forma_pago || g.forma_pago === 'Pendiente').reduce((acc, g) => acc + (Number(g.total) || 0), 0).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

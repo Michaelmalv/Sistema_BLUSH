@@ -1127,7 +1127,7 @@ export const dataService = {
     return Object.values(agrupados)
   },
 
-  // CRM: Clientes por recontactar (Solución del error sucursal_id de la vista DB)
+  // CRM: Clientes por recontactar (Basado en la última visita general más reciente del cliente)
   async getClientesPorRecontactar() {
     const branchId = this.getSelectedBranchId()
     
@@ -1139,39 +1139,75 @@ export const dataService = {
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
 
-    // Agrupar última cita de cada cliente para cada servicio
-    const ultimasCitas = {}
     const citasFiltradas = branchId ? citas.filter(c => c.sucursal_id === branchId) : citas
     
+    // Agrupar todas las citas por cliente_id para evaluar únicamente su última visita más reciente
+    const ultimasCitasPorCliente = {}
+
     citasFiltradas.forEach(c => {
       const clienteId = c.cliente_id || (c.clientes ? c.clientes.id : null)
-      const servicioId = c.servicio_id || (c.servicios ? c.servicios.id : null)
-      if (!clienteId || !servicioId) return
+      if (!clienteId) return
 
       const cDate = new Date(c.fecha_hora)
-      const key = `${clienteId}_${servicioId}`
-      if (!ultimasCitas[key] || cDate > new Date(ultimasCitas[key].fecha_hora)) {
-        ultimasCitas[key] = {
-          ...c,
-          clienteId,
-          servicioId
-        }
+      if (isNaN(cDate.getTime())) return
+
+      if (!ultimasCitasPorCliente[clienteId]) {
+        ultimasCitasPorCliente[clienteId] = []
       }
+      ultimasCitasPorCliente[clienteId].push(c)
     })
 
     const porRecontactar = []
-    Object.values(ultimasCitas).forEach(uc => {
-      const servicio = servicios.find(s => s.id === uc.servicioId)
-      if (!servicio || !servicio.frecuencia_recomendada_dias) return
 
-      const cliente = clientes.find(c => c.id === uc.clienteId)
+    Object.entries(ultimasCitasPorCliente).forEach(([clienteId, citasDelCliente]) => {
+      const cliente = clientes.find(c => c.id === clienteId)
       if (!cliente) return
 
-      const fechaUltima = new Date(uc.fecha_hora)
-      fechaUltima.setHours(0,0,0,0)
+      // Ordenar citas del cliente por fecha descendente (la más reciente primero)
+      citasDelCliente.sort((a, b) => new Date(b.fecha_hora) - new Date(a.fecha_hora))
       
+      const ultimaCita = citasDelCliente[0]
+      const fechaUltima = new Date(ultimaCita.fecha_hora)
+      fechaUltima.setHours(0, 0, 0, 0)
+
+      // Citas que ocurrieron en la misma fecha más reciente (por si se realizaron múltiples tratamientos el mismo día)
+      const fechaUltimaStr = ultimaCita.fecha_hora.includes('T') ? ultimaCita.fecha_hora.split('T')[0] : ultimaCita.fecha_hora
+      const citasMismoDia = citasDelCliente.filter(c => {
+        const dStr = c.fecha_hora.includes('T') ? c.fecha_hora.split('T')[0] : c.fecha_hora
+        return dStr === fechaUltimaStr
+      })
+
+      // Obtener los servicios realizados en esa última fecha
+      const serviciosEnFecha = []
+      citasMismoDia.forEach(c => {
+        const sId = c.servicio_id || (c.servicios ? c.servicios.id : null)
+        const serv = servicios.find(s => s.id === sId) || (c.servicios?.nombre ? c.servicios : null)
+        if (serv) {
+          serviciosEnFecha.push(serv)
+        }
+      })
+
+      // Determinar la frecuencia recomendada
+      // Si hay varios servicios en la última visita, tomar la menor frecuencia recomendada (> 0)
+      // para asegurar el recontacto oportuno, o por defecto 21 días
+      let frecuenciaDias = 21
+      let servicioPrincipal = null
+
+      const serviciosConFrecuencia = serviciosEnFecha.filter(s => s.frecuencia_recomendada_dias && s.frecuencia_recomendada_dias > 0)
+      if (serviciosConFrecuencia.length > 0) {
+        serviciosConFrecuencia.sort((a, b) => a.frecuencia_recomendada_dias - b.frecuencia_recomendada_dias)
+        servicioPrincipal = serviciosConFrecuencia[0]
+        frecuenciaDias = servicioPrincipal.frecuencia_recomendada_dias
+      } else if (serviciosEnFecha.length > 0) {
+        servicioPrincipal = serviciosEnFecha[0]
+      }
+
+      const servicioNombre = serviciosEnFecha.length > 0 
+        ? [...new Set(serviciosEnFecha.map(s => s.nombre))].join(', ')
+        : (ultimaCita.servicios?.nombre || 'Servicio General')
+
       const proximaFecha = new Date(fechaUltima)
-      proximaFecha.setDate(fechaUltima.getDate() + servicio.frecuencia_recomendada_dias)
+      proximaFecha.setDate(fechaUltima.getDate() + frecuenciaDias)
 
       const diffTime = hoy - proximaFecha
       const diasRetraso = Math.round(diffTime / (1000 * 60 * 60 * 24))
@@ -1181,13 +1217,13 @@ export const dataService = {
         cliente_nombre: cliente.nombre,
         cliente_celular: cliente.celular || 'N/A',
         cliente_correo: cliente.correo || 'N/A',
-        servicio_id: servicio.id,
-        servicio_nombre: servicio.nombre,
-        frecuencia_recomendada_dias: servicio.frecuencia_recomendada_dias,
-        ultima_cita_fecha: uc.fecha_hora.includes('T') ? uc.fecha_hora.split('T')[0] : uc.fecha_hora,
+        servicio_id: servicioPrincipal ? servicioPrincipal.id : (ultimaCita.servicio_id || null),
+        servicio_nombre: servicioNombre,
+        frecuencia_recomendada_dias: frecuenciaDias,
+        ultima_cita_fecha: fechaUltimaStr,
         proxima_cita_sugerida: proximaFecha.toISOString().split('T')[0],
         dias_retraso: diasRetraso,
-        sucursal_id: uc.sucursal_id
+        sucursal_id: ultimaCita.sucursal_id
       })
     })
 

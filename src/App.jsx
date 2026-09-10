@@ -19,7 +19,8 @@ import {
   Mail,
   Eye,
   EyeOff,
-  Receipt
+  Receipt,
+  Trash2
 } from 'lucide-react'
 
 // Tabs
@@ -116,6 +117,35 @@ export default function App() {
     }
   }
 
+  const handleDismissNotification = (id, e) => {
+    if (e) e.stopPropagation()
+    setNotificaciones(prev => prev.filter(n => n.id !== id))
+    try {
+      const dismissed = JSON.parse(localStorage.getItem('blush_dismissed_notifications') || '[]')
+      if (!dismissed.includes(id)) {
+        dismissed.push(id)
+        localStorage.setItem('blush_dismissed_notifications', JSON.stringify(dismissed))
+      }
+    } catch (err) {
+      console.error('Error saving dismissed notification:', err)
+    }
+  }
+
+  const handleDismissAllNotifications = (category = 'todas') => {
+    const toDismiss = notificaciones
+      .filter(n => category === 'todas' || n.type === category)
+      .map(n => n.id)
+    
+    setNotificaciones(prev => prev.filter(n => !toDismiss.includes(n.id)))
+    try {
+      const dismissed = JSON.parse(localStorage.getItem('blush_dismissed_notifications') || '[]')
+      const updated = [...new Set([...dismissed, ...toDismiss])]
+      localStorage.setItem('blush_dismissed_notifications', JSON.stringify(updated))
+    } catch (err) {
+      console.error('Error saving dismissed notifications:', err)
+    }
+  }
+
   const loadNotifications = async () => {
     if (!currentUser) return
     try {
@@ -198,7 +228,15 @@ export default function App() {
         })
       })
 
-      setNotificaciones(alerts)
+      // Filtrar notificaciones previamente eliminadas/descartadas
+      let dismissed = []
+      try {
+        dismissed = JSON.parse(localStorage.getItem('blush_dismissed_notifications') || '[]')
+      } catch (e) {
+        dismissed = []
+      }
+      const activeAlerts = alerts.filter(a => !dismissed.includes(a.id))
+      setNotificaciones(activeAlerts)
 
       // Cargar Toasts de manera sutil
       const initialToasts = []
@@ -934,25 +972,45 @@ export default function App() {
                               }`}>
                                 {n.title}
                               </span>
-                              <button
-                                onClick={() => {
-                                  setActiveTab(n.tab)
-                                  if (n.subTab) {
-                                    setSeguimientoSubTab(n.subTab)
-                                  }
-                                  setShowNotifications(false)
-                                }}
-                                className="text-[10px] text-blush-palmLeaf hover:underline font-black cursor-pointer"
-                              >
-                                Ver
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    setActiveTab(n.tab)
+                                    if (n.subTab) {
+                                      setSeguimientoSubTab(n.subTab)
+                                    }
+                                    setShowNotifications(false)
+                                  }}
+                                  className="text-[10px] text-blush-palmLeaf hover:underline font-black cursor-pointer"
+                                >
+                                  Ver
+                                </button>
+                                <button
+                                  onClick={(e) => handleDismissNotification(n.id, e)}
+                                  title="Eliminar notificación"
+                                  className="text-gray-300 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
                             </div>
                             <p className="text-gray-600 font-bold leading-tight">{n.desc}</p>
                           </div>
                         ))
                     )}
                   </div>
-                  <div className="p-2 bg-gray-50 border-t border-gray-100 text-center">
+                  <div className="p-2 bg-gray-50 border-t border-gray-100 flex justify-between items-center px-4">
+                    {notificaciones.filter(n => notifCategory === 'todas' || n.type === notifCategory).length > 0 ? (
+                      <button
+                        onClick={() => handleDismissAllNotifications(notifCategory)}
+                        className="text-[10px] text-rose-600 hover:text-rose-800 font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <Trash2 size={11} />
+                        {notifCategory === 'todas' ? 'Eliminar todas' : `Eliminar ${notifCategory === 'birthday' ? 'cumpleaños' : notifCategory}`}
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-gray-400">Sin pendientes</span>
+                    )}
                     <button
                       onClick={() => setShowNotifications(false)}
                       className="text-[10px] text-gray-400 font-bold hover:text-gray-600 cursor-pointer"

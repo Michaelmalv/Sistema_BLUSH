@@ -4,6 +4,12 @@ import { Plus, Calendar, DollarSign, CreditCard, User, Sparkles, Receipt, X, Edi
 import { dataService } from '../dataService'
 
 
+const getTodayDateString = () => {
+  const d = new Date()
+  const tzoffset = d.getTimezoneOffset() * 60000
+  return (new Date(d.getTime() - tzoffset)).toISOString().slice(0, 10)
+}
+
 const getLocalDatetimeString = () => {
   const tzoffset = (new Date()).getTimezoneOffset() * 60000;
   const localISOTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 16);
@@ -65,9 +71,9 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
     valor_total: ''
   })
 
-  // Filtros de Historial
-  const [filterStartDate, setFilterStartDate] = useState('')
-  const [filterEndDate, setFilterEndDate] = useState('')
+  // Filtros de Historial (por defecto el día de hoy)
+  const [filterStartDate, setFilterStartDate] = useState(() => getTodayDateString())
+  const [filterEndDate, setFilterEndDate] = useState(() => getTodayDateString())
   const [historySearch, setHistorySearch] = useState('')
 
   // Conciliación masiva
@@ -1642,39 +1648,76 @@ const TransactionHistory = React.memo(({
         </div>
 
         {/* Panel de Filtros */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50/50 p-3.5 rounded-2xl border border-gray-150">
-          <div>
-            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Buscar por Cliente</label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Nombre o Cédula..."
-                value={historySearch}
-                onChange={(e) => setHistorySearch(e.target.value)}
-                className="w-full !pl-9 pr-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-blush-palmLeaf"
-              />
-              <Search className="absolute left-2.5 top-2.5 text-gray-400" size={13} />
+        <div className="bg-gray-50/50 p-3.5 rounded-2xl border border-gray-150 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Filtros de Búsqueda</span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const today = getTodayDateString()
+                  setFilterStartDate(today)
+                  setFilterEndDate(today)
+                }}
+                className={`px-2.5 py-0.5 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                  filterStartDate === getTodayDateString() && filterEndDate === getTodayDateString()
+                    ? 'bg-blush-palmLeaf text-white shadow-xs'
+                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                }`}
+              >
+                Hoy
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterStartDate('')
+                  setFilterEndDate('')
+                }}
+                className={`px-2.5 py-0.5 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                  !filterStartDate && !filterEndDate
+                    ? 'bg-blush-palmLeaf text-white shadow-xs'
+                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                }`}
+              >
+                Ver Todo
+              </button>
             </div>
           </div>
 
-          <div>
-            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Desde</label>
-            <input
-              type="date"
-              value={filterStartDate}
-              onChange={(e) => setFilterStartDate(e.target.value)}
-              className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-blush-palmLeaf text-gray-600 font-semibold"
-            />
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Buscar por Cliente</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Nombre o Cédula..."
+                  value={historySearch}
+                  onChange={(e) => setHistorySearch(e.target.value)}
+                  className="w-full !pl-9 pr-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-blush-palmLeaf"
+                />
+                <Search className="absolute left-2.5 top-2.5 text-gray-400" size={13} />
+              </div>
+            </div>
 
-          <div>
-            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Hasta</label>
-            <input
-              type="date"
-              value={filterEndDate}
-              onChange={(e) => setFilterEndDate(e.target.value)}
-              className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-blush-palmLeaf text-gray-600 font-semibold"
-            />
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Desde</label>
+              <input
+                type="date"
+                value={filterStartDate}
+                onChange={(e) => setFilterStartDate(e.target.value)}
+                className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-blush-palmLeaf text-gray-600 font-semibold"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Hasta</label>
+              <input
+                type="date"
+                value={filterEndDate}
+                onChange={(e) => setFilterEndDate(e.target.value)}
+                className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-blush-palmLeaf text-gray-600 font-semibold"
+              />
+            </div>
           </div>
         </div>
       </div>

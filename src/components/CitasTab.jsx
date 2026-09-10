@@ -4,6 +4,12 @@ import { Plus, Calendar, DollarSign, CreditCard, User, Sparkles, Receipt, X, Edi
 import { dataService } from '../dataService'
 
 
+const getTodayDateString = () => {
+  const d = new Date()
+  const tzoffset = d.getTimezoneOffset() * 60000
+  return (new Date(d.getTime() - tzoffset)).toISOString().slice(0, 10)
+}
+
 const getLocalDatetimeString = () => {
   const tzoffset = (new Date()).getTimezoneOffset() * 60000;
   const localISOTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 16);
@@ -65,9 +71,9 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
   const [checkoutGroup, setCheckoutGroup] = useState(null)
   const [checkoutForm, setCheckoutForm] = useState({ forma_pago: 'Efectivo', valor_total: '', no_transferencia: '' })
 
-  // Filtros de Historial
-  const [filterStartDate, setFilterStartDate] = useState('')
-  const [filterEndDate, setFilterEndDate] = useState('')
+  // Filtros de Historial (por defecto el día de hoy)
+  const [filterStartDate, setFilterStartDate] = useState(() => getTodayDateString())
+  const [filterEndDate, setFilterEndDate] = useState(() => getTodayDateString())
   const [historySearch, setHistorySearch] = useState('')
 
   // Controlar la línea del tiempo actual (actualizar cada minuto)

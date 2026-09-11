@@ -2001,6 +2001,7 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
                           <option value="Deuna">Deuna</option>
                           <option value="Transferencia">Transferencia</option>
                           <option value="Tarjeta">Tarjeta</option>
+                          <option value="Pendiente">Pendiente</option>
                         </select>
                       </div>
                       <div>

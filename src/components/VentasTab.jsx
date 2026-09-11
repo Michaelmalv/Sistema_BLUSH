@@ -947,6 +947,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
                 <option value="Deuna">Deuna</option>
                 <option value="Transferencia">Transferencia</option>
                 <option value="Tarjeta">Tarjeta</option>
+                <option value="Pendiente">Pendiente</option>
               </select>
             </div>
             <div>
@@ -1389,6 +1390,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
                     <option value="Deuna">Deuna</option>
                     <option value="Transferencia">Transferencia</option>
                     <option value="Tarjeta">Tarjeta</option>
+                    <option value="Pendiente">Pendiente</option>
                   </select>
                 </div>
                 <div>
@@ -1861,15 +1863,22 @@ const TransactionHistory = React.memo(({
                   </td>
                   <td className="py-3.5 px-2">
                     <span className="inline-flex flex-col items-start">
-                      <span className={`text-xs font-bold ${
-                        group.forma_pago === 'Efectivo' ? 'text-green-700' :
-                        group.forma_pago === 'Tarjeta' ? 'text-blue-700' :
-                        'text-amber-800 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-md'
-                      }`}>
-                        {group.forma_pago}
-                      </span>
+                      {group.forma_pago && group.forma_pago !== 'Pendiente' ? (
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                          group.forma_pago === 'Efectivo' ? 'bg-green-50 text-green-700 border border-green-200' :
+                          group.forma_pago === 'Tarjeta' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                          group.forma_pago === 'Deuna' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
+                          'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                        }`}>
+                          {group.forma_pago}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 animate-pulse">
+                          Pendiente
+                        </span>
+                      )}
                       {group.no_transferencia && (
-                        <span className="text-xxs font-mono text-amber-700 font-semibold max-w-[120px] truncate" title={group.no_transferencia}>
+                        <span className="text-xxs font-mono text-gray-500 font-semibold max-w-[120px] truncate mt-0.5" title={group.no_transferencia}>
                           Ref: {group.no_transferencia}
                         </span>
                       )}

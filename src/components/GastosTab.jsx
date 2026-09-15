@@ -86,6 +86,138 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
   })
   const [editGastoMsg, setEditGastoMsg] = useState('')
 
+  // Estado para Agregar Producto a Factura Existente
+  const [addingToInvoiceGroup, setAddingToInvoiceGroup] = useState(null)
+  const [newInvoiceItemForm, setNewInvoiceItemForm] = useState({
+    producto_id: '',
+    concepto: '',
+    categoria: 'Insumos',
+    cantidad: 1,
+    valor_unitario: '',
+    total: '',
+    actualizar_inventario: true
+  })
+  const [addInvoiceItemMsg, setAddInvoiceItemMsg] = useState('')
+  const [addInvoiceItemLoading, setAddInvoiceItemLoading] = useState(false)
+
+  const handleStartAddToInvoice = (group) => {
+    setAddingToInvoiceGroup(group)
+    setNewInvoiceItemForm({
+      producto_id: '',
+      concepto: '',
+      categoria: 'Insumos',
+      catidad: 1,
+      valor_unitario: '',
+      total: '',
+      actualizar_inventario: true
+    })
+    setAddInvoiceItemMsg('')
+  }
+
+  const handleSelectProductForNewInvoiceItem = (prodId) => {
+    if (!prodId) {
+      setNewInvoiceItemForm(prev => ({
+        ...prev,
+        producto_id: '',
+        concepto: '',
+        valor_unitario: '',
+        total: ''
+      }))
+      return
+    }
+    const prod = productos.find(p => p.id === prodId)
+    if (prod) {
+      const vUnit = (prod.precio_costo !== undefined && prod.precio_costo !== null) ? Number(prod.precio_costo).toFixed(2) : ''
+      const qty = Number(newInvoiceItemForm.cantidad || 1)
+      const tot = vUnit ? (qty * Number(vUnit)).toFixed(2) : ''
+      setNewInvoiceItemForm(prev => ({
+        ...prev,
+        producto_id: prodId,
+        concepto: prod.nombre,
+        categoria: prod.tipo === 'insumo' ? 'Insumos' : 'Otros',
+        valor_unitario: vUnit,
+        total: tot
+      }))
+    }
+  }
+
+  const handleNewInvoiceItemFieldChange = (field, value) => {
+    setNewInvoiceItemForm(prev => {
+      const updated = { ...prev, [field]: value }
+      if (field === 'cantidad' || field === 'valor_unitario') {
+        const qty = Number(updated.cantidad || 0)
+        const vu = Number(updated.valor_unitario || 0)
+        updated.total = (qty * vu).toFixed(2)
+      }
+      return updated
+    })
+  }
+
+  const handleSaveNewInvoiceItem = async (e) => {
+    e.preventDefault()
+    if (!addingToInvoiceGroup) return
+    setAddInvoiceItemMsg('')
+    setAddInvoiceItemLoading(true)
+
+    try {
+      if (!newInvoiceItemForm.concepto || !newInvoiceItemForm.concepto.trim()) {
+        throw new Error('El concepto o detalle del producto es requerido.')
+      }
+      const qty = Number(newInvoiceItemForm.cantidad)
+      if (isNaN(qty) || qty <= 0) {
+        throw new Error('La cantidad debe ser mayor a 0.')
+      }
+      const vu = Number(newInvoiceItemForm.valor_unitario)
+      if (isNaN(vu) || vu < 0) {
+        throw new Error('El precio unitario debe ser mayor o igual a 0.')
+      }
+      const total = Number(newInvoiceItemForm.total || (qty * vu))
+
+      const invoiceFactura = addingToInvoiceGroup.facturaRaw || (addingToInvoiceGroup.isIndividual ? null : addingToInvoiceGroup.facturaLabel)
+
+      // 1. Registrar gasto
+      await dataService.registrarGasto({
+        fecha: addingToInvoiceGroup.fecha || new Date().toISOString().split('T')[0],
+        factura: invoiceFactura ? invoiceFactura.trim() : null,
+        proveedor: addingToInvoiceGroup.proveedor ? addingToInvoiceGroup.proveedor.trim() : null,
+        proveedor_ruc: addingToInvoiceGroup.proveedor_ruc ? addingToInvoiceGroup.proveedor_ruc.trim() : null,
+        cantidad: qty,
+        concepto: newInvoiceItemForm.concepto.trim(),
+        categoria: newInvoiceItemForm.categoria || 'Insumos',
+        valor_unitario: vu,
+        total: total,
+        forma_pago: addingToInvoiceGroup.forma_pago || 'Efectivo',
+        cuenta: addingToInvoiceGroup.cuenta || 'Caja Principal',
+        sucursal_id: addingToInvoiceGroup.sucursal_id || (selectedBranchId && selectedBranchId !== 'todas' && selectedBranchId !== '11111111-1111-1111-1111-111111111111' ? selectedBranchId : null)
+      })
+
+      // 2. Incrementar stock de inventario si aplica
+      if (newInvoiceItemForm.producto_id && newInvoiceItemForm.actualizar_inventario) {
+        await dataService.registrarReposicion(
+          newInvoiceItemForm.producto_id,
+          qty,
+          addingToInvoiceGroup.fecha || new Date().toISOString().split('T')[0]
+        )
+
+        // 3. Actualizar precio de costo si varia
+        const prod = productos.find(p => p.id === newInvoiceItemForm.producto_id)
+        if (prod && vu > 0 && vu !== Number(prod.precio_costo)) {
+          await dataService.actualizarProducto(newInvoiceItemForm.producto_id, {
+            precio_costo: vu,
+            fecha_compra: addingToInvoiceGroup.fecha || new Date().toISOString().split('T')[0]
+          })
+        }
+      }
+
+      setAddingToInvoiceGroup(null)
+      await loadData()
+    } catch (err) {
+      setAddInvoiceItemMsg(err.message || 'Error al agregar producto a la factura.')
+    } finally {
+      setAddInvoiceItemLoading(false)
+    }
+  }
+
   const handleStartEditGasto = (g) => {
     setEditingGasto(g)
     setEditGastoForm({
@@ -811,18 +943,21 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
         groups[key] = {
           facturaKey: key,
           facturaLabel: isNoFact ? 'Gastos sin Factura' : g.factura,
+          facturaRaw: isNoFact ? '' : g.factura,
           proveedor: g.proveedor || '',
           proveedor_ruc: g.proveedor_ruc || '',
           isIndividual: isNoFact,
           fecha: g.fecha,
           forma_pago: g.forma_pago,
           cuenta: g.cuenta,
+          sucursal_id: g.sucursal_id || null,
           total: 0,
           items: []
         }
       }
       if (!groups[key].proveedor && g.proveedor) groups[key].proveedor = g.proveedor
       if (!groups[key].proveedor_ruc && g.proveedor_ruc) groups[key].proveedor_ruc = g.proveedor_ruc
+      if (!groups[key].sucursal_id && g.sucursal_id) groups[key].sucursal_id = g.sucursal_id
       groups[key].items.push(g)
       groups[key].total += Number(g.total)
     })
@@ -1265,11 +1400,22 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                           <span>Caja: {group.cuenta}</span>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="flex items-center gap-3 self-end sm:self-center">
+                        <button
+                          type="button"
+                          onClick={() => handleStartAddToInvoice(group)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white font-black text-[11px] uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer active:scale-95"
+                          title="Agregar producto a esta factura"
+                        >
+                          <Plus size={13} />
+                          <span>Agregar Producto</span>
+                        </button>
+                        <div className="text-right">
                         <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">Monto Total Factura</span>
                         <span className="text-base font-black text-rose-600">
                           ${group.total.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
+                      </div>
                       </div>
                     </div>
 
@@ -1963,6 +2109,203 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
         document.body
       )}
 
+
+
+      {/* MODAL DE AGREGAR PRODUCTO A FACTURA */}
+      {addingToInvoiceGroup && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white w-full max-w-lg rounded-3xl p-6 shadow-2xl border border-gray-150 relative animate-slide-in my-8">
+            <button
+              onClick={() => setAddingToInvoiceGroup(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 cursor-pointer p-1 rounded-xg hover:bg-gray-100 transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="mb-4">
+              <h3 className="text-lg font-black text-blush-palmLeaf flex items-center gap-2 uppercase tracking-wide">
+                <Plus size={20} />
+                Agregar Producto a Factura
+              </h3>
+              <p className="text-xs text-gray-400 font-medium">
+                Añade un nuevo ítem o producto a la factura <strong className="text-gray-700 font-bold">{addingToInvoiceGroup.facturaLabel}</strong>
+                {addingToInvoiceGroup.proveedor ? (' (' + addingToInvoiceGroup.proveedor + ')') : ''}.
+              </p>
+            </div>
+
+            {/* Info Resumen de la Factura */}
+            <div className="mb-4 p-3 bg-blush-seashell/40 border border-blush-palmLeaf/20 rounded-2xl flex flex-wrap items-center justify-center gap-2 text-xs">
+              <div>
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Factura & Proveedor</span>
+                <span className="font-black text-gray-800">{addingToInvoiceGroup.facturaLabel}</span>
+                {addingToInvoiceGroup.proveedor && <span className="text-gray-500 font-medium ml-1.5">• {addingToInvoiceGroup.proveedor}</span>}
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Fecha & Método</span>
+                <span className="font-bold text-gray-700">{addingToInvoiceGroup.fecha} • {addingToInvoiceGroup.forma_pago}</span>
+              </div>
+            </div>
+
+            {addInvoiceItemMsg && (
+              <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold rounded-xl flex items-center gap-2">
+                <Info size={16} />
+                <span>{addInvoiceItemMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveNewInvoiceItem} className="space-y-4 text-xs font-bold text-gray-700">
+              {/* Seleccionar del inventario */}
+              <div>
+                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">
+                  Seleccionar Producto de Inventario (Opcional)
+                </label>
+                <select
+                  value={newInvoiceItemForm.producto_id}
+                  onChange={(e) => handleSelectProductForNewInvoiceItem(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-250 rounded-xl outline-none focus:border-blush-palmLeaf font-semibold text-xs cursor-pointer"
+                >
+                  <option value="">-- Escribir producto personalizado / no inventariado --</option>
+                  {productos.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre} {p.tipo ? `[${p.tipo.toUpperCase()}]` : ''} - Costo actual: ${Number(p.precio_costo || 0).toFixed(2)} (Stock: {p.stock || 0})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Concepto / Nombre */}
+              <div>
+                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">
+                  Producto / Detalle Comprado *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej: Esmalte Ojo de Gato, Pinza, Toallas..."
+                  value={newInvoiceItemForm.concepto}
+                  onChange={(e) => handleNewInvoiceItemFieldChange('concepto', e.target.value)}
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-250 rounded-xl outline-none focus:border-blush-palmLeaf font-semibold text-xs"
+                />
+              </div>
+
+              {/* Categoría */}
+              <div>
+                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">
+                  Categoría
+                </label>
+                <select
+                  value={newInvoiceItemForm.categoria}
+                  onChange={(e) => handleNewInvoiceItemFieldChange('categoria', e.target.value)}
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-250 rounded-xl outline-none focus:border-blush-palmLeaf font-semibold text-xs cursor-pointer"
+                >
+                  <option value="Insumos">Insumos</option>
+                  <option value="Servicios">Servicios</option>
+                  <option value="Mantenimiento">Mantenimiento</option>
+                  <option value="Alquiler">Alquiler</option>
+                  <option value="Servicios Básicos">Servicios Básicos</option>
+                  <option value="Nómina">Nómina</option>
+                  <option value="Marketing">Marketing</option>
+                  <option value="Otros">Otros</option>
+                </select>
+              </div>
+
+              {/* Cantidad, Precio Unitario, Subtotal */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">
+                    Cantidad *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    required
+                    value={newInvoiceItemForm.cantidad}
+                    onChange={(e) => handleNewInvoiceItemFieldChange('cantidad', e.target.value)}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-250 rounded-xl outline-none focus:border-blush-palmLeaf font-semibold text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">
+                    Precio Unit. ($) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    required
+                    placeholder="0.00"
+                    value={newInvoiceItemForm.valor_unitario}
+                    onChange={(e) => handleNewInvoiceItemFieldChange('valor_unitario', e.target.value)}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-250 rounded-xl outline-none focus:border-blush-palmLeaf font-semibold text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">
+                    Subtotal ($)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    required
+                    placeholder="0.00"
+                    value={newInvoiceItemForm.total}
+                    onChange={(e) => setNewInvoiceItemForm(prev => ({ ...prev, total: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-gray-100 border border-gray-250 rounded-xl outline-none focus:border-blush-palmLeaf font-black text-gray-800 text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Opciones de reposición de inventario */}
+              {newInvoiceItemForm.producto_id && (
+                <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl text-emerald-800 text-[11px] font-medium flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="actualizar_inventario"
+                    checked={newInvoiceItemForm.actualizar_inventario}
+                    onChange={(e) => setNewInvoiceItemForm(prev => ({ ...prev, actualizar_inventario: e.target.checked }))}
+                    className="rounded text-blush-palmLeaf focus:ring-0 cursor-pointer"
+                  />
+                  <label htmlFor="actualizar_inventario" className="cursor-pointer font-bold">
+                    Reponer automáticamente stock en inventario (+{newInvoiceItemForm.cantidad || 0} u) y actualizar precio de costo.
+                  </label>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={addInvoiceItemLoading}
+                  className="flex-1 py-3 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {addInvoiceItemLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Guardando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={16} />
+                      <span>Agregar a la Factura</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddingToInvoiceGroup(null)}
+                  className="py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }

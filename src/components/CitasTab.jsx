@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, Calendar, DollarSign, CreditCard, User, Sparkles, Receipt, X, Edit3, Trash2, Search, Clock, ArrowLeft, ArrowRight } from 'lucide-react'
+import { Plus, Minus, Calendar, DollarSign, CreditCard, User, Sparkles, Receipt, X, Edit3, Trash2, Search, Clock, ArrowLeft, ArrowRight } from 'lucide-react'
 import { dataService } from '../dataService'
 
 
@@ -402,6 +402,44 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
       }))
       setServiceSearchText('')
     }
+  }
+
+
+  const handleIncreaseServicioQty = (id) => {
+    setServiciosAgregados(prev => prev.map((item, idx) => {
+      const match = item.id ? item.id === id : idx === id
+      if (match) {
+        const currentQty = item.cantidad || 1
+        const newQty = currentQty + 1
+        const unitPrice = item.precio_unitario != null ? item.precio_unitario : (item.valor_pagado / currentQty)
+        return {
+          ...item,
+          cantidad: newQty,
+          precio_unitario: unitPrice,
+          valor_pagado: newQty * unitPrice
+        }
+      }
+      return item
+    }))
+  }
+
+  const handleDecreaseServicioQty = (id) => {
+    setServiciosAgregados(prev => prev.map((item, idx) => {
+      const match = item.id ? item.id === id : idx === id
+      if (match) {
+        const currentQty = item.cantidad || 1
+        if (currentQty <= 1) return item
+        const newQty = currentQty - 1
+        const unitPrice = item.precio_unitario != null ? item.precio_unitario : (item.valor_pagado / currentQty)
+        return {
+          ...item,
+          cantidad: newQty,
+          precio_unitario: unitPrice,
+          valor_pagado: newQty * unitPrice
+        }
+      }
+      return item
+    }))
   }
 
   const handleRemoveServicio = (idx) => {

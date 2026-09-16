@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, Calendar, DollarSign, CreditCard, User, Sparkles, Receipt, X, Edit3, Trash2, Search } from 'lucide-react'
+import { Plus, Minus, Calendar, DollarSign, CreditCard, User, Sparkles, Receipt, X, Edit3, Trash2, Search } from 'lucide-react'
 import { dataService } from '../dataService'
 
 
@@ -487,6 +487,44 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
     }
   }
 
+
+  const handleIncreaseServicioQty = (id) => {
+    setServiciosAgregados(prev => prev.map((item, idx) => {
+      const match = item.id ? item.id === id : idx === id
+      if (match) {
+        const currentQty = item.cantidad || 1
+        const newQty = currentQty + 1
+        const unitPrice = item.precio_unitario != null ? item.precio_unitario : (item.valor_pagado / currentQty)
+        return {
+          ...item,
+          cantidad: newQty,
+          precio_unitario: unitPrice,
+          valor_pagado: newQty * unitPrice
+        }
+      }
+      return item
+    }))
+  }
+
+  const handleDecreaseServicioQty = (id) => {
+    setServiciosAgregados(prev => prev.map((item, idx) => {
+      const match = item.id ? item.id === id : idx === id
+      if (match) {
+        const currentQty = item.cantidad || 1
+        if (currentQty <= 1) return item
+        const newQty = currentQty - 1
+        const unitPrice = item.precio_unitario != null ? item.precio_unitario : (item.valor_pagado / currentQty)
+        return {
+          ...item,
+          cantidad: newQty,
+          precio_unitario: unitPrice,
+          valor_pagado: newQty * unitPrice
+        }
+      }
+      return item
+    }))
+  }
+
   const handleCobrarCita = (group) => {
     setCheckoutGroup(group)
     setCheckoutForm({
@@ -892,23 +930,57 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
 
           {/* Listado de Servicios Agregados a la Factura */}
           {serviciosAgregados.length > 0 && (
-            <div className="space-y-2 bg-gray-50/50 p-3 rounded-2xl border border-gray-150 max-h-40 overflow-y-auto">
+            <div className="space-y-2 bg-gray-50/50 p-3 rounded-2xl border border-gray-150 max-h-48 overflow-y-auto">
               <span className="block text-[10px] font-black text-gray-400 uppercase tracking-wider ml-1 mb-1">
-                Servicios Agregados ({serviciosAgregados.length})
+                Servicios Agregados ({serviciosAgregados.reduce((sum, item) => sum + (item.cantidad || 1), 0)})
               </span>
               <div className="space-y-1.5">
                 {serviciosAgregados.map((s) => (
-                  <div key={s.id} className="flex justify-between items-center text-xs bg-white p-2 rounded-xl border border-gray-100 shadow-xxs">
-                    <div className="flex-1 min-w-0 pr-2">
+                  <div key={s.id} className="flex justify-between items-center text-xs bg-white p-2 rounded-xl border border-gray-100 shadow-xxs gap-2">
+                    <div className="flex-1 min-w-0 pr-1">
                       <span className="font-bold text-gray-800 block truncate">{s.nombre_servicio}</span>
-                      <span className="text-[10px] text-gray-400 block truncate">Manicurista: {s.nombre_personal}</span>
+                      <span className="text-[10px] text-gray-400 block truncate">
+                        Manicurista: {s.nombre_personal}
+                        {(s.cantidad || 1) > 1 && (
+                          <span className="text-gray-500 font-semibold ml-1">
+                            (${(Number(s.precio_unitario || (s.valor_pagado / s.cantidad))).toFixed(2)} c/u)
+                          </span>
+                        )}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="font-black text-blush-palmLeaf">${s.valor_pagado.toFixed(2)}</span>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {/* Control de Cantidad (+ / -) */}
+                      <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleDecreaseServicioQty(s.id)}
+                          disabled={(s.cantidad || 1) <= 1}
+                          className={`w-5 h-5 flex items-center justify-center rounded text-gray-600 transition-colors ${(s.cantidad || 1) <= 1 ? "opacity-30 cursor-not-allowed" : "hover:bg-gray-200 cursor-pointer text-gray-800"}`}
+                          title="Disminuir cantidad"
+                        >
+                          <Minus size={11} strokeWidth={2.5} />
+                        </button>
+                        <span className="w-5 text-center font-bold text-xs text-gray-800">
+                          {s.cantidad || 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleIncreaseServicioQty(s.id)}
+                          className="w-5 h-5 flex items-center justify-center rounded text-blush-palmLeaf hover:bg-blush-palmLeaf/20 cursor-pointer transition-colors font-bold"
+                          title="Aumentar cantidad"
+                        >
+                          <Plus size={11} strokeWidth={2.5} />
+                        </button>
+                      </div>
+
+                      <span className="font-black text-blush-palmLeaf min-w-[48px] text-right">
+                        ${s.valor_pagado.toFixed(2)}
+                      </span>
                       <button
                         type="button"
                         onClick={() => setServiciosAgregados(serviciosAgregados.filter(item => item.id !== s.id))}
-                        className="text-gray-400 hover:text-rose-600 font-bold p-1 cursor-pointer"
+                        className="text-gray-400 hover:text-rose-600 font-bold p-1 cursor-pointer transition-colors"
+                        title="Eliminar servicio"
                       >
                         <X size={14} />
                       </button>
@@ -921,6 +993,7 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
               </div>
             </div>
           )}
+
 
           {/* Fecha y Hora */}
           <div>
@@ -1339,19 +1412,55 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
                 {/* Listado de Servicios Agregados a la Venta */}
                 {serviciosAgregados.length > 0 && (
                   <div className="pt-3 border-t border-gray-255/70 space-y-1.5">
-                    <span className="text-[10px] font-black text-gray-400 uppercase block mb-1">Servicios Agregados:</span>
+                    <span className="text-[10px] font-black text-gray-400 uppercase block mb-1">
+                      Servicios Agregados ({serviciosAgregados.reduce((sum, item) => sum + (item.cantidad || 1), 0)}):
+                    </span>
                     {serviciosAgregados.map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-center bg-white border border-gray-250 px-3 py-2 rounded-xl text-xs">
-                        <div className="min-w-0 flex-1 pr-2">
+                      <div key={item.id || idx} className="flex justify-between items-center bg-white border border-gray-250 px-3 py-2 rounded-xl text-xs gap-2">
+                        <div className="min-w-0 flex-1 pr-1">
                           <span className="font-bold text-gray-800 block truncate">{item.nombre_servicio}</span>
-                          <span className="text-[10px] text-gray-400 block truncate">Prof: {item.nombre_personal}</span>
+                          <span className="text-[10px] text-gray-400 block truncate">
+                            Prof: {item.nombre_personal}
+                            {(item.cantidad || 1) > 1 && (
+                              <span className="text-gray-500 font-semibold ml-1">
+                                (${(Number(item.precio_unitario || (item.valor_pagado / item.cantidad))).toFixed(2)} c/u)
+                              </span>
+                            )}
+                          </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-blush-palmLeaf">${item.valor_pagado.toFixed(2)}</span>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {/* Control de Cantidad (+ / -) */}
+                          <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg p-0.5">
+                            <button
+                              type="button"
+                              onClick={() => handleDecreaseServicioQty(item.id || idx)}
+                              disabled={(item.cantidad || 1) <= 1}
+                              className={`w-5 h-5 flex items-center justify-center rounded text-gray-600 transition-colors ${(item.cantidad || 1) <= 1 ? "opacity-30 cursor-not-allowed" : "hover:bg-gray-200 cursor-pointer text-gray-800"}`}
+                              title="Disminuir cantidad"
+                            >
+                              <Minus size={11} strokeWidth={2.5} />
+                            </button>
+                            <span className="w-5 text-center font-bold text-xs text-gray-800">
+                              {item.cantidad || 1}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleIncreaseServicioQty(item.id || idx)}
+                              className="w-5 h-5 flex items-center justify-center rounded text-blush-palmLeaf hover:bg-blush-palmLeaf/20 cursor-pointer transition-colors font-bold"
+                              title="Aumentar cantidad"
+                            >
+                              <Plus size={11} strokeWidth={2.5} />
+                            </button>
+                          </div>
+
+                          <span className="font-extrabold text-blush-palmLeaf min-w-[48px] text-right">
+                            ${item.valor_pagado.toFixed(2)}
+                          </span>
                           <button
                             type="button"
-                            onClick={() => setServiciosAgregados(serviciosAgregados.filter((_, i) => i !== idx))}
-                            className="text-rose-500 hover:text-rose-700 p-0.5 hover:bg-rose-50 rounded-lg cursor-pointer"
+                            onClick={() => setServiciosAgregados(serviciosAgregados.filter((_, i) => (item.id ? item.id !== serviciosAgregados[i].id : i !== idx)))}
+                            className="text-rose-500 hover:text-rose-700 p-0.5 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
+                            title="Eliminar servicio"
                           >
                             <X size={14} />
                           </button>

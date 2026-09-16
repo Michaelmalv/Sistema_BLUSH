@@ -14,6 +14,8 @@ import {
   Users, 
   Briefcase,
   Wallet,
+  Save,
+  CheckCircle2,
   X
 } from 'lucide-react'
 import { dataService } from '../dataService'
@@ -30,6 +32,10 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
   const [comisiones, setComisiones] = useState([])
   const [sueldosBaseMap, setSueldosBaseMap] = useState({})
   const [selectedManicuristaDetail, setSelectedManicuristaDetail] = useState(null)
+
+  // Estados de guardado de sueldos base
+  const [savingSueldos, setSavingSueldos] = useState(false)
+  const [sueldosSavedSuccess, setSueldosSavedSuccess] = useState(false)
 
   // Buscador de colaboradores
   const [searchColaboradora, setSearchColaboradora] = useState('')
@@ -115,6 +121,35 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
       dataService.actualizarPersonal(id, { sueldo_base: numVal }).catch(err => {
         console.warn('Error sincronizando sueldo base:', err)
       })
+    }
+  }
+
+  // Guardar explícitamente todos los sueldos con confirmación visual
+  const handleSaveAllSueldos = async () => {
+    try {
+      setSavingSueldos(true)
+      localStorage.setItem('blush_sueldos_base_map', JSON.stringify(sueldosBaseMap))
+
+      const updatePromises = Object.entries(sueldosBaseMap).map(([id, val]) => {
+        const numVal = val === '' ? 0 : Number(val)
+        if (!isNaN(numVal) && numVal >= 0) {
+          return dataService.actualizarPersonal(id, { sueldo_base: numVal }).catch(err => {
+            console.warn(`Error actualizando sueldo de ${id}:`, err)
+          })
+        }
+        return Promise.resolve()
+      })
+      await Promise.all(updatePromises)
+
+      setSueldosSavedSuccess(true)
+      setTimeout(() => {
+        setSueldosSavedSuccess(false)
+      }, 3000)
+    } catch (err) {
+      console.error('Error guardando sueldos:', err)
+      alert('Hubo un problema al guardar los sueldos: ' + (err.message || 'Error desconocido'))
+    } finally {
+      setSavingSueldos(false)
     }
   }
 
@@ -756,7 +791,7 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
 
       {subTab === 'liquidacion' && (
         <>
-          {/* SECTOR DE FILTROS */}
+          {/* SECTOR DE FILTROS Y ACCIONES */}
           <div className="bg-white/85 backdrop-blur-md p-6 rounded-3xl border border-gray-150 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4 animate-fade-in">
             <div className="flex items-center gap-3">
               <Calendar className="text-blush-palmLeaf w-6 h-6 shrink-0" />
@@ -799,14 +834,42 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
                 </select>
               </div>
 
-              <div className="flex flex-col justify-end pt-5 w-full sm:w-auto">
+              <div className="flex items-center gap-2 justify-end pt-5 w-full sm:w-auto">
+                <button
+                  onClick={handleSaveAllSueldos}
+                  disabled={savingSueldos || comisiones.length === 0}
+                  className={`flex items-center justify-center gap-2 py-3 px-5 rounded-2xl font-black text-xs uppercase tracking-wide transition-all shadow-md cursor-pointer ${
+                    sueldosSavedSuccess 
+                      ? 'bg-emerald-600 text-white shadow-emerald-600/25' 
+                      : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-emerald-700/25'
+                  } disabled:opacity-50 w-full sm:w-auto`}
+                  title="Guardar todos los sueldos base ingresados"
+                >
+                  {savingSueldos ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Guardando...</span>
+                    </>
+                  ) : sueldosSavedSuccess ? (
+                    <>
+                      <CheckCircle2 size={16} />
+                      <span>¡Guardado! ✓</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} />
+                      <span>Guardar</span>
+                    </>
+                  )}
+                </button>
+
                 <button
                   onClick={() => handleExportExcel(null)}
                   disabled={comisiones.length === 0}
-                  className="flex items-center justify-center gap-2 py-3 px-5 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white rounded-2xl font-black text-xs uppercase tracking-wide transition-all shadow-md shadow-blush-palmLeaf/25 disabled:opacity-50 cursor-pointer w-full"
+                  className="flex items-center justify-center gap-2 py-3 px-5 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white rounded-2xl font-black text-xs uppercase tracking-wide transition-all shadow-md shadow-blush-palmLeaf/25 disabled:opacity-50 cursor-pointer w-full sm:w-auto"
                 >
                   <FileSpreadsheet size={16} />
-                  Exportar Excel
+                  Excel
                 </button>
               </div>
             </div>
@@ -826,11 +889,50 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
               <div className="lg:col-span-2 bg-white rounded-3xl border border-gray-150 shadow-sm overflow-hidden flex flex-col justify-between">
                 <div>
-                  <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                    <h3 className="text-sm font-black text-gray-700 uppercase tracking-wide">Liquidación de Sueldos y Comisiones</h3>
-                    <span className="text-[10px] bg-blush-khaki/20 text-blush-palmLeaf font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
-                      Sueldo Base Editable ✎
-                    </span>
+                  <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex flex-wrap justify-between items-center gap-3">
+                    <div>
+                      <h3 className="text-sm font-black text-gray-700 uppercase tracking-wide">Liquidación de Sueldos y Comisiones</h3>
+                      <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
+                        Ingresa los sueldos base y haz clic en <span className="text-emerald-700 font-black">"Guardar"</span> para confirmar los cambios.
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      {sueldosSavedSuccess && (
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl animate-fade-in">
+                          <CheckCircle2 size={13} className="text-emerald-600" />
+                          ¡Cambios guardados con éxito!
+                        </span>
+                      )}
+                      
+                      <button
+                        onClick={handleSaveAllSueldos}
+                        disabled={savingSueldos}
+                        className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-sm cursor-pointer ${
+                          sueldosSavedSuccess
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-emerald-700/20'
+                        } disabled:opacity-50`}
+                        title="Guardar todos los sueldos base ingresados"
+                      >
+                        {savingSueldos ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <span>Guardando...</span>
+                          </>
+                        ) : sueldosSavedSuccess ? (
+                          <>
+                            <CheckCircle2 size={14} />
+                            <span>Guardado ✓</span>
+                          </>
+                        ) : (
+                          <>
+                            <Save size={14} />
+                            <span>Guardar</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="overflow-x-auto">
@@ -871,7 +973,7 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
                                     onChange={(e) => handleUpdateSueldoBase(c.id, e.target.value)}
                                     placeholder="0.00"
                                     className="w-24 pl-5 pr-2 py-1.5 bg-white border border-gray-250 focus:border-blush-palmLeaf focus:ring-1 focus:ring-blush-palmLeaf rounded-xl text-xs font-black text-gray-800 outline-none text-right transition-all shadow-2xs"
-                                    title="Sueldo base editable. Ingresa el monto fijo mensual de esta colaboradora."
+                                    title="Sueldo base editable. Modifica el monto y presiona el botón Guardar arriba para confirmar."
                                   />
                                 </div>
                               </td>

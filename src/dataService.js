@@ -284,33 +284,67 @@ export const dataService = {
 
   // --- PERSONAL ---
   async getPersonal() {
+    let list = []
     if (this._cache.personal) return this._cache.personal
     if (isSupabaseConfigured) {
       const { data, error } = await supabase.from('personal').select('*').order('nombre')
       if (error) throw error
-      this._cache.personal = data
-      return data
+      list = data || []
+    } else {
+      list = getLocal('blush_personal') || []
     }
-    const local = getLocal('blush_personal')
-    this._cache.personal = local
-    return local
+    try {
+      const sueldosMap = JSON.parse(localStorage.getItem('blush_sueldos_base_map') || '{}')
+      list = list.map(p => ({
+        ...p,
+        sueldo_base: p.sueldo_base !== undefined && p.sueldo_base !== null 
+          ? Number(p.sueldo_base) 
+          : (sueldosMap[p.id] !== undefined ? Number(sueldosMap[p.id]) : 0)
+      }))
+    } catch (e) {}
+    this._cache.personal = list
+    return list
   },
 
   async registrarPersonal(persona) {
     try {
+      const sueldoBaseNum = Number(persona.sueldo_base || 0)
       if (isSupabaseConfigured) {
-        const { data, error } = await supabase.from('personal').insert([persona]).select()
-        if (error) throw error
+        let resData = null
+        try {
+          const { data, error } = await supabase.from('personal').insert([persona]).select()
+          if (error) throw error
+          resData = data[0]
+        } catch (supaErr) {
+          if (supaErr?.message?.includes('sueldo_base') || supaErr?.code === '42703') {
+            const { sueldo_base, ...rest } = persona
+            const { data, error } = await supabase.from('personal').insert([rest]).select()
+            if (error) throw error
+            resData = { ...data[0], sueldo_base: sueldoBaseNum }
+          } else {
+            throw supaErr
+          }
+        }
+        try {
+          const map = JSON.parse(localStorage.getItem('blush_sueldos_base_map') || '{}')
+          map[resData.id] = sueldoBaseNum
+          localStorage.setItem('blush_sueldos_base_map', JSON.stringify(map))
+        } catch (e) {}
         this.clearCache('personal')
-        return data[0]
+        return resData
       }
       const list = getLocal('blush_personal') || []
       if (list.some(p => p.nombre.toLowerCase().trim() === persona.nombre.toLowerCase().trim())) {
         throw new Error('duplicate key value violates unique constraint "personal_nombre_key"')
       }
-      const nuevo = { ...persona, id: 'p_' + Date.now() }
+      const nuevo = { ...persona, id: 'p_' + Date.now(), sueldo_base: sueldoBaseNum }
       list.push(nuevo)
       setLocal('blush_personal', list)
+      try {
+        const map = JSON.parse(localStorage.getItem('blush_sueldos_base_map') || '{}')
+        map[nuevo.id] = sueldoBaseNum
+        localStorage.setItem('blush_sueldos_base_map', JSON.stringify(map))
+      } catch (e) {}
       this.clearCache('personal')
       return nuevo
     } catch (err) {
@@ -320,11 +354,31 @@ export const dataService = {
 
   async actualizarPersonal(id, persona) {
     try {
+      if (persona.sueldo_base !== undefined) {
+        try {
+          const map = JSON.parse(localStorage.getItem('blush_sueldos_base_map') || '{}')
+          map[id] = Number(persona.sueldo_base || 0)
+          localStorage.setItem('blush_sueldos_base_map', JSON.stringify(map))
+        } catch (e) {}
+      }
       if (isSupabaseConfigured) {
-        const { data, error } = await supabase.from('personal').update(persona).eq('id', id).select()
-        if (error) throw error
+        let resData = null
+        try {
+          const { data, error } = await supabase.from('personal').update(persona).eq('id', id).select()
+          if (error) throw error
+          resData = data[0]
+        } catch (supaErr) {
+          if (supaErr?.message?.includes('sueldo_base') || supaErr?.code === '42703') {
+            const { sueldo_base, ...rest } = persona
+            const { data, error } = await supabase.from('personal').update(rest).eq('id', id).select()
+            if (error) throw error
+            resData = { ...data[0], sueldo_base: Number(sueldo_base || 0) }
+          } else {
+            throw supaErr
+          }
+        }
         this.clearCache('personal')
-        return data[0]
+        return resData
       }
       const list = getLocal('blush_personal') || []
       if (persona.nombre && list.some(p => p.id !== id && p.nombre.toLowerCase().trim() === persona.nombre.toLowerCase().trim())) {

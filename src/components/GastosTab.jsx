@@ -318,7 +318,23 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
 
   useEffect(() => {
     loadData()
-  }, [selectedBranchId])
+  }, [activeTab, selectedBranchId])
+
+  useEffect(() => {
+    const handleDbUpdate = () => loadData()
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') loadData()
+    }
+    window.addEventListener('blush_db_update', handleDbUpdate)
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleFocus)
+    return () => {
+      window.removeEventListener('blush_db_update', handleDbUpdate)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleFocus)
+    }
+  }, [])
+
 
   const handleSelectProduct = (e) => {
     const prodId = e.target.value

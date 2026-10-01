@@ -118,10 +118,24 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
   }
 
   useEffect(() => {
-    if (activeTab === 'ventas') {
-      loadData()
-    }
+    loadData()
   }, [activeTab, selectedBranchId])
+
+  useEffect(() => {
+    const handleDbUpdate = () => loadData()
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') loadData()
+    }
+    window.addEventListener('blush_db_update', handleDbUpdate)
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleFocus)
+    return () => {
+      window.removeEventListener('blush_db_update', handleDbUpdate)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleFocus)
+    }
+  }, [])
+
 
   // Auto-completar el precio cuando cambia el servicio
   useEffect(() => {
@@ -543,12 +557,14 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
       if (isNaN(val) || val <= 0) {
         return alert('El valor cobrado debe ser mayor a 0.')
       }
+      const sIds = (checkoutGroup.servicios && checkoutGroup.servicios.length > 0) ? checkoutGroup.servicios.map(s => s.id) : []
       await dataService.registrarPagoCita(
         checkoutGroup.cliente_id,
         checkoutGroup.fecha_hora,
         checkoutForm.forma_pago,
         val,
-        checkoutForm.no_transferencia
+        checkoutForm.no_transferencia,
+        sIds
       )
       setMsg({ type: 'success', text: 'Pago registrado con éxito.' })
       setShowCheckoutModal(false)

@@ -64,10 +64,24 @@ export default function InventarioTab({ activeTab, selectedBranchId }) {
   }
 
   useEffect(() => {
-    if (activeTab === 'inventario') {
-      loadData()
-    }
+    loadData()
   }, [activeTab, selectedBranchId])
+
+  useEffect(() => {
+    const handleDbUpdate = () => loadData()
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') loadData()
+    }
+    window.addEventListener('blush_db_update', handleDbUpdate)
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleFocus)
+    return () => {
+      window.removeEventListener('blush_db_update', handleDbUpdate)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleFocus)
+    }
+  }, [])
+
 
   const handleSubmit = async (e) => {
     e.preventDefault()

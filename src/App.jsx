@@ -105,6 +105,32 @@ export default function App() {
     if (currentUser) {
       loadSucursales()
       loadNotifications()
+
+      const channel = dataService.initRealtimeSync(() => {
+        loadNotifications()
+      })
+
+      const handleDbUpdate = () => {
+        loadNotifications()
+      }
+
+      const handleFocus = () => {
+        if (document.visibilityState === 'visible') {
+          dataService.clearCache()
+          loadNotifications()
+        }
+      }
+
+      window.addEventListener('blush_db_update', handleDbUpdate)
+      window.addEventListener('focus', handleFocus)
+      document.addEventListener('visibilitychange', handleFocus)
+
+      return () => {
+        dataService.unsubscribeRealtime(channel)
+        window.removeEventListener('blush_db_update', handleDbUpdate)
+        window.removeEventListener('focus', handleFocus)
+        document.removeEventListener('visibilitychange', handleFocus)
+      }
     }
   }, [currentUser, selectedBranchId])
 
@@ -403,33 +429,33 @@ export default function App() {
   const renderTab = () => {
     const tabKey = `${activeTab}-${selectedBranchId}`
     if (currentUser?.rol === 'Administrador' && activeTab === 'dashboard') {
-      return <ClientesTab key={tabKey} />
+      return <ClientesTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} />
     }
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardTab key={tabKey} onNavigate={(tab) => setActiveTab(tab)} />
+        return <DashboardTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} onNavigate={(tab) => setActiveTab(tab)} />
       case 'crm':
-        return <ClientesTab key={tabKey} />
+        return <ClientesTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} />
       case 'seguimiento':
-        return <SeguimientoTab key={tabKey} />
+        return <SeguimientoTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} subTab={seguimientoSubTab} onSubTabChange={setSeguimientoSubTab} />
       case 'inventario':
-        return <InventarioTab key={tabKey} />
+        return <InventarioTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} />
       case 'citas':
         return <CitasTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} />
       case 'ventas':
         return <VentasTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} />
       case 'servicios':
-        return <ServiciosTab key={tabKey} />
+        return <ServiciosTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} />
       case 'gastos':
-        return <GastosTab key={tabKey} />
+        return <GastosTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} />
       case 'sueldos':
-        return <SueldosTab key={tabKey} />
+        return <SueldosTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} />
       case 'usuarios':
-        return <UsuariosTab key={tabKey} />
+        return <UsuariosTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} />
       default:
         return currentUser?.rol === 'Administrador' 
-          ? <ClientesTab key={tabKey} /> 
-          : <DashboardTab key={tabKey} onNavigate={(tab) => setActiveTab(tab)} />
+          ? <ClientesTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} /> 
+          : <DashboardTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} onNavigate={(tab) => setActiveTab(tab)} />
     }
   }
 

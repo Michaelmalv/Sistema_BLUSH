@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Plus, Edit3, Trash2, Scissors, Award, Clock, Search, X } from 'lucide-react'
 import { dataService } from '../dataService'
 
-export default function ServiciosTab({ activeTab }) {
+export default function ServiciosTab({ activeTab, selectedBranchId }) {
   const [servicios, setServicios] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -34,11 +34,24 @@ export default function ServiciosTab({ activeTab }) {
     }
   }
 
+    useEffect(() => {
+    loadData()
+  }, [activeTab, selectedBranchId])
+
   useEffect(() => {
-    if (activeTab === 'servicios') {
-      loadData()
+    const handleDbUpdate = () => loadData()
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') loadData()
     }
-  }, [activeTab])
+    window.addEventListener('blush_db_update', handleDbUpdate)
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleFocus)
+    return () => {
+      window.removeEventListener('blush_db_update', handleDbUpdate)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleFocus)
+    }
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()

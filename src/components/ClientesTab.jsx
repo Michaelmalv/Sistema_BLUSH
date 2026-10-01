@@ -5,7 +5,7 @@ import { dataService } from '../dataService'
 import * as XLSX from 'xlsx-js-style'
 import { exportExcelJS } from '../excelExporter'
 
-export default function ClientesTab({ activeTab }) {
+export default function ClientesTab({ activeTab, selectedBranchId }) {
   const [clientes, setClientes] = useState([])
   const [recontactar, setRecontactar] = useState([])
   const [search, setSearch] = useState('')
@@ -38,10 +38,23 @@ export default function ClientesTab({ activeTab }) {
   }
 
   useEffect(() => {
-    if (activeTab === 'crm') {
-      loadData()
+    loadData()
+  }, [activeTab, selectedBranchId])
+
+  useEffect(() => {
+    const handleDbUpdate = () => loadData()
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') loadData()
     }
-  }, [activeTab])
+    window.addEventListener('blush_db_update', handleDbUpdate)
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleFocus)
+    return () => {
+      window.removeEventListener('blush_db_update', handleDbUpdate)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleFocus)
+    }
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()

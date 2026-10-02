@@ -1241,6 +1241,160 @@ export const dataService = {
     return porRecontactar.sort((a, b) => b.dias_retraso - a.dias_retraso)
   },
 
+  // --- HISTORIAL COMPLETO DE CLIENTE ---
+  async getHistorialCliente(clienteId, forceRefresh = false) {
+    if (!clienteId) return null
+    const [citas, clientes, servicios, personal] = await Promise.all([
+      this.getCitasVentas(forceRefresh),
+      this.getClientes(forceRefresh),
+      this.getServicios(forceRefresh),
+      this.getPersonal(forceRefresh)
+    ])
+
+    const cliente = clientes.find(c => c.id === clienteId) || null
+    
+    const citasDelCliente = citas.filter(c => {
+      const cId = c.cliente_id || (c.clientes ? c.clientes.id : null)
+      return cId === clienteId
+    })
+
+    citasDelCliente.sort((a, b) => new Date(b.fecha_hora) - new Date(a.fecha_hora))
+
+    const visitasMap = {}
+    let totalGastado = 0
+    const serviciosConteo = {}
+    const estilistasConteo = {}
+
+    citasDelCliente.forEach(c => {
+      const fechaHora = c.fecha_hora || ''
+      const serv = c.servicios || servicios.find(s => s.id === c.servicio_id) || { nombre: 'Servicio' }
+      const staff = c.personal || personal.find(p => p.id === c.personal_id) || { nombre: 'Por asignar' }
+      const valor = Number(c.valor_pagado) || 0
+      totalGastado += valor
+
+      if (serv.nombre) {
+        serviciosConteo[serv.nombre] = (serviciosConteo[serv.nombre] || 0) + 1
+      }
+      if (staff.nombre && staff.nombre !== 'Por asignar') {
+        estilistasConteo[staff.nombre] = (estilistasConteo[staff.nombre] || 0) + 1
+      }
+
+      if (!visitasMap[fechaHora]) {
+        visitasMap[fechaHora] = {
+          fecha_hora: fechaHora,
+          forma_pago: c.forma_pago || 'Efectivo',
+          no_transferencia: c.no_transferencia || '',
+          servicios: [],
+          totalVisita: 0
+        }
+      }
+
+      visitasMap[fechaHora].servicios.push({
+        id: c.id,
+        servicio_id: c.servicio_id,
+        servicio_nombre: serv.nombre || 'Servicio General',
+        duracion_minutos: serv.duracion_minutos || 30,
+        personal_id: c.personal_id,
+        personal_nombre: staff.nombre || 'Sin asignar',
+        valor_pagado: valor,
+        forma_pago: c.forma_pago || 'Efectivo',
+        no_transferencia: c.no_transferencia || '',
+        sucursal_id: c.sucursal_id
+      })
+      visitasMap[fechaHora].totalVisita += valor
+    })
+
+    const visitas = Object.values(visitasMap).sort((a, b) => new Date(b.fecha_hora) - new Date(a.fecha_hora))
+
+    let servicioFavorito = null
+    let maxSvcCount = 0
+    Object.entries(serviciosConteo).forEach(([nombre, count]) => {
+      if (count > maxSvcCount) {
+        maxSvcCount = count
+        servicioFavorito = { nombre, veces: count }
+      }
+    })
+
+    let estilistaFavorita = null
+    let maxStaffCount = 0
+    Object.entries(estilistasConteo).forEach(([nombre, count]) => {
+      if (count > maxStaffCount) {
+        maxStaffCount = count
+        estilistaFavorita = { nombre, veces: count }
+      }
+    })
+
+    return {
+      cliente,
+      totalVisitas: visitas.length,
+      totalServicios: citasDelCliente.length,
+      totalGastado,
+      promedioGastoVisita: visitas.length > 0 ? (totalGastado / visitas.length) : 0,
+      servicioFavorito,
+      estilistaFavorita,
+      primeraVisita: visitas.length > 0 ? visitas[visitas.length - 1].fecha_hora : null,
+      ultimaVisita: visitas.length > 0 ? visitas[0].fecha_hora : null,
+      visitas,
+      todasCitas: citasDelCliente
+    }
+  },
+
+  async getClientesConResumenHistorial(forceRefresh = false) {
+    const [citas, clientes, servicios] = await Promise.all([
+      this.getCitasVentas(forceRefresh),
+      this.getClientes(forceRefresh),
+      this.getServicios(forceRefresh)
+    ])
+
+    const citasPorCliente = {}
+    citas.forEach(c => {
+      const cId = c.cliente_id || (c.clientes ? c.clientes.id : null)
+      if (!cId) return
+      if (!citasPorCliente[cId]) citasPorCliente[cId] = []
+      citasPorCliente[cId].push(c)
+    })
+
+    return clientes.map(cliente => {
+      const citasCliente = citasPorCliente[cliente.id] || []
+      citasCliente.sort((a, b) => new Date(b.fecha_hora) - new Date(a.fecha_hora))
+
+      const fechasUnicas = new Set(citasCliente.map(c => c.fecha_hora))
+      let totalGastado = 0
+      const svcMap = {}
+
+      citasCliente.forEach(c => {
+        totalGastado += Number(c.valor_pagado) || 0
+        const sName = c.servicios?.nombre || servicios.find(s => s.id === c.servicio_id)?.nombre
+        if (sName) {
+          svcMap[sName] = (svcMap[sName] || 0) + 1
+        }
+      })
+
+      let favorito = null
+      let maxCnt = 0
+      Object.entries(svcMap).forEach(([name, cnt]) => {
+        if (cnt > maxCnt) {
+          maxCnt = cnt
+          favorito = name
+        }
+      })
+
+      const ultimaCita = citasCliente[0] || null
+      const ultimoServicio = ultimaCita ? (ultimaCita.servicios?.nombre || servicios.find(s => s.id === ultimaCita.servicio_id)?.nombre || 'Servicio') : null
+
+      return {
+        ...cliente,
+        totalVisitas: fechasUnicas.size,
+        totalServicios: citasCliente.length,
+        totalGastado,
+        ultimaVisita: ultimaCita ? ultimaCita.fecha_hora : null,
+        ultimoServicio,
+        servicioFavorito: favorito,
+        tieneHistorial: citasCliente.length > 0
+      }
+    })
+  },
+
   // --- SUCURSALES ---
   async getSucursales(forceRefresh = false) {
     if (!forceRefresh && this.isCacheValid('sucursales')) return this._cache['sucursales']

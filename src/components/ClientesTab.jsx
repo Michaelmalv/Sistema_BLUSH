@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Search, Phone, Mail, UserPlus, Users, BellRing, ExternalLink, Cake, Edit3, Trash2, Download, X } from 'lucide-react'
+import { Search, Phone, Mail, UserPlus, Users, BellRing, ExternalLink, Cake, Edit3, Trash2, Download, X, History } from 'lucide-react'
 import { dataService } from '../dataService'
 import * as XLSX from 'xlsx-js-style'
 import { exportExcelJS } from '../excelExporter'
+import ClientHistoryModal from './ClientHistoryModal'
 
 export default function ClientesTab({ activeTab, selectedBranchId }) {
   const [clientes, setClientes] = useState([])
@@ -11,6 +12,7 @@ export default function ClientesTab({ activeTab, selectedBranchId }) {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState(null)
+  const [selectedClientForHistory, setSelectedClientForHistory] = useState(null)
 
   // Formulario de Cliente
   const [form, setForm] = useState({
@@ -532,6 +534,13 @@ export default function ClientesTab({ activeTab, selectedBranchId }) {
                     </div>
                     <div className="flex items-center gap-1">
                       <button
+                        onClick={() => setSelectedClientForHistory(c)}
+                        className="p-1.5 hover:bg-indigo-50 text-gray-400 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer"
+                        title="Ver Historial Completo de Tratamientos"
+                      >
+                        <History size={14} />
+                      </button>
+                      <button
                         onClick={() => handleEdit(c)}
                         className="p-1.5 hover:bg-gray-200/50 rounded-lg text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
                         title="Editar Cliente"
@@ -578,6 +587,14 @@ export default function ClientesTab({ activeTab, selectedBranchId }) {
           </div>
         )}
       </div>
+          {/* Modal de Historial del Cliente */}
+      {selectedClientForHistory && (
+        <ClientHistoryModal
+          clienteId={selectedClientForHistory.id}
+          clienteData={selectedClientForHistory}
+          onClose={() => setSelectedClientForHistory(null)}
+        />
+      )}
     </div>
   )
 }

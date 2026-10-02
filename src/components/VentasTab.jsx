@@ -388,6 +388,8 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
           cliente_id: finalClienteId,
           servicio_id: s.servicio_id,
           personal_id: finalPersonalId || null,
+          vendedora_id: isBlush ? (vendedoraId || null) : null,
+          es_venta_blush: isBlush,
           fecha_hora: dateObj.toISOString(),
           valor_pagado: Number(s.valor_pagado),
           forma_pago: form.forma_pago || 'Efectivo',
@@ -666,6 +668,8 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
       servicio_id: s.servicio_id,
       nombre_servicio: s.nombre_servicio,
       personal_id: s.personal_id,
+      vendedora_id: s.vendedora_id || null,
+      is_blush: !!s.es_venta_blush,
       nombre_personal: s.nombre_personal,
       valor_pagado: s.valor_pagado
     })))

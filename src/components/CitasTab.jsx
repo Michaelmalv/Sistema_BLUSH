@@ -44,6 +44,7 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
     
     servicio_id: '',
     personal_id: '',
+    vendedora_id: '',
     fecha_hora: getLocalDatetimeString(),
     valor_pagado: '',
     forma_pago: 'Efectivo',
@@ -367,14 +368,22 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
           frecuencia_recomendada_dias: nuevoServicioForm.frecuencia_recomendada_dias ? Number(nuevoServicioForm.frecuencia_recomendada_dias) : null
         })
 
+        const isBlush = isBlushSelected
         const pers = form.personal_id ? personal.find(p => p.id === form.personal_id) : null
+        const vendedora = (isBlush && form.vendedora_id) ? personal.find(p => p.id === form.vendedora_id) : null
+        let persDisplayName = pers ? pers.nombre : 'Sin asignar'
+        if (isBlush) {
+          persDisplayName = vendedora ? `Blush (Vendido por ${vendedora.nombre} • 5% com.)` : 'Blush'
+        }
         setServiciosAgregados([
           ...serviciosAgregados,
           {
             servicio_id: nuevoSvc.id,
             nombre_servicio: nuevoSvc.nombre,
             personal_id: form.personal_id || null,
-            nombre_personal: pers ? pers.nombre : 'Sin asignar',
+            vendedora_id: isBlush ? (form.vendedora_id || null) : null,
+            is_blush: isBlush,
+            nombre_personal: persDisplayName,
             valor_pagado: precioVal
           }
         ])
@@ -403,7 +412,13 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
         return alert('Debe seleccionar un servicio.')
       }
       const svc = servicios.find(s => s.id === form.servicio_id)
+      const isBlush = isBlushSelected
       const pers = form.personal_id ? personal.find(p => p.id === form.personal_id) : null
+      const vendedora = (isBlush && form.vendedora_id) ? personal.find(p => p.id === form.vendedora_id) : null
+      let persDisplayName = pers ? pers.nombre : 'Sin asignar'
+      if (isBlush) {
+        persDisplayName = vendedora ? `Blush (Vendido por ${vendedora.nombre} • 5% com.)` : 'Blush'
+      }
       const val = svc ? Number(svc.precio_base || 0) : 0
 
       setServiciosAgregados([
@@ -412,7 +427,9 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
           servicio_id: form.servicio_id,
           nombre_servicio: svc ? svc.nombre : 'Servicio',
           personal_id: form.personal_id || null,
-          nombre_personal: pers ? pers.nombre : 'Sin asignar',
+          vendedora_id: isBlush ? (form.vendedora_id || null) : null,
+          is_blush: isBlush,
+          nombre_personal: persDisplayName,
           valor_pagado: val
         }
       ])
@@ -421,6 +438,7 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
         ...prev,
         servicio_id: '',
         personal_id: '',
+        vendedora_id: '',
         valor_pagado: ''
       }))
       setServiceSearchText('')
@@ -1005,18 +1023,54 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
                 )}
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Colaboradora (Opcional)</label>
-                <select
-                  value={form.personal_id}
-                  onChange={(e) => setForm({ ...form, personal_id: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 outline-none"
-                >
-                  <option value="">Sin asignar / Opcional</option>
-                  {personal.filter(p => p.activo).map(p => (
-                    <option key={p.id} value={p.id}>{p.nombre}</option>
-                  ))}
-                </select>
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Colaboradora (Opcional)</label>
+                  <select
+                    value={form.personal_id}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      const selectedItem = personal.find(p => p.id === val)
+                      const isBlush = selectedItem?.nombre?.toLowerCase() === 'blush'
+                      setForm(prev => ({
+                        ...prev,
+                        personal_id: val,
+                        vendedora_id: isBlush ? prev.vendedora_id : ''
+                      }))
+                    }}
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 outline-none focus:border-blush-palmLeaf"
+                  >
+                    <option value="">Sin asignar / Opcional</option>
+                    {personal.filter(p => p.activo).map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre.toLowerCase() === 'blush' ? '🛍️ Blush (Venta de Productos / Estudio)' : p.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {isBlushSelected && (
+                  <div className="p-3 bg-pink-50/80 rounded-2xl border border-pink-200 animate-slide-in space-y-1">
+                    <label className="block text-[10px] font-black text-pink-800 uppercase tracking-wider ml-1">
+                      🛍️ Colaboradora que vendió el producto (5% comisión)
+                    </label>
+                    <select
+                      value={form.vendedora_id || ''}
+                      onChange={(e) => setForm({ ...form, vendedora_id: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-pink-300 rounded-xl text-xs font-bold text-gray-800 outline-none focus:border-pink-500 shadow-sm"
+                    >
+                      <option value="">Seleccione colaboradora vendedora...</option>
+                      {personal
+                        .filter(p => p.activo && p.nombre.toLowerCase() !== 'blush')
+                        .map(p => (
+                          <option key={p.id} value={p.id}>{p.nombre}</option>
+                        ))}
+                    </select>
+                    <p className="text-[10px] text-pink-700 font-semibold mt-1 flex items-center gap-1">
+                      ✨ Gana el 5% de comisión en su liquidación mensual de sueldo.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <button
@@ -1985,18 +2039,54 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
                       )}
                     </div>
 
-                    <div>
-                <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Colaboradora (Opcional)</label>
-                <select
-                  value={form.personal_id}
-                  onChange={(e) => setForm({ ...form, personal_id: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 outline-none"
-                >
-                  <option value="">Sin asignar / Opcional</option>
-                  {personal.filter(p => p.activo).map(p => (
-                    <option key={p.id} value={p.id}>{p.nombre}</option>
-                  ))}
-                </select>
+                    <div className="space-y-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 mb-0.5 ml-1">Colaboradora (Opcional)</label>
+                  <select
+                    value={form.personal_id}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      const selectedItem = personal.find(p => p.id === val)
+                      const isBlush = selectedItem?.nombre?.toLowerCase() === 'blush'
+                      setForm(prev => ({
+                        ...prev,
+                        personal_id: val,
+                        vendedora_id: isBlush ? prev.vendedora_id : ''
+                      }))
+                    }}
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 outline-none focus:border-blush-palmLeaf"
+                  >
+                    <option value="">Sin asignar / Opcional</option>
+                    {personal.filter(p => p.activo).map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre.toLowerCase() === 'blush' ? '🛍️ Blush (Venta de Productos / Estudio)' : p.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {isBlushSelected && (
+                  <div className="p-3 bg-pink-50/80 rounded-2xl border border-pink-200 animate-slide-in space-y-1">
+                    <label className="block text-[10px] font-black text-pink-800 uppercase tracking-wider ml-1">
+                      🛍️ Colaboradora que vendió el producto (5% comisión)
+                    </label>
+                    <select
+                      value={form.vendedora_id || ''}
+                      onChange={(e) => setForm({ ...form, vendedora_id: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-pink-300 rounded-xl text-xs font-bold text-gray-800 outline-none focus:border-pink-500 shadow-sm"
+                    >
+                      <option value="">Seleccione colaboradora vendedora...</option>
+                      {personal
+                        .filter(p => p.activo && p.nombre.toLowerCase() !== 'blush')
+                        .map(p => (
+                          <option key={p.id} value={p.id}>{p.nombre}</option>
+                        ))}
+                    </select>
+                    <p className="text-[10px] text-pink-700 font-semibold mt-1 flex items-center gap-1">
+                      ✨ Gana el 5% de comisión en su liquidación mensual de sueldo.
+                    </p>
+                  </div>
+                )}
               </div>
 
                     <button

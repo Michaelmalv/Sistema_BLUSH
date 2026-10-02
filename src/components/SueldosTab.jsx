@@ -202,7 +202,10 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
 
       // 2. Ventas de productos Blush realizadas por esta colaboradora (5% comisión)
       const pProductos = periodVentas.filter(v => 
-        (v.vendedora_id === p.id) || (v.tipo && v.tipo === `venta_blush:${p.id}`)
+        (v.vendedora_id === p.id) || 
+        (v.tipo && v.tipo === `venta_blush:${p.id}`) ||
+        (v.tipo && typeof v.tipo === 'string' && v.tipo.includes(p.id)) ||
+        (v.no_transferencia_raw && typeof v.no_transferencia_raw === 'string' && v.no_transferencia_raw.includes(`[vendedora:${p.id}]`))
       ).map(v => ({
         ...v,
         es_producto_blush: true,
@@ -567,8 +570,12 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
           makeCell('Cargo', 's', null, headerStyle('748843')),
           makeCell('Sueldo Fijo / Base ($)', 's', null, headerStyle('748843')),
           makeCell('Cant. Servicios', 's', null, headerStyle('748843')),
-          makeCell('Total Facturado ($)', 's', null, headerStyle('748843')),
-          makeCell('Comisión 40% ($)', 's', null, headerStyle('748843')),
+          makeCell('Ventas Servicios ($)', 's', null, headerStyle('748843')),
+          makeCell('Com. Servicios 40% ($)', 's', null, headerStyle('748843')),
+          makeCell('Cant. Prod. Blush', 's', null, headerStyle('748843')),
+          makeCell('Ventas Prod. Blush ($)', 's', null, headerStyle('748843')),
+          makeCell('Com. Prod. 5% ($)', 's', null, headerStyle('748843')),
+          makeCell('Total Comisiones ($)', 's', null, headerStyle('748843')),
           makeCell('Total a Liquidar ($)', 's', null, headerStyle('748843'))
         ]);
 
@@ -579,8 +586,12 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
             makeCell(c.cargo || 'Manicurista', 's', null, cellTextLeft(bg)),
             makeCell(Number(c.sueldo_base || 0), 'n', '"$"#,##0.00', cellCurrency(bg)),
             makeCell(Number(c.total_servicios || 0), 'n', '#,##0', cellTextCenter(bg)),
-            makeCell(Number(c.total_ventas || 0), 'n', '"$"#,##0.00', cellCurrency(bg)),
-            makeCell(Number(c.comision || 0), 'n', '"$"#,##0.00', cellCurrency(bg)),
+            makeCell(Number(c.total_ventas_servicios || 0), 'n', '"$"#,##0.00', cellCurrency(bg)),
+            makeCell(Number(c.comision_servicios || 0), 'n', '"$"#,##0.00', cellCurrency(bg)),
+            makeCell(Number(c.total_productos || 0), 'n', '#,##0', cellTextCenter(bg)),
+            makeCell(Number(c.total_ventas_productos || 0), 'n', '"$"#,##0.00', cellCurrency(bg)),
+            makeCell(Number(c.comision_productos || 0), 'n', '"$"#,##0.00', cellCurrency(bg)),
+            makeCell(Number(c.comision || 0), 'n', '"$"#,##0.00', cellCurrencyBold(bg)),
             makeCell(Number(c.total_pagar || 0), 'n', '"$"#,##0.00', cellCurrencyBold(bg))
           ]);
         });
@@ -652,10 +663,11 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
           makeCell('Colaboradora', 's', null, headerStyle('748843')),
           makeCell('Fecha y Hora', 's', null, headerStyle('748843')),
           makeCell('Cliente', 's', null, headerStyle('748843')),
-          makeCell('Servicio Realizado', 's', null, headerStyle('748843')),
+          makeCell('Concepto / Servicio o Producto', 's', null, headerStyle('748843')),
+          makeCell('Tipo (% Comisión)', 's', null, headerStyle('748843')),
           makeCell('Forma de Pago', 's', null, headerStyle('748843')),
           makeCell('Valor Cobrado ($)', 's', null, headerStyle('748843')),
-          makeCell('Comisión 40% ($)', 's', null, headerStyle('748843'))
+          makeCell('Comisión Ganada ($)', 's', null, headerStyle('748843'))
         ]);
 
         let detailCount = 0;

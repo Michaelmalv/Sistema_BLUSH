@@ -451,7 +451,7 @@ export const dataService = {
       if (idsArray && Array.isArray(idsArray) && idsArray.length > 0) {
         const { data, error } = await supabase
           .from('citas_ventas')
-          .select('id, servicio_id, valor_pagado')
+          .select('id, servicio_id, valor_pagado, no_transferencia')
           .in('id', idsArray)
         if (error) throw error
         group = data || []
@@ -461,7 +461,7 @@ export const dataService = {
       if (group.length === 0 && clienteId && fechaHora) {
         const { data, error: fetchError } = await supabase
           .from('citas_ventas')
-          .select('id, servicio_id, valor_pagado')
+          .select('id, servicio_id, valor_pagado, no_transferencia')
           .eq('cliente_id', clienteId)
           .eq('fecha_hora', fechaHora)
         if (fetchError) throw fetchError
@@ -476,7 +476,7 @@ export const dataService = {
           const end = new Date(d.getTime() + 120000).toISOString()
           const { data } = await supabase
             .from('citas_ventas')
-            .select('id, servicio_id, valor_pagado')
+            .select('id, servicio_id, valor_pagado, no_transferencia')
             .eq('cliente_id', clienteId)
             .gte('fecha_hora', start)
             .lte('fecha_hora', end)
@@ -500,12 +500,26 @@ export const dataService = {
         const propVal = totalBase === 0 ? (valorTotal / group.length) : (valorTotal * (basePrice / totalBase))
         const finalVal = Math.round(propVal * 100) / 100
 
+        // Preservar tag [vendedora:UUID] si existía en item
+        let finalNoTrans = noTransferencia ? String(noTransferencia).trim() : null
+        if (item.no_transferencia && item.no_transferencia.includes('[vendedora:')) {
+          const match = item.no_transferencia.match(/\[vendedora:([a-zA-Z0-9_-]+)\]/)
+          if (match) {
+            const tag = '[vendedora:' + match[1] + ']'
+            if (finalNoTrans) {
+              if (!finalNoTrans.includes('[vendedora:')) finalNoTrans = finalNoTrans + ' ' + tag
+            } else {
+              finalNoTrans = tag
+            }
+          }
+        }
+
         const { error: updateError } = await supabase
           .from('citas_ventas')
           .update({
             forma_pago: formaPago,
             valor_pagado: finalVal,
-            no_transferencia: noTransferencia || null
+            no_transferencia: finalNoTrans || null
           })
           .eq('id', item.id)
         if (updateError) throw updateError
@@ -533,11 +547,25 @@ export const dataService = {
         const basePrice = svcMap.get(c.servicio_id) || 0
         const propVal = totalBase === 0 ? (valorTotal / group.length) : (valorTotal * (basePrice / totalBase))
         const finalVal = Math.round(propVal * 100) / 100
+
+        let finalNoTrans = noTransferencia ? String(noTransferencia).trim() : null
+        if (c.no_transferencia && c.no_transferencia.includes('[vendedora:')) {
+          const match = c.no_transferencia.match(/\[vendedora:([a-zA-Z0-9_-]+)\]/)
+          if (match) {
+            const tag = '[vendedora:' + match[1] + ']'
+            if (finalNoTrans) {
+              if (!finalNoTrans.includes('[vendedora:')) finalNoTrans = finalNoTrans + ' ' + tag
+            } else {
+              finalNoTrans = tag
+            }
+          }
+        }
+
         return {
           ...c,
           forma_pago: formaPago,
           valor_pagado: finalVal,
-          no_transferencia: noTransferencia || null
+          no_transferencia: finalNoTrans || null
         }
       }
       return c
@@ -708,8 +736,60 @@ export const dataService = {
             c.personal.nombre = this.resolverNombreEstandar(c.personal.nombre)
           }
           c.tipo = c.tipo || 'cita'
+
+          let vendedoraId = null
+          let cleanRef = c.no_transferencia
+          if (c.no_transferencia && typeof c.no_transferencia === 'string' && c.no_transferencia.includes('[vendedora:')) {
+            const match = c.no_transferencia.match(/\[vendedora:([a-zA-Z0-9_-]+)\]/)
+            if (match) {
+              vendedoraId = match[1]
+              cleanRef = c.no_transferencia.replace(/\[vendedora:[a-zA-Z0-9_-]+\]/, '').trim() || null
+            }
+          }
+          if (!vendedoraId && c.tipo && typeof c.tipo === 'string' && c.tipo.includes('venta_blush:')) {
+            vendedoraId = c.tipo.split('venta_blush:')[1]
+          }
+          if (!vendedoraId && c.vendedora_id) {
+            vendedoraId = c.vendedora_id
+          }
+
+          const isBlush = !!(
+            (c.personal?.nombre && c.personal.nombre.toLowerCase() === 'blush') ||
+            (c.personal_id && c.personal_id === 'cddf181e-5525-44b8-913b-15a18ac3770b') ||
+            c.es_venta_blush ||
+            vendedoraId
+          )
+
+          c.no_transferencia_raw = c.no_transferencia
+          c.no_transferencia = cleanRef
+          c.vendedora_id = vendedoraId || null
+          c.es_venta_blush = isBlush
+          c.comision_porcentaje = isBlush ? 0.05 : 0.40
+
           return c
         })
+
+        // Smart Group Pass: vincular colaboradora vendedora para ventas Blush en el mismo ticket
+        const groupedByTx = {}
+        mapped.forEach(item => {
+          const key = `${item.cliente_id}_${item.fecha_hora}`
+          if (!groupedByTx[key]) groupedByTx[key] = []
+          groupedByTx[key].push(item)
+        })
+
+        Object.values(groupedByTx).forEach(group => {
+          if (group.length > 1) {
+            const nonBlush = group.find(i => i.personal_id && i.personal?.nombre?.toLowerCase() !== 'blush' && i.personal_id !== 'cddf181e-5525-44b8-913b-15a18ac3770b')
+            if (nonBlush) {
+              group.forEach(i => {
+                if (i.es_venta_blush && !i.vendedora_id) {
+                  i.vendedora_id = nonBlush.personal_id
+                }
+              })
+            }
+          }
+        })
+
         this.setCache(cacheKey, mapped)
         data = mapped
       } else {
@@ -722,14 +802,65 @@ export const dataService = {
           const cli = clientes.find(cl => cl.id === c.cliente_id)
           const ser = servicios.find(s => s.id === c.servicio_id)
           const per = personal.find(p => p.id === c.personal_id)
+
+          let vendedoraId = null
+          let cleanRef = c.no_transferencia
+          if (c.no_transferencia && typeof c.no_transferencia === 'string' && c.no_transferencia.includes('[vendedora:')) {
+            const match = c.no_transferencia.match(/\[vendedora:([a-zA-Z0-9_-]+)\]/)
+            if (match) {
+              vendedoraId = match[1]
+              cleanRef = c.no_transferencia.replace(/\[vendedora:[a-zA-Z0-9_-]+\]/, '').trim() || null
+            }
+          }
+          if (!vendedoraId && c.tipo && typeof c.tipo === 'string' && c.tipo.includes('venta_blush:')) {
+            vendedoraId = c.tipo.split('venta_blush:')[1]
+          }
+          if (!vendedoraId && c.vendedora_id) {
+            vendedoraId = c.vendedora_id
+          }
+
+          const isBlush = !!(
+            (per?.nombre && per.nombre.toLowerCase() === 'blush') ||
+            (c.personal_id && c.personal_id === 'cddf181e-5525-44b8-913b-15a18ac3770b') ||
+            c.es_venta_blush ||
+            vendedoraId
+          )
+
           return {
             ...c,
             tipo: c.tipo || 'cita',
+            no_transferencia_raw: c.no_transferencia,
+            no_transferencia: cleanRef,
+            vendedora_id: vendedoraId || null,
+            es_venta_blush: isBlush,
+            comision_porcentaje: isBlush ? 0.05 : 0.40,
             clientes: cli ? { id: cli.id, nombre: cli.nombre, cedula: cli.cedula, celular: cli.celular, correo: cli.correo } : null,
             servicios: ser ? { id: ser.id, nombre: ser.nombre, precio_base: ser.precio_base, frecuencia_recomendada_dias: ser.frecuencia_recomendada_dias } : null,
             personal: per ? { id: per.id, nombre: this.resolverNombreEstandar(per.nombre) } : null
           }
         })
+
+        // Smart Group Pass: vincular colaboradora vendedora para ventas Blush en el mismo ticket
+        const groupedByTx = {}
+        data.forEach(item => {
+          const key = `${item.cliente_id}_${item.fecha_hora}`
+          if (!groupedByTx[key]) groupedByTx[key] = []
+          groupedByTx[key].push(item)
+        })
+
+        Object.values(groupedByTx).forEach(group => {
+          if (group.length > 1) {
+            const nonBlush = group.find(i => i.personal_id && i.personal?.nombre?.toLowerCase() !== 'blush' && i.personal_id !== 'cddf181e-5525-44b8-913b-15a18ac3770b')
+            if (nonBlush) {
+              group.forEach(i => {
+                if (i.es_venta_blush && !i.vendedora_id) {
+                  i.vendedora_id = nonBlush.personal_id
+                }
+              })
+            }
+          }
+        })
+
         const filtered = rawBranchId ? data.filter(c => !c.sucursal_id || c.sucursal_id === rawBranchId) : data
         return [...filtered].sort((a, b) => new Date(b.fecha_hora) - new Date(a.fecha_hora))
       }
@@ -740,15 +871,40 @@ export const dataService = {
 
   async registrarCitaVenta(cita) {
     const branch = this.getEffectiveBranchId(cita.sucursal_id)
+    let finalTipo = cita.tipo || 'cita'
+    if (finalTipo.startsWith('venta_blush:') || finalTipo.startsWith('producto_blush:')) {
+      finalTipo = 'venta'
+    }
+
+    let finalNoTransferencia = cita.no_transferencia ? String(cita.no_transferencia).trim() : null
+    if (cita.vendedora_id && (cita.es_venta_blush || cita.personal_id === 'cddf181e-5525-44b8-913b-15a18ac3770b' || (cita.personal?.nombre && cita.personal.nombre.toLowerCase() === 'blush'))) {
+      const tag = `[vendedora:${cita.vendedora_id}]`
+      if (finalNoTransferencia) {
+        if (!finalNoTransferencia.includes('[vendedora:')) {
+          finalNoTransferencia = `${finalNoTransferencia} ${tag}`
+        }
+      } else {
+        finalNoTransferencia = tag
+      }
+    }
+
     const citaConSucursal = { 
       ...cita, 
-      tipo: cita.tipo || 'cita',
+      no_transferencia: finalNoTransferencia,
+      tipo: finalTipo,
       sucursal_id: branch 
     }
 
     if (isSupabaseConfigured) {
-      const { data, error } = await supabase.from('citas_ventas').insert([citaConSucursal]).select()
-      if (error) throw error
+      let { data, error } = await supabase.from('citas_ventas').insert([citaConSucursal]).select()
+      if (error && (error.message?.includes('tipo') || error.code === '42703' || error.code === 'PGRST204' || error.code === '23514')) {
+        const { tipo, ...withoutTipo } = citaConSucursal
+        const retry = await supabase.from('citas_ventas').insert([withoutTipo]).select()
+        if (retry.error) throw retry.error
+        data = retry.data
+      } else if (error) {
+        throw error
+      }
       this.clearCache('citas')
       return data[0]
     }
@@ -763,15 +919,40 @@ export const dataService = {
 
   async registrarGrupoCitas(citasArray) {
     const defaultBranch = this.getEffectiveBranchId()
-    const citasConSucursal = citasArray.map(c => ({
-      ...c,
-      tipo: c.tipo || 'cita',
-      sucursal_id: c.sucursal_id || defaultBranch
-    }))
+    const citasConSucursal = citasArray.map(c => {
+      let finalTipo = c.tipo || 'cita'
+      if (finalTipo.startsWith('venta_blush:') || finalTipo.startsWith('producto_blush:')) {
+        finalTipo = 'venta'
+      }
+
+      let finalNoTransferencia = c.no_transferencia ? String(c.no_transferencia).trim() : null
+      if (c.vendedora_id && (c.es_venta_blush || c.personal_id === 'cddf181e-5525-44b8-913b-15a18ac3770b' || (c.personal?.nombre && c.personal.nombre.toLowerCase() === 'blush'))) {
+        const tag = `[vendedora:${c.vendedora_id}]`
+        if (finalNoTransferencia) {
+          if (!finalNoTransferencia.includes('[vendedora:')) {
+            finalNoTransferencia = `${finalNoTransferencia} ${tag}`
+          }
+        } else {
+          finalNoTransferencia = tag
+        }
+      }
+
+      return {
+        cliente_id: c.cliente_id,
+        servicio_id: c.servicio_id,
+        personal_id: c.personal_id || null,
+        fecha_hora: c.fecha_hora,
+        valor_pagado: c.valor_pagado != null ? Number(c.valor_pagado) : 0,
+        forma_pago: c.forma_pago || 'Efectivo',
+        no_transferencia: finalNoTransferencia,
+        tipo: finalTipo,
+        sucursal_id: c.sucursal_id || defaultBranch
+      }
+    })
 
     if (isSupabaseConfigured) {
       let { data, error } = await supabase.from('citas_ventas').insert(citasConSucursal).select()
-      if (error && (error.message?.includes('tipo') || error.code === '42703' || error.code === 'PGRST204')) {
+      if (error && (error.message?.includes('tipo') || error.code === '42703' || error.code === 'PGRST204' || error.code === '23514')) {
         const withoutTipo = citasConSucursal.map(({ tipo, ...rest }) => rest)
         const retry = await supabase.from('citas_ventas').insert(withoutTipo).select()
         if (retry.error) throw retry.error
@@ -792,7 +973,6 @@ export const dataService = {
     this.clearCache('citas')
     return nuevos
   },
-
   async actualizarComprobanteMasivo(idsArray, comprobante) {
     if (isSupabaseConfigured) {
       const { data, error } = await supabase

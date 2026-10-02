@@ -552,13 +552,21 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
       if (listToSave.length === 0) {
         if (form.servicio_id) {
           const svc = servicios.find(s => s.id === form.servicio_id)
-          const pers = form.personal_id ? personal.find(p => p.id === form.personal_id) : null
+          const pers = personal.find(p => p.id === form.personal_id)
+          const isBlush = isBlushSelected
+          const vendedora = (isBlush && form.vendedora_id) ? personal.find(p => p.id === form.vendedora_id) : null
+          let persDisplayName = pers ? pers.nombre : 'Sin asignar'
+          if (isBlush) {
+            persDisplayName = vendedora ? `Blush (Vendido por ${vendedora.nombre} • 5% com.)` : 'Blush'
+          }
           const val = svc ? Number(svc.precio_base || 0) : 0
           listToSave.push({
             servicio_id: form.servicio_id,
             nombre_servicio: svc ? svc.nombre : 'Servicio',
             personal_id: form.personal_id || null,
-            nombre_personal: pers ? pers.nombre : 'Sin asignar',
+            vendedora_id: isBlush ? (form.vendedora_id || null) : null,
+            is_blush: isBlush,
+            nombre_personal: persDisplayName,
             valor_pagado: val
           })
         } else {
@@ -580,25 +588,47 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
         throw new Error('Formato de fecha y hora inválido.');
       }
 
-
-
       // Si estamos editando, eliminamos el grupo de citas original primero
       if (editingOriginalGroup) {
         await dataService.eliminarGrupoCitas(editingOriginalGroup.cliente_id, editingOriginalGroup.fecha_hora)
       }
 
       // Guardar registros con tipo = 'cita' (inicialmente sin pago registrado)
-      const citasToRegister = listToSave.map(s => ({
-        cliente_id: finalClienteId,
-        servicio_id: s.servicio_id,
-        personal_id: s.personal_id,
-        fecha_hora: dateObj.toISOString(),
-        valor_pagado: 0.00,
-        forma_pago: 'Pendiente',
-        no_transferencia: null,
-        tipo: 'cita'
-      }))
+      const citasToRegister = listToSave.map(s => {
+        const isBlush = s.is_blush || (s.personal_id && personal.find(p => p.id === s.personal_id)?.nombre?.toLowerCase() === 'blush') || s.personal_id === 'blush'
+        const vendedoraId = s.vendedora_id || (isBlush ? form.vendedora_id : null)
 
+        let finalPersonalId = s.personal_id
+        if (s.personal_id === 'blush' || (isBlush && !s.personal_id)) {
+          const blushStaff = personal.find(p => p.nombre.toLowerCase() === 'blush')
+          finalPersonalId = blushStaff ? blushStaff.id : 'cddf181e-5525-44b8-913b-15a18ac3770b'
+        }
+
+        let finalNoTransferencia = form.no_transferencia ? form.no_transferencia.trim() : null
+        if (isBlush && vendedoraId) {
+          const tag = `[vendedora:${vendedoraId}]`
+          if (finalNoTransferencia) {
+            if (!finalNoTransferencia.includes('[vendedora:')) {
+              finalNoTransferencia = `${finalNoTransferencia} ${tag}`
+            }
+          } else {
+            finalNoTransferencia = tag
+          }
+        }
+
+        return {
+          cliente_id: finalClienteId,
+          servicio_id: s.servicio_id,
+          personal_id: finalPersonalId || null,
+          vendedora_id: isBlush ? (vendedoraId || null) : null,
+          es_venta_blush: isBlush,
+          fecha_hora: dateObj.toISOString(),
+          valor_pagado: 0.00,
+          forma_pago: 'Pendiente',
+          no_transferencia: finalNoTransferencia,
+          tipo: 'cita'
+        }
+      })
       await dataService.registrarGrupoCitas(citasToRegister)
 
       setMsg({ type: 'success', text: editingOriginalGroup ? '✅ Cita actualizada con éxito.' : '✅ Cita programada y agendada con éxito.' })

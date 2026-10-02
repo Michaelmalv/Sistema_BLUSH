@@ -205,7 +205,8 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
         (v.vendedora_id === p.id) || 
         (v.tipo && v.tipo === `venta_blush:${p.id}`) ||
         (v.tipo && typeof v.tipo === 'string' && v.tipo.includes(p.id)) ||
-        (v.no_transferencia_raw && typeof v.no_transferencia_raw === 'string' && v.no_transferencia_raw.includes(`[vendedora:${p.id}]`))
+        (v.no_transferencia_raw && typeof v.no_transferencia_raw === 'string' && v.no_transferencia_raw.includes(`[vendedora:${p.id}]`)) ||
+        (v.no_transferencia && typeof v.no_transferencia === 'string' && v.no_transferencia.includes(`[vendedora:${p.id}]`))
       ).map(v => ({
         ...v,
         es_producto_blush: true,

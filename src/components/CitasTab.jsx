@@ -67,6 +67,15 @@ export default function CitasTab({ activeTab, selectedBranchId }) {
   const [serviceSearchText, setServiceSearchText] = useState('')
   const [showServiceSuggestions, setShowServiceSuggestions] = useState(false)
   const [editingOriginalGroup, setEditingOriginalGroup] = useState(null)
+
+  // Detectar si se ha seleccionado 'Blush' en el selector de colaboradora
+  const isBlushSelected = useMemo(() => {
+    if (!form.personal_id) return false
+    if (form.personal_id === 'blush') return true
+    const p = personal.find(item => item.id === form.personal_id)
+    return p?.nombre?.toLowerCase() === 'blush'
+  }, [form.personal_id, personal])
+
   const [showCheckoutModal, setShowCheckoutModal] = useState(false)
   const [checkoutGroup, setCheckoutGroup] = useState(null)
   const [checkoutForm, setCheckoutForm] = useState({ forma_pago: 'Efectivo', valor_total: '', no_transferencia: '' })

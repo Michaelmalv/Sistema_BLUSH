@@ -170,7 +170,9 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
   }
 
   const calculateCommissions = () => {
-    if (!personal.length) {
+    // Filtrar colaboradores excluyendo la casa matriz 'Blush' para el cálculo de sueldos
+    const personalManicuristas = personal.filter(p => !p.nombre || p.nombre.toLowerCase() !== 'blush')
+    if (!personalManicuristas.length) {
       setComisiones([])
       return
     }
@@ -186,14 +188,43 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
     })
 
     // Agrupar por manicuristas
-    const comms = personal.map(p => {
-      const pVentas = periodVentas.filter(v => v.personal && v.personal.id === p.id)
-      const totalVentas = pVentas.reduce((sum, v) => sum + Number(v.valor_pagado || 0), 0)
-      const totalComision = totalVentas * 0.40
+    const comms = personalManicuristas.map(p => {
+      // 1. Servicios directos realizados por la manicurista (40% comisión)
+      const pServicios = periodVentas.filter(v => 
+        v.personal && v.personal.id === p.id && !v.es_venta_blush && (v.personal.nombre && v.personal.nombre.toLowerCase() !== 'blush')
+      ).map(v => ({
+        ...v,
+        es_producto_blush: false,
+        concepto_comision: 'Servicio (40%)',
+        porcentaje_comision: 0.40,
+        comision_ganada: Number(v.valor_pagado || 0) * 0.40
+      }))
+
+      // 2. Ventas de productos Blush realizadas por esta colaboradora (5% comisión)
+      const pProductos = periodVentas.filter(v => 
+        (v.vendedora_id === p.id) || (v.tipo && v.tipo === `venta_blush:${p.id}`)
+      ).map(v => ({
+        ...v,
+        es_producto_blush: true,
+        concepto_comision: 'Venta Producto Blush (5%)',
+        porcentaje_comision: 0.05,
+        comision_ganada: Number(v.valor_pagado || 0) * 0.05
+      }))
+
+      const totalVentasServicios = pServicios.reduce((sum, v) => sum + Number(v.valor_pagado || 0), 0)
+      const totalComisionServicios = totalVentasServicios * 0.40
+
+      const totalVentasProductos = pProductos.reduce((sum, v) => sum + Number(v.valor_pagado || 0), 0)
+      const totalComisionProductos = totalVentasProductos * 0.05
+
+      const totalComision = totalComisionServicios + totalComisionProductos
+      const totalVentas = totalVentasServicios + totalVentasProductos
       
       const rawSueldoBase = sueldosBaseMap[p.id] !== undefined ? sueldosBaseMap[p.id] : (p.sueldo_base || 0)
       const sueldoBaseNum = rawSueldoBase === '' ? 0 : (Number(rawSueldoBase) || 0)
       const totalPagar = sueldoBaseNum + totalComision
+
+      const allDetalles = [...pServicios, ...pProductos].sort((a, b) => new Date(b.fecha_hora) - new Date(a.fecha_hora))
 
       return {
         id: p.id,
@@ -201,11 +232,16 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
         activo: p.activo,
         cargo: p.cargo || 'Manicurista',
         sueldo_base: sueldoBaseNum,
-        total_servicios: pVentas.length,
+        total_servicios: pServicios.length,
+        total_ventas_servicios: totalVentasServicios,
+        comision_servicios: totalComisionServicios,
+        total_productos: pProductos.length,
+        total_ventas_productos: totalVentasProductos,
+        comision_productos: totalComisionProductos,
         total_ventas: totalVentas,
         comision: totalComision,
         total_pagar: totalPagar,
-        detalles_ventas: pVentas
+        detalles_ventas: allDetalles
       }
     })
 
@@ -957,9 +993,10 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
                         <tr className="border-b border-gray-100 bg-gray-50/30 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                           <th className="py-4 px-5">Manicurista / Colaboradora</th>
                           <th className="py-4 px-3 text-center">Sueldo Base ($)</th>
-                          <th className="py-4 px-3 text-center">Servicios</th>
+                          <th className="py-4 px-3 text-center" title="Citas de servicios con 40% comisión">Servicios (40%)</th>
+                          <th className="py-4 px-3 text-center" title="Ventas de productos Blush con 5% comisión">Prod. (5%)</th>
                           <th className="py-4 px-3 text-right">Facturado ($)</th>
-                          <th className="py-4 px-4 text-right text-blush-palmLeaf font-black">Comisión 40% ($)</th>
+                          <th className="py-4 px-4 text-right text-blush-palmLeaf font-black">Comisiones ($)</th>
                           <th className="py-4 px-5 text-right font-black text-gray-800">Total a Pagar ($)</th>
                           <th className="py-4 px-3 text-center">Detalle</th>
                         </tr>
@@ -993,8 +1030,15 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
                                   />
                                 </div>
                               </td>
-                              <td className="py-4 px-3 text-center text-sm">{c.total_servicios}</td>
-                              <td className="py-4 px-3 text-right text-sm">${c.total_ventas.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className="py-4 px-3 text-center text-xs">
+                                <span className="font-bold text-gray-800">{c.total_servicios || 0}</span>
+                                <span className="block text-[10px] text-gray-400">(${(c.comision_servicios || 0).toFixed(2)})</span>
+                              </td>
+                              <td className="py-4 px-3 text-center text-xs">
+                                <span className="font-bold text-pink-700">{c.total_productos || 0}</span>
+                                <span className="block text-[10px] text-pink-500">(${(c.comision_productos || 0).toFixed(2)})</span>
+                              </td>
+                              <td className="py-4 px-3 text-right text-sm font-semibold text-gray-700">${c.total_ventas.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                               <td className="py-4 px-4 text-right text-sm text-blush-palmLeaf font-black">${c.comision.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                               <td className="py-4 px-5 text-right text-sm font-black">
                                 <span className="bg-blush-palmLeaf/10 text-blush-palmLeaf px-2.5 py-1 rounded-lg border border-blush-palmLeaf/20 inline-block">
@@ -1093,29 +1137,51 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
                       {selectedManicuristaDetail.detalles_ventas.length === 0 ? (
                         <p className="text-xs text-gray-400 text-center py-8 font-medium">No se registraron servicios cobrados en este mes.</p>
                       ) : (
-                        selectedManicuristaDetail.detalles_ventas.map((v) => (
-                          <div key={v.id} className="p-3 bg-gray-50 border border-gray-150 rounded-2xl flex flex-col gap-1">
-                            <div className="flex justify-between items-center text-[10px] text-gray-400 font-black">
-                              <span>{new Date(v.fecha_hora).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })}</span>
-                              <span className="bg-white px-2 py-0.5 border border-gray-200 rounded-md text-gray-600 uppercase">
-                                {v.forma_pago}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-start mt-1">
-                              <div className="min-w-0">
-                                <span className="block font-black text-xs text-gray-800 truncate">
-                                  {v.servicios?.nombre || 'Servicio General'}
-                                </span>
-                                <span className="block text-[10px] text-gray-500 font-medium truncate">
-                                  Cliente: {v.clientes?.nombre || 'Cliente General'}
+                        selectedManicuristaDetail.detalles_ventas.map((v) => {
+                          const esProd = !!v.es_producto_blush;
+                          const pct = esProd ? 0.05 : 0.40;
+                          const comisionItem = Number(v.valor_pagado || 0) * pct;
+
+                          return (
+                            <div key={v.id} className={`p-3.5 rounded-2xl border flex flex-col gap-1.5 ${esProd ? 'bg-pink-50/40 border-pink-200' : 'bg-gray-50 border-gray-150'}`}>
+                              <div className="flex justify-between items-center text-[10px] text-gray-400 font-black">
+                                <div className="flex items-center gap-1.5">
+                                  <span>{new Date(v.fecha_hora).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })}</span>
+                                  {esProd ? (
+                                    <span className="bg-pink-100 text-pink-700 font-black text-[9px] px-2 py-0.2 rounded-full border border-pink-200">
+                                      🛍️ Producto Blush (5%)
+                                    </span>
+                                  ) : (
+                                    <span className="bg-blush-palmLeaf/10 text-blush-palmLeaf font-black text-[9px] px-2 py-0.2 rounded-full border border-blush-palmLeaf/20">
+                                      💅 Servicio (40%)
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="bg-white px-2 py-0.5 border border-gray-200 rounded-md text-gray-600 uppercase">
+                                  {v.forma_pago}
                                 </span>
                               </div>
-                              <span className="font-black text-sm text-blush-palmLeaf ml-2">
-                                ${Number(v.valor_pagado).toFixed(2)}
-                              </span>
+                              <div className="flex justify-between items-start mt-0.5">
+                                <div className="min-w-0">
+                                  <span className="block font-black text-xs text-gray-800 truncate">
+                                    {v.servicios?.nombre || 'Servicio / Producto'}
+                                  </span>
+                                  <span className="block text-[10px] text-gray-500 font-medium truncate">
+                                    Cliente: {v.clientes?.nombre || 'Cliente General'}
+                                  </span>
+                                </div>
+                                <div className="text-right pl-2 shrink-0">
+                                  <span className="block font-bold text-xs text-gray-600">
+                                    ${Number(v.valor_pagado).toFixed(2)}
+                                  </span>
+                                  <span className={`block font-black text-[11px] ${esProd ? 'text-pink-600' : 'text-blush-palmLeaf'}`}>
+                                    +${comisionItem.toFixed(2)}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
 
@@ -1126,9 +1192,21 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
                           ${(selectedManicuristaDetail.sueldo_base || 0).toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Comisiones (40% de servicios):</span>
+                      <div className="flex justify-between text-[11px]">
+                        <span>Comisión Servicios (40%):</span>
                         <span className="text-blush-palmLeaf font-black">
+                          +${(selectedManicuristaDetail.comision_servicios || 0).toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({selectedManicuristaDetail.total_servicios || 0} serv.)
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[11px]">
+                        <span>Comisión Prod. Blush (5%):</span>
+                        <span className="text-pink-600 font-black">
+                          +${(selectedManicuristaDetail.comision_productos || 0).toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({selectedManicuristaDetail.total_productos || 0} prod.)
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Total Comisiones:</span>
+                        <span className="text-gray-900 font-black">
                           +${selectedManicuristaDetail.comision.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>

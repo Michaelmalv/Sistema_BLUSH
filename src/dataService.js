@@ -16,6 +16,7 @@ updateSupabaseConfigState();
 // ============================================================================
 
 const MOCK_PERSONAL = [
+  { id: 'cddf181e-5525-44b8-913b-15a18ac3770b', nombre: 'Blush', cargo: 'Estudio / Casa', activo: true },
   { id: 'p1', nombre: 'Pamela', cedula: '1711111111', cargo: 'Manicurista', activo: true },
   { id: 'p2', nombre: 'Sofia', cedula: '1722222222', cargo: 'Manicurista', activo: true },
   { id: 'p3', nombre: 'Roxana', cedula: '1733333333', cargo: 'Manicurista', activo: true },
@@ -222,6 +223,16 @@ export const dataService = {
           : (sueldosMap[p.id] !== undefined ? Number(sueldosMap[p.id]) : 0)
       }))
     } catch (e) {}
+    // Asegurar que exista la opción de Blush como entidad/casa
+    if (!list.some(p => p.nombre && p.nombre.toLowerCase() === 'blush')) {
+      list.unshift({
+        id: 'cddf181e-5525-44b8-913b-15a18ac3770b',
+        nombre: 'Blush',
+        cargo: 'Estudio / Casa',
+        activo: true,
+        sueldo_base: 0
+      })
+    }
     this.setCache('personal', list)
     return list
   },

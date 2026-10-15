@@ -31,6 +31,7 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
   const [personal, setPersonal] = useState([])
   const [comisiones, setComisiones] = useState([])
   const [sueldosBaseMap, setSueldosBaseMap] = useState({})
+  const [anticiposMap, setAnticiposMap] = useState({})
   const [selectedManicuristaDetail, setSelectedManicuristaDetail] = useState(null)
 
   // Estados de guardado de sueldos base
@@ -121,9 +122,26 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
     }
   }, [personal])
 
+  // Cargar anticipos del mes seleccionado
+  useEffect(() => {
+    let isMounted = true
+    const fetchAnticipos = async () => {
+      try {
+        const remoteAnticipos = await dataService.getAnticipos(selectedMonth, selectedYear)
+        if (isMounted) {
+          setAnticiposMap(remoteAnticipos || {})
+        }
+      } catch (err) {
+        console.warn('Error cargando anticipos:', err)
+      }
+    }
+    fetchAnticipos()
+    return () => { isMounted = false }
+  }, [selectedMonth, selectedYear, personal])
+
   useEffect(() => {
     calculateCommissions()
-  }, [selectedMonth, selectedYear, ventas, personal, sueldosBaseMap])
+  }, [selectedMonth, selectedYear, ventas, personal, sueldosBaseMap, anticiposMap])
 
   const handleUpdateSueldoBase = (id, val) => {
     const updated = { ...sueldosBaseMap, [id]: val }
@@ -140,7 +158,16 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
     }
   }
 
-  // Guardar explícitamente todos los sueldos con confirmación visual
+  const handleUpdateAnticipo = (id, val) => {
+    const updated = { ...anticiposMap, [id]: val }
+    setAnticiposMap(updated)
+    try {
+      const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`
+      localStorage.setItem(`blush_anticipos_${monthKey}`, JSON.stringify(updated))
+    } catch (e) {}
+  }
+
+  // Guardar explícitamente todos los sueldos y anticipos con confirmación visual
   const handleSaveAllSueldos = async () => {
     try {
       setSavingSueldos(true)
@@ -155,15 +182,20 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
         }
         return Promise.resolve()
       })
-      await Promise.all(updatePromises)
+
+      const saveAnticiposPromise = dataService.guardarAnticipos(anticiposMap, selectedMonth, selectedYear, personal).catch(err => {
+        console.warn('Error guardando anticipos:', err)
+      })
+
+      await Promise.all([...updatePromises, saveAnticiposPromise])
 
       setSueldosSavedSuccess(true)
       setTimeout(() => {
         setSueldosSavedSuccess(false)
       }, 3000)
     } catch (err) {
-      console.error('Error guardando sueldos:', err)
-      alert('Hubo un problema al guardar los sueldos: ' + (err.message || 'Error desconocido'))
+      console.error('Error guardando sueldos y anticipos:', err)
+      alert('Hubo un problema al guardar los sueldos y anticipos: ' + (err.message || 'Error desconocido'))
     } finally {
       setSavingSueldos(false)
     }
@@ -226,7 +258,9 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
       
       const rawSueldoBase = sueldosBaseMap[p.id] !== undefined ? sueldosBaseMap[p.id] : (p.sueldo_base || 0)
       const sueldoBaseNum = rawSueldoBase === '' ? 0 : (Number(rawSueldoBase) || 0)
-      const totalPagar = sueldoBaseNum + totalComision
+      const rawAnticipo = anticiposMap[p.id] !== undefined ? anticiposMap[p.id] : 0
+      const anticipoNum = rawAnticipo === '' ? 0 : (Number(rawAnticipo) || 0)
+      const totalPagar = (sueldoBaseNum + totalComision) - anticipoNum
 
       const allDetalles = [...pServicios, ...pProductos].sort((a, b) => new Date(b.fecha_hora) - new Date(a.fecha_hora))
 
@@ -236,6 +270,7 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
         activo: p.activo,
         cargo: p.cargo || 'Manicurista',
         sueldo_base: sueldoBaseNum,
+        anticipo: anticipoNum,
         total_servicios: pServicios.length,
         total_ventas_servicios: totalVentasServicios,
         comision_servicios: totalComisionServicios,
@@ -394,9 +429,10 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
 
         // Fila 4-8: Tarjetas de resumen (KPIs)
         const totalFacturado = detalles.reduce((sum, v) => sum + Number(v.valor_pagado || 0), 0);
-        const totalComision = totalFacturado * 0.40;
+        const totalComision = targetColab.comision !== undefined ? targetColab.comision : (totalFacturado * 0.40);
         const sueldoBase = Number(targetColab.sueldo_base || 0);
-        const totalPagar = sueldoBase + totalComision;
+        const anticipo = Number(targetColab.anticipo || 0);
+        const totalPagar = (sueldoBase + totalComision) - anticipo;
 
         rows.push([
           makeCell('Cant. Servicios Realizados', 's', null, cardLabelStyle),
@@ -415,7 +451,11 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
           makeCell(totalComision, 'n', '"$"#,##0.00', cardValStyle)
         ]);
         rows.push([
-          makeCell('TOTAL SUELDO A LIQUIDAR', 's', null, { ...cardLabelStyle, fill: { fgColor: { rgb: 'F0FDF4' } } }),
+          makeCell('Anticipo de Sueldo (Descuento)', 's', null, { ...cardLabelStyle, font: { ...baseFont, bold: true, color: { rgb: 'DC2626' } } }),
+          makeCell(-anticipo, 'n', '"-$"#,##0.00', { ...cardValStyle, font: { ...baseFont, bold: true, color: { rgb: 'DC2626' } } })
+        ]);
+        rows.push([
+          makeCell('TOTAL SUELDO FINAL A LIQUIDAR', 's', null, { ...cardLabelStyle, fill: { fgColor: { rgb: 'F0FDF4' } } }),
           makeCell(totalPagar, 'n', '"$"#,##0.00', cardValGreenStyle)
         ]);
 
@@ -536,6 +576,7 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
         const sumFacturado = comisiones.reduce((sum, c) => sum + (c.total_ventas || 0), 0);
         const sumSueldosBase = comisiones.reduce((sum, c) => sum + (c.sueldo_base || 0), 0);
         const sumComision = comisiones.reduce((sum, c) => sum + (c.comision || 0), 0);
+        const sumAnticipos = comisiones.reduce((sum, c) => sum + (c.anticipo || 0), 0);
         const sumTotalPagar = comisiones.reduce((sum, c) => sum + (c.total_pagar || 0), 0);
 
         rowsResumen.push([
@@ -555,11 +596,15 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
           makeCell(sumSueldosBase, 'n', '"$"#,##0.00', cardValStyle)
         ]);
         rowsResumen.push([
-          makeCell('Total Comisiones por Servicios (40%)', 's', null, cardLabelStyle),
+          makeCell('Total Comisiones por Servicios y Productos', 's', null, cardLabelStyle),
           makeCell(sumComision, 'n', '"$"#,##0.00', cardValStyle)
         ]);
         rowsResumen.push([
-          makeCell('TOTAL GENERAL A LIQUIDAR / PAGAR', 's', null, { ...cardLabelStyle, fill: { fgColor: { rgb: 'F0FDF4' } } }),
+          makeCell('Total Anticipos de Sueldo (Descuento)', 's', null, { ...cardLabelStyle, font: { ...baseFont, bold: true, color: { rgb: 'DC2626' } } }),
+          makeCell(-sumAnticipos, 'n', '"-$"#,##0.00', { ...cardValStyle, font: { ...baseFont, bold: true, color: { rgb: 'DC2626' } } })
+        ]);
+        rowsResumen.push([
+          makeCell('TOTAL GENERAL A LIQUIDAR / SUELDO FINAL', 's', null, { ...cardLabelStyle, fill: { fgColor: { rgb: 'F0FDF4' } } }),
           makeCell(sumTotalPagar, 'n', '"$"#,##0.00', cardValGreenStyle)
         ]);
 
@@ -577,7 +622,8 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
           makeCell('Ventas Prod. Blush ($)', 's', null, headerStyle('748843')),
           makeCell('Com. Prod. 5% ($)', 's', null, headerStyle('748843')),
           makeCell('Total Comisiones ($)', 's', null, headerStyle('748843')),
-          makeCell('Total a Liquidar ($)', 's', null, headerStyle('748843'))
+          makeCell('Anticipo ($)', 's', null, headerStyle('B91C1C')),
+          makeCell('Sueldo Final ($)', 's', null, headerStyle('748843'))
         ]);
 
         comisiones.forEach((c, idx) => {
@@ -593,6 +639,7 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
             makeCell(Number(c.total_ventas_productos || 0), 'n', '"$"#,##0.00', cellCurrency(bg)),
             makeCell(Number(c.comision_productos || 0), 'n', '"$"#,##0.00', cellCurrency(bg)),
             makeCell(Number(c.comision || 0), 'n', '"$"#,##0.00', cellCurrencyBold(bg)),
+            makeCell(Number(c.anticipo || 0), 'n', '"$"#,##0.00', { ...cellCurrency(bg), font: { ...baseFont, bold: true, color: { rgb: 'DC2626' } } }),
             makeCell(Number(c.total_pagar || 0), 'n', '"$"#,##0.00', cellCurrencyBold(bg))
           ]);
         });
@@ -604,7 +651,12 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
           makeCell(sumSueldosBase, 'n', '"$"#,##0.00', { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'middle' } }),
           makeCell(sumServicios, 'n', '#,##0', { ...totalRowStyle, alignment: { horizontal: 'center', vertical: 'middle' } }),
           makeCell(sumFacturado, 'n', '"$"#,##0.00', { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'middle' } }),
+          makeCell('', 's', null, totalRowStyle),
+          makeCell('', 's', null, totalRowStyle),
+          makeCell('', 's', null, totalRowStyle),
+          makeCell('', 's', null, totalRowStyle),
           makeCell(sumComision, 'n', '"$"#,##0.00', { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'middle' } }),
+          makeCell(sumAnticipos, 'n', '"$"#,##0.00', { ...totalRowStyle, font: { ...baseFont, bold: true, color: { rgb: 'DC2626' } }, alignment: { horizontal: 'right', vertical: 'middle' } }),
           makeCell(sumTotalPagar, 'n', '"$"#,##0.00', { ...totalRowStyle, font: { ...baseFont, bold: true, color: { rgb: '15803D' } }, alignment: { horizontal: 'right', vertical: 'middle' } })
         ]);
 
@@ -1010,7 +1062,8 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
                           <th className="py-4 px-3 text-center" title="Ventas de productos Blush con 5% comisión">Prod. (5%)</th>
                           <th className="py-4 px-3 text-right">Facturado ($)</th>
                           <th className="py-4 px-4 text-right text-blush-palmLeaf font-black">Comisiones ($)</th>
-                          <th className="py-4 px-5 text-right font-black text-gray-800">Total a Pagar ($)</th>
+                          <th className="py-4 px-3 text-center text-rose-600 font-black" title="Anticipos solicitados durante el mes a descontar del sueldo final">Anticipo ($)</th>
+                          <th className="py-4 px-5 text-right font-black text-gray-800">Sueldo Final ($)</th>
                           <th className="py-4 px-3 text-center">Detalle</th>
                         </tr>
                       </thead>
@@ -1053,8 +1106,23 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
                               </td>
                               <td className="py-4 px-3 text-right text-sm font-semibold text-gray-700">${c.total_ventas.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                               <td className="py-4 px-4 text-right text-sm text-blush-palmLeaf font-black">${c.comision.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className="py-4 px-3 text-center">
+                                <div className="relative inline-flex items-center">
+                                  <span className="absolute left-2 text-[11px] text-rose-400 font-bold">$</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={anticiposMap[c.id] !== undefined ? anticiposMap[c.id] : '0'}
+                                    onChange={(e) => handleUpdateAnticipo(c.id, e.target.value)}
+                                    placeholder="0.00"
+                                    className="w-24 pl-5 pr-2 py-1.5 bg-rose-50/40 border border-rose-200 focus:border-rose-400 focus:ring-1 focus:ring-rose-400 rounded-xl text-xs font-black text-rose-700 outline-none text-right transition-all shadow-2xs"
+                                    title="Anticipo del mes a descontar del sueldo final. Modifica y presiona Guardar arriba para confirmar."
+                                  />
+                                </div>
+                              </td>
                               <td className="py-4 px-5 text-right text-sm font-black">
-                                <span className="bg-blush-palmLeaf/10 text-blush-palmLeaf px-2.5 py-1 rounded-lg border border-blush-palmLeaf/20 inline-block">
+                                <span className="bg-blush-palmLeaf/10 text-blush-palmLeaf px-2.5 py-1 rounded-lg border border-blush-palmLeaf/20 inline-block font-black">
                                   ${c.total_pagar.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
                               </td>
@@ -1079,23 +1147,27 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
                   </div>
                 </div>
 
-                {/* BARRA DE TOTALES (4 MÉTRICAS) */}
-                <div className="p-5 border-t border-gray-100 bg-gray-50/70 grid grid-cols-2 md:grid-cols-4 gap-2 text-center text-xs font-black uppercase tracking-wider text-gray-600">
+                {/* BARRA DE TOTALES (5 MÉTRICAS) */}
+                <div className="p-5 border-t border-gray-100 bg-gray-50/70 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-center text-xs font-black uppercase tracking-wider text-gray-600">
                   <div>
                     <span className="block text-[9px] text-gray-400 font-bold">Servicios Totales</span>
-                    <span className="text-base text-gray-800 font-black">{comisiones.reduce((sum, c) => sum + c.total_servicios, 0)}</span>
+                    <span className="text-base text-gray-800 font-black">{comisiones.reduce((sum, c) => sum + (c.total_servicios || 0), 0)}</span>
                   </div>
                   <div className="border-l border-gray-200">
                     <span className="block text-[9px] text-gray-400 font-bold">Total Facturado</span>
-                    <span className="text-base text-gray-800 font-black">${comisiones.reduce((sum, c) => sum + c.total_ventas, 0).toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="text-base text-gray-800 font-black">${comisiones.reduce((sum, c) => sum + (c.total_ventas || 0), 0).toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div className="border-l border-gray-200">
-                    <span className="block text-[9px] text-blush-palmLeaf font-bold">Total Comisiones (40%)</span>
-                    <span className="text-base text-blush-palmLeaf font-black">${comisiones.reduce((sum, c) => sum + c.comision, 0).toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="block text-[9px] text-blush-palmLeaf font-bold">Total Comisiones</span>
+                    <span className="text-base text-blush-palmLeaf font-black">${comisiones.reduce((sum, c) => sum + (c.comision || 0), 0).toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="border-l border-gray-200 bg-rose-50/50 rounded-xl py-1">
+                    <span className="block text-[9px] text-rose-600 font-bold">Total Anticipos</span>
+                    <span className="text-base text-rose-600 font-black">-${comisiones.reduce((sum, c) => sum + (c.anticipo || 0), 0).toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div className="border-l border-gray-200 bg-blush-palmLeaf/10 rounded-xl py-1">
-                    <span className="block text-[9px] text-blush-palmLeaf font-bold">Total a Pagar (Sueldos)</span>
-                    <span className="text-base text-blush-palmLeaf font-black">${comisiones.reduce((sum, c) => sum + c.total_pagar, 0).toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="block text-[9px] text-blush-palmLeaf font-bold">Sueldo Final Total</span>
+                    <span className="text-base text-blush-palmLeaf font-black">${comisiones.reduce((sum, c) => sum + (c.total_pagar || 0), 0).toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 </div>
               </div>
@@ -1125,21 +1197,27 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
                     </div>
 
                     {/* Resumen rápido de la colaboradora seleccionada */}
-                    <div className="grid grid-cols-3 gap-2 p-3 bg-gray-50 border border-gray-150 rounded-2xl text-center">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-gray-50 border border-gray-150 rounded-2xl text-center">
                       <div>
                         <span className="block text-[9px] font-black text-gray-400 uppercase">Sueldo Base</span>
                         <span className="text-xs font-black text-gray-700">
                           ${(selectedManicuristaDetail.sueldo_base || 0).toFixed(2)}
                         </span>
                       </div>
-                      <div className="border-x border-gray-200">
+                      <div className="border-l border-gray-200">
                         <span className="block text-[9px] font-black text-gray-400 uppercase">Comisión</span>
                         <span className="text-xs font-black text-blush-palmLeaf">
                           ${selectedManicuristaDetail.comision.toFixed(2)}
                         </span>
                       </div>
-                      <div>
-                        <span className="block text-[9px] font-black text-blush-palmLeaf uppercase">Total Sueldo</span>
+                      <div className="border-l border-gray-200 bg-rose-50/50 rounded-lg py-0.5">
+                        <span className="block text-[9px] font-black text-rose-500 uppercase">Anticipo</span>
+                        <span className="text-xs font-black text-rose-600">
+                          -${(selectedManicuristaDetail.anticipo || 0).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="border-l border-gray-200 bg-blush-palmLeaf/10 rounded-lg py-0.5">
+                        <span className="block text-[9px] font-black text-blush-palmLeaf uppercase">Sueldo Final</span>
                         <span className="text-xs font-black text-emerald-700">
                           ${selectedManicuristaDetail.total_pagar.toFixed(2)}
                         </span>

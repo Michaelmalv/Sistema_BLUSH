@@ -1914,6 +1914,115 @@ export const dataService = {
     this.clearCache();
   },
 
+  // --- ANTICIPOS DE SUELDO ---
+  async getAnticipos(mes, anio) {
+    const monthKey = `${anio}-${String(mes + 1).padStart(2, '0')}`;
+    let localMap = {};
+    try {
+      localMap = JSON.parse(localStorage.getItem(`blush_anticipos_${monthKey}`) || '{}');
+    } catch (e) {}
+
+    if (isSupabaseConfigured) {
+      try {
+        const startDate = `${monthKey}-01`;
+        const lastDay = new Date(anio, mes + 1, 0).getDate();
+        const endDate = `${monthKey}-${String(lastDay).padStart(2, '0')}`;
+        
+        const { data, error } = await supabase
+          .from('gastos')
+          .select('*')
+          .gte('fecha', startDate)
+          .lte('fecha', endDate)
+          .or('factura.eq.ANTICIPO,concepto.ilike.%[colab:%');
+
+        if (!error && data) {
+          const remoteMap = { ...localMap };
+          data.forEach(g => {
+            const match = g.concepto?.match(/\[colab:([^\]]+)\]/);
+            if (match && match[1]) {
+              remoteMap[match[1]] = String(g.total);
+            }
+          });
+          localStorage.setItem(`blush_anticipos_${monthKey}`, JSON.stringify(remoteMap));
+          return remoteMap;
+        }
+      } catch (err) {
+        console.warn('Error leyendo anticipos de Supabase:', err);
+      }
+    }
+    return localMap;
+  },
+
+  async guardarAnticipos(anticiposMap, mes, anio, personalList = []) {
+    const monthKey = `${anio}-${String(mes + 1).padStart(2, '0')}`;
+    try {
+      localStorage.setItem(`blush_anticipos_${monthKey}`, JSON.stringify(anticiposMap));
+    } catch (e) {}
+
+    if (isSupabaseConfigured) {
+      try {
+        const startDate = `${monthKey}-01`;
+        const lastDay = new Date(anio, mes + 1, 0).getDate();
+        const endDate = `${monthKey}-${String(lastDay).padStart(2, '0')}`;
+
+        const { data: existingGastos } = await supabase
+          .from('gastos')
+          .select('*')
+          .gte('fecha', startDate)
+          .lte('fecha', endDate)
+          .or('factura.eq.ANTICIPO,concepto.ilike.%[colab:%');
+
+        const existingByColab = {};
+        if (existingGastos) {
+          existingGastos.forEach(g => {
+            const match = g.concepto?.match(/\[colab:([^\]]+)\]/);
+            if (match && match[1]) {
+              existingByColab[match[1]] = g;
+            }
+          });
+        }
+
+        for (const [colabId, val] of Object.entries(anticiposMap)) {
+          const numVal = val === '' ? 0 : Number(val);
+          const colab = personalList.find(p => p.id === colabId);
+          const colabNombre = colab ? colab.nombre : 'Colaboradora';
+          const existing = existingByColab[colabId];
+
+          if (numVal > 0) {
+            const gastoPayload = {
+              fecha: `${monthKey}-15`,
+              factura: 'ANTICIPO',
+              proveedor: colabNombre,
+              proveedor_ruc: colab?.cedula || null,
+              cantidad: 1,
+              concepto: `Anticipo de Sueldo: ${colabNombre} [colab:${colabId}] [mes:${monthKey}]`,
+              categoria: 'N�mina',
+              valor_unitario: numVal,
+              total: numVal,
+              forma_pago: 'Efectivo',
+              cuenta: 'Caja Principal'
+            };
+
+            if (existing) {
+              await this.actualizarGasto(existing.id, gastoPayload);
+            } else {
+              await this.registrarGasto(gastoPayload);
+            }
+          } else if (existing && numVal === 0) {
+            await this.eliminarGasto(existing.id);
+          }
+        }
+        this.clearCache('gastos');
+      } catch (err) {
+        console.warn('Error guardando anticipos en Supabase:', err);
+      }
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('blush_db_update', { detail: { type: 'anticipos' } }));
+    }
+    return true;
+  },
+
   traducirErrorPostgres(err) {
     if (!err || !err.message) return err
     const msg = err.message

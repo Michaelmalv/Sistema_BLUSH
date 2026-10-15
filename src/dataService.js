@@ -1914,13 +1914,18 @@ export const dataService = {
     this.clearCache();
   },
 
-  // --- ANTICIPOS DE SUELDO ---
+  // --- ANTICIPOS DE SUELDO CON HISTORIAL Y FECHA ---
   async getAnticipos(mes, anio) {
     const monthKey = `${anio}-${String(mes + 1).padStart(2, '0')}`;
+    let localItems = [];
     let localMap = {};
     try {
+      localItems = JSON.parse(localStorage.getItem(`blush_anticipos_items_${monthKey}`) || '[]');
       localMap = JSON.parse(localStorage.getItem(`blush_anticipos_${monthKey}`) || '{}');
     } catch (e) {}
+
+    let items = Array.isArray(localItems) ? [...localItems] : [];
+    let map = { ...localMap };
 
     if (isSupabaseConfigured) {
       try {
@@ -1933,24 +1938,160 @@ export const dataService = {
           .select('*')
           .gte('fecha', startDate)
           .lte('fecha', endDate)
-          .or('factura.eq.ANTICIPO,concepto.ilike.%[colab:%');
+          .or('factura.eq.ANTICIPO,concepto.ilike.%[colab:%')
+          .order('fecha', { ascending: false });
 
         if (!error && data) {
-          const remoteMap = { ...localMap };
+          const remoteItems = [];
+          const remoteMap = {};
+          
           data.forEach(g => {
             const match = g.concepto?.match(/\[colab:([^\]]+)\]/);
             if (match && match[1]) {
-              remoteMap[match[1]] = String(g.total);
+              const colabId = match[1];
+              const monto = Number(g.total || g.valor_unitario || 0);
+
+              let motivo = '';
+              const motivoMatch = g.concepto.match(/\[mes:[^\]]+\]\s*-?\s*(.*)$/);
+              if (motivoMatch && motivoMatch[1]) {
+                motivo = motivoMatch[1].trim();
+              } else if (!g.concepto.includes('[mes:')) {
+                motivo = g.concepto.replace(`[colab:${colabId}]`, '').replace('Anticipo de Sueldo:', '').trim();
+              }
+
+              remoteItems.push({
+                id: g.id,
+                colab_id: colabId,
+                colab_nombre: g.proveedor || '',
+                fecha: g.fecha,
+                monto: monto,
+                motivo: motivo || 'Anticipo de sueldo',
+                forma_pago: g.forma_pago || 'Efectivo',
+                created_at: g.created_at || g.fecha
+              });
+
+              remoteMap[colabId] = String((Number(remoteMap[colabId] || 0) + monto).toFixed(2));
             }
           });
-          localStorage.setItem(`blush_anticipos_${monthKey}`, JSON.stringify(remoteMap));
-          return remoteMap;
+
+          items = remoteItems;
+          map = remoteMap;
+          try {
+            localStorage.setItem(`blush_anticipos_items_${monthKey}`, JSON.stringify(items));
+            localStorage.setItem(`blush_anticipos_${monthKey}`, JSON.stringify(map));
+          } catch (e) {}
         }
       } catch (err) {
         console.warn('Error leyendo anticipos de Supabase:', err);
       }
+    } else {
+      if (items.length > 0) {
+        const calculatedMap = {};
+        items.forEach(it => {
+          calculatedMap[it.colab_id] = String((Number(calculatedMap[it.colab_id] || 0) + Number(it.monto || 0)).toFixed(2));
+        });
+        map = calculatedMap;
+      }
     }
-    return localMap;
+
+    // Retornar un objeto que funciona tanto como mapa directo (res[colabId]) como contenedor ({ map, items })
+    const combinedResult = Object.assign({}, map, { map, items });
+    return combinedResult;
+  },
+
+  async registrarAnticipo({ colab_id, colab_nombre, colab_cedula, fecha, monto, motivo, forma_pago }) {
+    const numMonto = Number(monto) || 0;
+    if (!colab_id || numMonto <= 0) {
+      throw new Error('Colaboradora y monto válido son requeridos.');
+    }
+    const fechaGasto = fecha || new Date().toISOString().split('T')[0];
+    const monthKey = fechaGasto.substring(0, 7);
+    const motivoLimpio = (motivo || 'Anticipo de sueldo').trim();
+    const conceptoCompleto = `Anticipo de Sueldo: ${colab_nombre || 'Colaboradora'} [colab:${colab_id}] [mes:${monthKey}] ${motivoLimpio ? '- ' + motivoLimpio : ''}`.trim();
+
+    const gastoPayload = {
+      fecha: fechaGasto,
+      factura: 'ANTICIPO',
+      proveedor: colab_nombre || 'Colaboradora',
+      proveedor_ruc: colab_cedula || null,
+      cantidad: 1,
+      concepto: conceptoCompleto,
+      categoria: 'Nómina',
+      valor_unitario: numMonto,
+      total: numMonto,
+      forma_pago: forma_pago || 'Efectivo',
+      cuenta: 'Caja Principal'
+    };
+
+    let newGasto = null;
+    if (isSupabaseConfigured) {
+      try {
+        newGasto = await this.registrarGasto(gastoPayload);
+      } catch (err) {
+        console.warn('Error registrando anticipo en Supabase:', err);
+      }
+    }
+
+    const itemObj = {
+      id: newGasto?.id || ('ant_' + Date.now()),
+      colab_id,
+      colab_nombre: colab_nombre || 'Colaboradora',
+      fecha: fechaGasto,
+      monto: numMonto,
+      motivo: motivoLimpio,
+      forma_pago: forma_pago || 'Efectivo',
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      const localItems = JSON.parse(localStorage.getItem(`blush_anticipos_items_${monthKey}`) || '[]');
+      localItems.unshift(itemObj);
+      localStorage.setItem(`blush_anticipos_items_${monthKey}`, JSON.stringify(localItems));
+
+      const localMap = JSON.parse(localStorage.getItem(`blush_anticipos_${monthKey}`) || '{}');
+      localMap[colab_id] = String((Number(localMap[colab_id] || 0) + numMonto).toFixed(2));
+      localStorage.setItem(`blush_anticipos_${monthKey}`, JSON.stringify(localMap));
+    } catch (e) {}
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('blush_db_update', { detail: { type: 'anticipos' } }));
+    }
+    return itemObj;
+  },
+
+  async eliminarAnticipo(anticipoId, fecha, colab_id, monto) {
+    if (isSupabaseConfigured && anticipoId && !String(anticipoId).startsWith('ant_')) {
+      try {
+        await this.eliminarGasto(anticipoId);
+      } catch (err) {
+        console.warn('Error eliminando anticipo de Supabase:', err);
+      }
+    }
+
+    const monthKey = fecha ? fecha.substring(0, 7) : '';
+    if (monthKey) {
+      try {
+        let localItems = JSON.parse(localStorage.getItem(`blush_anticipos_items_${monthKey}`) || '[]');
+        localItems = localItems.filter(it => String(it.id) !== String(anticipoId));
+        localStorage.setItem(`blush_anticipos_items_${monthKey}`, JSON.stringify(localItems));
+
+        const localMap = JSON.parse(localStorage.getItem(`blush_anticipos_${monthKey}`) || '{}');
+        if (colab_id && localMap[colab_id]) {
+          const nuevoTotal = Math.max(0, Number(localMap[colab_id]) - (Number(monto) || 0));
+          if (nuevoTotal === 0) {
+            delete localMap[colab_id];
+          } else {
+            localMap[colab_id] = String(nuevoTotal.toFixed(2));
+          }
+          localStorage.setItem(`blush_anticipos_${monthKey}`, JSON.stringify(localMap));
+        }
+      } catch (e) {}
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('blush_db_update', { detail: { type: 'anticipos' } }));
+    }
+    return true;
   },
 
   async guardarAnticipos(anticiposMap, mes, anio, personalList = []) {
@@ -1996,7 +2137,7 @@ export const dataService = {
               proveedor_ruc: colab?.cedula || null,
               cantidad: 1,
               concepto: `Anticipo de Sueldo: ${colabNombre} [colab:${colabId}] [mes:${monthKey}]`,
-              categoria: 'N�mina',
+              categoria: 'Nómina',
               valor_unitario: numVal,
               total: numVal,
               forma_pago: 'Efectivo',

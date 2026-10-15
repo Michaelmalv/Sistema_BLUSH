@@ -16,6 +16,8 @@ import {
   Wallet,
   Save,
   CheckCircle2,
+  Trash2,
+  Clock,
   X
 } from 'lucide-react'
 import { dataService } from '../dataService'
@@ -32,7 +34,21 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
   const [comisiones, setComisiones] = useState([])
   const [sueldosBaseMap, setSueldosBaseMap] = useState({})
   const [anticiposMap, setAnticiposMap] = useState({})
+  const [anticiposList, setAnticiposList] = useState([])
   const [selectedManicuristaDetail, setSelectedManicuristaDetail] = useState(null)
+
+  // Estados para Registro de Anticipos con Fecha
+  const [modalAnticipoOpen, setModalAnticipoOpen] = useState(false)
+  const [submittingAnticipo, setSubmittingAnticipo] = useState(false)
+  const [formAnticipo, setFormAnticipo] = useState({
+    colab_id: '',
+    colab_nombre: '',
+    colab_cedula: '',
+    fecha: new Date().toISOString().split('T')[0],
+    monto: '',
+    motivo: '',
+    forma_pago: 'Efectivo'
+  })
 
   // Estados de guardado de sueldos base
   const [savingSueldos, setSavingSueldos] = useState(false)
@@ -87,9 +103,15 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
   }, [activeTab, selectedBranchId])
 
   useEffect(() => {
-    const handleDbUpdate = () => loadData()
+    const handleDbUpdate = () => {
+      loadData()
+      loadAnticipos()
+    }
     const handleFocus = () => {
-      if (document.visibilityState === 'visible') loadData()
+      if (document.visibilityState === 'visible') {
+        loadData()
+        loadAnticipos()
+      }
     }
     window.addEventListener('blush_db_update', handleDbUpdate)
     window.addEventListener('focus', handleFocus)
@@ -122,26 +144,24 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
     }
   }, [personal])
 
-  // Cargar anticipos del mes seleccionado
-  useEffect(() => {
-    let isMounted = true
-    const fetchAnticipos = async () => {
-      try {
-        const remoteAnticipos = await dataService.getAnticipos(selectedMonth, selectedYear)
-        if (isMounted) {
-          setAnticiposMap(remoteAnticipos || {})
-        }
-      } catch (err) {
-        console.warn('Error cargando anticipos:', err)
-      }
+  // Cargar anticipos con su historial y desglose por fecha
+  const loadAnticipos = async () => {
+    try {
+      const res = await dataService.getAnticipos(selectedMonth, selectedYear)
+      setAnticiposMap(res.map || res || {})
+      setAnticiposList(res.items || [])
+    } catch (err) {
+      console.warn('Error cargando anticipos:', err)
     }
-    fetchAnticipos()
-    return () => { isMounted = false }
+  }
+
+  useEffect(() => {
+    loadAnticipos()
   }, [selectedMonth, selectedYear, personal])
 
   useEffect(() => {
     calculateCommissions()
-  }, [selectedMonth, selectedYear, ventas, personal, sueldosBaseMap, anticiposMap])
+  }, [selectedMonth, selectedYear, ventas, personal, sueldosBaseMap, anticiposMap, anticiposList])
 
   const handleUpdateSueldoBase = (id, val) => {
     const updated = { ...sueldosBaseMap, [id]: val }
@@ -165,6 +185,93 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
       const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`
       localStorage.setItem(`blush_anticipos_${monthKey}`, JSON.stringify(updated))
     } catch (e) {}
+  }
+
+  // Abrir modal de anticipo pre-seleccionando la colaboradora si aplica
+  const handleOpenAnticipoModal = (colab = null) => {
+    const target = colab || (personal.length > 0 ? personal.find(p => !p.nombre || p.nombre.toLowerCase() !== 'blush') : null)
+    
+    // Fecha sugerida: hoy si coincide con el mes seleccionado, o el día 15 del mes seleccionado
+    const now = new Date()
+    let defaultDate = now.toISOString().split('T')[0]
+    if (now.getMonth() !== selectedMonth || now.getFullYear() !== selectedYear) {
+      defaultDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-15`
+    }
+
+    setFormAnticipo({
+      colab_id: target?.id || '',
+      colab_nombre: target?.nombre || '',
+      colab_cedula: target?.cedula || '',
+      fecha: defaultDate,
+      monto: '',
+      motivo: '',
+      forma_pago: 'Efectivo'
+    })
+    setModalAnticipoOpen(true)
+  }
+
+  // Guardar nuevo anticipo individual con fecha
+  const handleSaveAnticipoModal = async (e) => {
+    if (e && e.preventDefault) e.preventDefault()
+    if (!formAnticipo.colab_id) {
+      alert('Por favor selecciona una colaboradora.')
+      return
+    }
+    const numMonto = parseFloat(formAnticipo.monto)
+    if (isNaN(numMonto) || numMonto <= 0) {
+      alert('Por favor ingresa un monto válido mayor a 0.')
+      return
+    }
+
+    try {
+      setSubmittingAnticipo(true)
+      const colabObj = personal.find(p => p.id === formAnticipo.colab_id)
+      await dataService.registrarAnticipo({
+        colab_id: formAnticipo.colab_id,
+        colab_nombre: colabObj?.nombre || formAnticipo.colab_nombre || 'Colaboradora',
+        colab_cedula: colabObj?.cedula || formAnticipo.colab_cedula || null,
+        fecha: formAnticipo.fecha,
+        monto: numMonto,
+        motivo: formAnticipo.motivo,
+        forma_pago: formAnticipo.forma_pago
+      })
+
+      await loadAnticipos()
+      setModalAnticipoOpen(false)
+      setFormAnticipo({
+        colab_id: '',
+        colab_nombre: '',
+        colab_cedula: '',
+        fecha: new Date().toISOString().split('T')[0],
+        monto: '',
+        motivo: '',
+        forma_pago: 'Efectivo'
+      })
+    } catch (err) {
+      alert('Error registrando anticipo: ' + (err.message || 'Error desconocido'))
+    } finally {
+      setSubmittingAnticipo(false)
+    }
+  }
+
+  // Eliminar un anticipo individual con confirmación
+  const handleEliminarAnticipo = async (anticipoItem) => {
+    if (!anticipoItem) return
+    const fStr = anticipoItem.fecha ? new Date(anticipoItem.fecha + 'T12:00:00').toLocaleDateString('es-EC') : ''
+    const confirmMsg = `¿Deseas eliminar el anticipo de $${Number(anticipoItem.monto).toFixed(2)} (${fStr}) de ${anticipoItem.colab_nombre || 'la colaboradora'}?`
+    if (!window.confirm(confirmMsg)) return
+
+    try {
+      await dataService.eliminarAnticipo(
+        anticipoItem.id,
+        anticipoItem.fecha,
+        anticipoItem.colab_id,
+        anticipoItem.monto
+      )
+      await loadAnticipos()
+    } catch (err) {
+      alert('Error al eliminar anticipo: ' + (err.message || 'Error desconocido'))
+    }
   }
 
   // Guardar explícitamente todos los sueldos y anticipos con confirmación visual
@@ -261,6 +368,7 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
       const rawAnticipo = anticiposMap[p.id] !== undefined ? anticiposMap[p.id] : 0
       const anticipoNum = rawAnticipo === '' ? 0 : (Number(rawAnticipo) || 0)
       const totalPagar = (sueldoBaseNum + totalComision) - anticipoNum
+      const colabAnticipos = (anticiposList || []).filter(a => a.colab_id === p.id)
 
       const allDetalles = [...pServicios, ...pProductos].sort((a, b) => new Date(b.fecha_hora) - new Date(a.fecha_hora))
 
@@ -271,6 +379,7 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
         cargo: p.cargo || 'Manicurista',
         sueldo_base: sueldoBaseNum,
         anticipo: anticipoNum,
+        anticipos_historial: colabAnticipos,
         total_servicios: pServicios.length,
         total_ventas_servicios: totalVentasServicios,
         comision_servicios: totalComisionServicios,
@@ -470,6 +579,31 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
           makeCell('Valor Cobrado ($)', 's', null, headerStyle('748843')),
           makeCell('Comisión 40% ($)', 's', null, headerStyle('748843'))
         ]);
+
+        // Listado de Anticipos de Sueldo en el reporte individual
+        if (targetColab.anticipos_historial && targetColab.anticipos_historial.length > 0) {
+          rows.push([]);
+          rows.push([
+            makeCell('ANTICIPOS DE SUELDO OTORGADOS EN EL MES', 's', null, headerStyle('DC2626')),
+            makeCell('', 's', null, headerStyle('DC2626')),
+            makeCell('', 's', null, headerStyle('DC2626')),
+            makeCell('', 's', null, headerStyle('DC2626')),
+            makeCell('', 's', null, headerStyle('DC2626')),
+            makeCell('', 's', null, headerStyle('DC2626'))
+          ]);
+          targetColab.anticipos_historial.forEach((ant) => {
+            const fStr = ant.fecha ? new Date(ant.fecha + 'T12:00:00').toLocaleDateString('es-EC') : '';
+            rows.push([
+              makeCell(fStr, 's', null, cellTextCenter('FFF1F2')),
+              makeCell('Anticipo de Sueldo', 's', null, cellTextLeft('FFF1F2')),
+              makeCell(ant.motivo || 'Anticipo entregado', 's', null, cellTextLeft('FFF1F2')),
+              makeCell(ant.forma_pago || 'Efectivo', 's', null, cellTextCenter('FFF1F2')),
+              makeCell(-Number(ant.monto), 'n', '"-$"#,##0.00', { ...cellCurrency('FFF1F2'), font: { ...baseFont, bold: true, color: { rgb: 'DC2626' } } }),
+              makeCell(0, 'n', '"$"#,##0.00', cellCurrency('FFF1F2'))
+            ]);
+          });
+          rows.push([]);
+        }
 
         if (detalles.length === 0) {
           rows.push([
@@ -953,6 +1087,16 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
 
               <div className="flex items-center gap-2 justify-end pt-5 w-full sm:w-auto">
                 <button
+                  type="button"
+                  onClick={() => handleOpenAnticipoModal(null)}
+                  className="flex items-center justify-center gap-1.5 py-3 px-4 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-2xl font-black text-xs uppercase tracking-wide transition-all shadow-xs cursor-pointer w-full sm:w-auto"
+                  title="Registrar un nuevo anticipo con fecha para cualquier colaboradora"
+                >
+                  <Plus size={15} />
+                  <span>Anticipo</span>
+                </button>
+
+                <button
                   onClick={handleSaveAllSueldos}
                   disabled={savingSueldos || comisiones.length === 0}
                   className={`flex items-center justify-center gap-2 py-3 px-5 rounded-2xl font-black text-xs uppercase tracking-wide transition-all shadow-md cursor-pointer ${
@@ -1107,18 +1251,22 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
                               <td className="py-4 px-3 text-right text-sm font-semibold text-gray-700">${c.total_ventas.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                               <td className="py-4 px-4 text-right text-sm text-blush-palmLeaf font-black">${c.comision.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                               <td className="py-4 px-3 text-center">
-                                <div className="relative inline-flex items-center">
-                                  <span className="absolute left-2 text-[11px] text-rose-400 font-bold">$</span>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={anticiposMap[c.id] !== undefined ? anticiposMap[c.id] : '0'}
-                                    onChange={(e) => handleUpdateAnticipo(c.id, e.target.value)}
-                                    placeholder="0.00"
-                                    className="w-24 pl-5 pr-2 py-1.5 bg-rose-50/40 border border-rose-200 focus:border-rose-400 focus:ring-1 focus:ring-rose-400 rounded-xl text-xs font-black text-rose-700 outline-none text-right transition-all shadow-2xs"
-                                    title="Anticipo del mes a descontar del sueldo final. Modifica y presiona Guardar arriba para confirmar."
-                                  />
+                                <div className="inline-flex items-center justify-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenAnticipoModal(c)}
+                                    className="group inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50/70 hover:bg-rose-100 border border-rose-200 rounded-xl text-xs font-black text-rose-700 transition-all cursor-pointer shadow-2xs"
+                                    title="Clic para registrar nuevo anticipo con fecha o ver el historial"
+                                  >
+                                    <span className="text-[10px] text-rose-400 font-bold">$</span>
+                                    <span>{Number(c.anticipo || 0).toFixed(2)}</span>
+                                    {c.anticipos_historial && c.anticipos_historial.length > 0 && (
+                                      <span className="text-[9px] bg-rose-200/90 text-rose-800 px-1.5 py-0.2 rounded-full font-black">
+                                        {c.anticipos_historial.length}
+                                      </span>
+                                    )}
+                                    <Plus size={11} className="text-rose-500 group-hover:scale-125 transition-transform" />
+                                  </button>
                                 </div>
                               </td>
                               <td className="py-4 px-5 text-right text-sm font-black">
@@ -1222,6 +1370,67 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
                           ${selectedManicuristaDetail.total_pagar.toFixed(2)}
                         </span>
                       </div>
+                    </div>
+
+                    {/* SECCIÓN: HISTORIAL DE ANTICIPOS CON FECHA */}
+                    <div className="p-3 bg-rose-50/30 border border-rose-200/80 rounded-2xl space-y-2">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar size={13} className="text-rose-600" />
+                          <span className="text-[11px] font-black text-rose-800 uppercase tracking-wide">
+                            Historial de Anticipos ({selectedManicuristaDetail.anticipos_historial?.length || 0})
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenAnticipoModal(selectedManicuristaDetail)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-xs"
+                          title="Registrar nuevo anticipo con fecha para esta colaboradora"
+                        >
+                          <Plus size={11} />
+                          <span>+ Anticipo</span>
+                        </button>
+                      </div>
+
+                      {(!selectedManicuristaDetail.anticipos_historial || selectedManicuristaDetail.anticipos_historial.length === 0) ? (
+                        <p className="text-[10px] text-rose-600/70 font-medium py-1">
+                          No tiene anticipos registrados en este mes.
+                        </p>
+                      ) : (
+                        <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                          {selectedManicuristaDetail.anticipos_historial.map((ant) => (
+                            <div
+                              key={ant.id}
+                              className="p-2 bg-white rounded-xl border border-rose-150 flex items-center justify-between gap-2 shadow-2xs hover:border-rose-300 transition-colors"
+                            >
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 text-[10px] text-rose-700 font-bold">
+                                  <span>{new Date(ant.fecha + 'T12:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: 'short' })}</span>
+                                  <span className="bg-rose-100 text-rose-800 px-1.5 py-0.2 rounded text-[9px] font-bold">
+                                    {ant.forma_pago || 'Efectivo'}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] font-bold text-gray-700 truncate mt-0.5">
+                                  {ant.motivo || 'Anticipo de sueldo'}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-xs font-black text-rose-600">
+                                  -${Number(ant.monto).toFixed(2)}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleEliminarAnticipo(ant)}
+                                  className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Eliminar este anticipo"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
@@ -1643,6 +1852,184 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODAL PARA REGISTRAR ANTICIPO CON FECHA */}
+      {modalAnticipoOpen && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-3xl border border-gray-150 shadow-2xl w-full max-w-md overflow-hidden animate-scale-up">
+            <div className="p-5 bg-gradient-to-r from-rose-50 to-pink-50/40 border-b border-rose-100 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-rose-500 text-white flex items-center justify-center shadow-md shadow-rose-500/20">
+                  <Wallet size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-wide">
+                    Registrar Anticipo
+                  </h3>
+                  <p className="text-[11px] text-rose-700 font-semibold">
+                    Descuento para el sueldo de {meses[selectedMonth]} {selectedYear}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalAnticipoOpen(false)}
+                className="p-2 text-gray-400 hover:text-gray-700 hover:bg-white/60 rounded-xl transition-all cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAnticipoModal} className="p-5 space-y-3.5">
+              {/* Colaboradora */}
+              <div>
+                <label className="block text-[11px] font-black text-gray-700 uppercase tracking-wider mb-1.5">
+                  Colaboradora / Manicurista *
+                </label>
+                <select
+                  value={formAnticipo.colab_id}
+                  onChange={(e) => {
+                    const selectedP = personal.find(p => p.id === e.target.value)
+                    setFormAnticipo({
+                      ...formAnticipo,
+                      colab_id: e.target.value,
+                      colab_nombre: selectedP ? selectedP.nombre : '',
+                      colab_cedula: selectedP ? selectedP.cedula : ''
+                    })
+                  }}
+                  required
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-250 rounded-xl text-xs font-bold text-gray-800 outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 cursor-pointer"
+                >
+                  <option value="">Selecciona colaboradora...</option>
+                  {personal.filter(p => !p.nombre || p.nombre.toLowerCase() !== 'blush').map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre} {p.cargo ? `(${p.cargo})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Fecha y Monto en 2 columnas */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-black text-gray-700 uppercase tracking-wider mb-1.5">
+                    Fecha del Anticipo *
+                  </label>
+                  <input
+                    type="date"
+                    value={formAnticipo.fecha}
+                    onChange={(e) => setFormAnticipo({ ...formAnticipo, fecha: e.target.value })}
+                    required
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-250 rounded-xl text-xs font-bold text-gray-800 outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-black text-gray-700 uppercase tracking-wider mb-1.5">
+                    Monto a Entregar ($) *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-xs text-rose-500 font-bold">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      placeholder="0.00"
+                      value={formAnticipo.monto}
+                      onChange={(e) => setFormAnticipo({ ...formAnticipo, monto: e.target.value })}
+                      required
+                      className="w-full pl-7 pr-3 py-2.5 bg-gray-50 border border-gray-250 rounded-xl text-xs font-black text-rose-700 outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 text-right"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Forma de pago */}
+              <div>
+                <label className="block text-[11px] font-black text-gray-700 uppercase tracking-wider mb-1.5">
+                  Forma de Entrega / Pago
+                </label>
+                <select
+                  value={formAnticipo.forma_pago}
+                  onChange={(e) => setFormAnticipo({ ...formAnticipo, forma_pago: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-250 rounded-xl text-xs font-bold text-gray-800 outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 cursor-pointer"
+                >
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Transferencia">Transferencia Bancaria</option>
+                  <option value="Depósito">Depósito</option>
+                </select>
+              </div>
+
+              {/* Motivo / Observación */}
+              <div>
+                <label className="block text-[11px] font-black text-gray-700 uppercase tracking-wider mb-1.5">
+                  Motivo u Observación <span className="text-gray-400 text-[10px] lowercase">(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej. Adelanto quincenal, emergencia, etc."
+                  value={formAnticipo.motivo}
+                  onChange={(e) => setFormAnticipo({ ...formAnticipo, motivo: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-250 rounded-xl text-xs font-semibold text-gray-800 outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400"
+                />
+              </div>
+
+              {/* Anticipos previos de la colaboradora seleccionada este mes */}
+              {(() => {
+                const prevAnticipos = (anticiposList || []).filter(a => a.colab_id === formAnticipo.colab_id)
+                if (!prevAnticipos.length) return null
+                return (
+                  <div className="pt-2 border-t border-gray-150">
+                    <span className="block text-[10px] font-black text-gray-500 uppercase tracking-wide mb-1.5">
+                      Anticipos registrados este mes ({prevAnticipos.length}):
+                    </span>
+                    <div className="space-y-1.5 max-h-24 overflow-y-auto pr-1">
+                      {prevAnticipos.map(pa => (
+                        <div key={pa.id} className="text-[11px] bg-rose-50/50 p-2 rounded-lg border border-rose-100 flex justify-between items-center text-gray-700">
+                          <div>
+                            <span className="font-bold text-gray-800">{pa.fecha}</span>
+                            <span className="text-gray-500 text-[10px] ml-1.5">({pa.motivo})</span>
+                          </div>
+                          <span className="font-black text-rose-600">-${Number(pa.monto).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* Botones de acción */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-150">
+                <button
+                  type="button"
+                  onClick={() => setModalAnticipoOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-gray-250 text-xs font-bold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingAnticipo}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-rose-600/20 disabled:opacity-50 cursor-pointer"
+                >
+                  {submittingAnticipo ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Guardando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={14} />
+                      <span>Guardar Anticipo</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
       )}
 
     </div>

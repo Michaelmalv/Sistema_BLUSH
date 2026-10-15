@@ -365,7 +365,11 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
 
       // Si estamos editando, eliminamos el grupo de citas original primero
       if (editingOriginalGroup) {
-        await dataService.eliminarGrupoCitas(editingOriginalGroup.cliente_id, editingOriginalGroup.fecha_hora)
+        if (editingOriginalGroup.originalIds && editingOriginalGroup.originalIds.length > 0) {
+          await dataService.eliminarCitasPorIds(editingOriginalGroup.originalIds)
+        } else {
+          await dataService.eliminarGrupoCitas(editingOriginalGroup.cliente_id, editingOriginalGroup.fecha_hora)
+        }
       }
 
       // Registrar los servicios del grupo
@@ -645,7 +649,11 @@ export default function VentasTab({ activeTab, selectedBranchId }) {
   }
 
   const handleEditGroup = (group) => {
-    setEditingOriginalGroup({ cliente_id: group.cliente_id, fecha_hora: group.fecha_hora })
+    setEditingOriginalGroup({
+      cliente_id: group.cliente_id,
+      fecha_hora: group.fecha_hora,
+      originalIds: group.servicios ? group.servicios.map(s => s.id) : []
+    })
     setEsNuevoCliente(false)
     setForm({
       cliente_id: group.cliente_id,

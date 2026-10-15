@@ -651,15 +651,49 @@ export const dataService = {
 
   async eliminarGrupoCitas(clienteId, fechaHora) {
     if (isSupabaseConfigured) {
-      const { error } = await supabase.from('citas_ventas').delete().eq('cliente_id', clienteId).eq('fecha_hora', fechaHora)
+      let query = supabase.from('citas_ventas').delete()
+      if (clienteId) {
+        query = query.eq('cliente_id', clienteId)
+      } else {
+        query = query.is('cliente_id', null)
+      }
+      query = query.eq('fecha_hora', fechaHora)
+      const { error } = await query
       if (error) throw error
       this.clearCache('citas')
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('blush_db_update', { detail: { type: 'citas', action: 'delete_group' } }))
+      }
       return true
     }
     const list = getLocal('blush_citas') || []
     const filtered = list.filter(c => !(c.cliente_id === clienteId && c.fecha_hora === fechaHora))
     setLocal('blush_citas', filtered)
     this.clearCache('citas')
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('blush_db_update', { detail: { type: 'citas', action: 'delete_group' } }))
+    }
+    return true
+  },
+
+  async eliminarCitasPorIds(ids) {
+    if (!ids || ids.length === 0) return true
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from('citas_ventas').delete().in('id', ids)
+      if (error) throw error
+      this.clearCache('citas')
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('blush_db_update', { detail: { type: 'citas', action: 'delete_ids' } }))
+      }
+      return true
+    }
+    const list = getLocal('blush_citas') || []
+    const filtered = list.filter(c => !ids.includes(c.id))
+    setLocal('blush_citas', filtered)
+    this.clearCache('citas')
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('blush_db_update', { detail: { type: 'citas', action: 'delete_ids' } }))
+    }
     return true
   },
 
@@ -1087,6 +1121,9 @@ export const dataService = {
         throw lastError
       }
       this.clearCache('gastos')
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('blush_db_update', { detail: { type: 'gastos', action: 'insert' } }))
+      }
       return (data && data[0]) || { ...gastoConSucursal, id: 'g_' + Date.now() }
     }
     const list = getLocal('blush_gastos') || []
@@ -1094,6 +1131,9 @@ export const dataService = {
     list.push(nuevo)
     setLocal('blush_gastos', list)
     this.clearCache('gastos')
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('blush_db_update', { detail: { type: 'gastos', action: 'insert' } }))
+    }
     return nuevo
   },
 
@@ -1161,6 +1201,9 @@ export const dataService = {
         throw lastError
       }
       this.clearCache('gastos')
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('blush_db_update', { detail: { type: 'gastos', action: 'update' } }))
+      }
       return (data && data[0]) || { id, ...gastoData }
     }
     const list = getLocal('blush_gastos') || []
@@ -1170,6 +1213,9 @@ export const dataService = {
       setLocal('blush_gastos', list)
     }
     this.clearCache('gastos')
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('blush_db_update', { detail: { type: 'gastos', action: 'update' } }))
+    }
     return list[idx]
   },
 
@@ -1178,12 +1224,18 @@ export const dataService = {
       const { error } = await supabase.from('gastos').delete().eq('id', id)
       if (error) throw error
       this.clearCache('gastos')
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('blush_db_update', { detail: { type: 'gastos', action: 'delete' } }))
+      }
       return true
     }
     let list = getLocal('blush_gastos') || []
     list = list.filter(g => g.id !== id)
     setLocal('blush_gastos', list)
     this.clearCache('gastos')
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('blush_db_update', { detail: { type: 'gastos', action: 'delete' } }))
+    }
     return true
   },
 

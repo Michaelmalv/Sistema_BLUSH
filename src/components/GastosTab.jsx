@@ -106,7 +106,7 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
       producto_id: '',
       concepto: '',
       categoria: 'Insumos',
-      catidad: 1,
+      cantidad: 1,
       valor_unitario: '',
       total: '',
       actualizar_inventario: true
@@ -163,7 +163,7 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
       if (!newInvoiceItemForm.concepto || !newInvoiceItemForm.concepto.trim()) {
         throw new Error('El concepto o detalle del producto es requerido.')
       }
-      const qty = Number(newInvoiceItemForm.cantidad)
+      const qty = Number(newInvoiceItemForm.cantidad || 1)
       if (isNaN(qty) || qty <= 0) {
         throw new Error('La cantidad debe ser mayor a 0.')
       }
@@ -173,30 +173,60 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
       }
       const total = Number(newInvoiceItemForm.total || (qty * vu))
 
-      const invoiceFactura = addingToInvoiceGroup.facturaRaw || (addingToInvoiceGroup.isIndividual ? null : addingToInvoiceGroup.facturaLabel)
+      let invoiceFactura = addingToInvoiceGroup.facturaRaw || (addingToInvoiceGroup.isIndividual ? null : addingToInvoiceGroup.facturaLabel)
+
+      // Si el grupo era individual / sin factura expl�cita, asignamos un identificador compartido
+      // para que ambos �tems queden agrupados en la misma tarjeta
+      if (!invoiceFactura && addingToInvoiceGroup.items?.[0]) {
+        const baseItem = addingToInvoiceGroup.items[0]
+        const sharedDoc = `SF-${(baseItem.id || Date.now()).toString().slice(0, 8).toUpperCase()}`
+        invoiceFactura = sharedDoc
+        try {
+          await dataService.actualizarGasto(baseItem.id, { factura: sharedDoc })
+          setGastos(prev => prev.map(item => item.id === baseItem.id ? { ...item, factura: sharedDoc } : item))
+        } catch (e) {
+          console.warn('No se pudo actualizar el gasto base con factura compartida:', e)
+        }
+      }
+
+      // Heredar de manera estricta los atributos de la factura existente
+      const groupSucursal = addingToInvoiceGroup.sucursal_id || 
+                            addingToInvoiceGroup.items?.find(i => i.sucursal_id)?.sucursal_id ||
+                            (selectedBranchId && selectedBranchId !== 'todas' ? selectedBranchId : null)
+
+      const targetFecha = addingToInvoiceGroup.fecha || new Date().toISOString().split('T')[0]
+      const targetProveedor = addingToInvoiceGroup.proveedor ? addingToInvoiceGroup.proveedor.trim() : (addingToInvoiceGroup.items?.find(i => i.proveedor)?.proveedor || null)
+      const targetProveedorRuc = addingToInvoiceGroup.proveedor_ruc ? addingToInvoiceGroup.proveedor_ruc.trim() : (addingToInvoiceGroup.items?.find(i => i.proveedor_ruc)?.proveedor_ruc || null)
+      const targetFormaPago = addingToInvoiceGroup.forma_pago || 'Efectivo'
+      const targetCuenta = addingToInvoiceGroup.cuenta || 'Caja Principal'
 
       // 1. Registrar gasto
-      await dataService.registrarGasto({
-        fecha: addingToInvoiceGroup.fecha || new Date().toISOString().split('T')[0],
+      const nuevoGasto = await dataService.registrarGasto({
+        fecha: targetFecha,
         factura: invoiceFactura ? invoiceFactura.trim() : null,
-        proveedor: addingToInvoiceGroup.proveedor ? addingToInvoiceGroup.proveedor.trim() : null,
-        proveedor_ruc: addingToInvoiceGroup.proveedor_ruc ? addingToInvoiceGroup.proveedor_ruc.trim() : null,
+        proveedor: targetProveedor,
+        proveedor_ruc: targetProveedorRuc,
         cantidad: qty,
         concepto: newInvoiceItemForm.concepto.trim(),
         categoria: newInvoiceItemForm.categoria || 'Insumos',
         valor_unitario: vu,
         total: total,
-        forma_pago: addingToInvoiceGroup.forma_pago || 'Efectivo',
-        cuenta: addingToInvoiceGroup.cuenta || 'Caja Principal',
-        sucursal_id: addingToInvoiceGroup.sucursal_id || (selectedBranchId && selectedBranchId !== 'todas' && selectedBranchId !== '11111111-1111-1111-1111-111111111111' ? selectedBranchId : null)
+        forma_pago: targetFormaPago,
+        cuenta: targetCuenta,
+        sucursal_id: groupSucursal
       })
+
+      // Actualizaci�n optimista inmediata en estado para respuesta instant�nea en UI
+      if (nuevoGasto) {
+        setGastos(prev => [nuevoGasto, ...prev.filter(x => x.id !== nuevoGasto.id)])
+      }
 
       // 2. Incrementar stock de inventario si aplica
       if (newInvoiceItemForm.producto_id && newInvoiceItemForm.actualizar_inventario) {
         await dataService.registrarReposicion(
           newInvoiceItemForm.producto_id,
           qty,
-          addingToInvoiceGroup.fecha || new Date().toISOString().split('T')[0]
+          targetFecha
         )
 
         // 3. Actualizar precio de costo si varia
@@ -204,13 +234,13 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
         if (prod && vu > 0 && vu !== Number(prod.precio_costo)) {
           await dataService.actualizarProducto(newInvoiceItemForm.producto_id, {
             precio_costo: vu,
-            fecha_compra: addingToInvoiceGroup.fecha || new Date().toISOString().split('T')[0]
+            fecha_compra: targetFecha
           })
         }
       }
 
       setAddingToInvoiceGroup(null)
-      await loadData()
+      await loadData(true)
     } catch (err) {
       setAddInvoiceItemMsg(err.message || 'Error al agregar producto a la factura.')
     } finally {
@@ -291,12 +321,12 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
   })
   const [editProductMsg, setEditProductMsg] = useState('')
 
-  const loadData = async () => {
+  const loadData = async (forceRefresh = false) => {
     try {
       setLoading(true)
       const [g, p] = await Promise.all([
-        dataService.getGastos(),
-        dataService.getProductos()
+        dataService.getGastos(forceRefresh),
+        dataService.getProductos(forceRefresh)
       ])
       setGastos(g)
       setProductos(p)
@@ -317,13 +347,13 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
   }
 
   useEffect(() => {
-    loadData()
+    loadData(true)
   }, [activeTab, selectedBranchId])
 
   useEffect(() => {
-    const handleDbUpdate = () => loadData()
+    const handleDbUpdate = () => loadData(true)
     const handleFocus = () => {
-      if (document.visibilityState === 'visible') loadData()
+      if (document.visibilityState === 'visible') loadData(true)
     }
     window.addEventListener('blush_db_update', handleDbUpdate)
     window.addEventListener('focus', handleFocus)
@@ -534,7 +564,7 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
             total: itemTotal,
             forma_pago: form.forma_pago,
             cuenta: form.cuenta,
-            sucursal_id: (selectedBranchId && selectedBranchId !== 'todas' && selectedBranchId !== '11111111-1111-1111-1111-111111111111') ? selectedBranchId : null
+            sucursal_id: (selectedBranchId && selectedBranchId !== 'todas') ? selectedBranchId : null
           })
 
           // 2. Incrementar stock de inventario
@@ -574,7 +604,7 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
           total: Number(form.total),
           forma_pago: form.forma_pago,
           cuenta: form.cuenta,
-          sucursal_id: (selectedBranchId && selectedBranchId !== 'todas' && selectedBranchId !== '11111111-1111-1111-1111-111111111111') ? selectedBranchId : null
+          sucursal_id: (selectedBranchId && selectedBranchId !== 'todas') ? selectedBranchId : null
         })
 
         setMsg({ type: 'success', text: '✅ Egreso registrado con éxito.' })
@@ -952,17 +982,28 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
   const groupedGastos = useMemo(() => {
     const groups = {}
     filteredGastos.forEach(g => {
-      const isNoFact = !g.factura || g.factura.trim() === '' || g.factura.toLowerCase() === 'sin doc'
-      const key = isNoFact ? `INDIVIDUAL_${g.id}` : g.factura.trim().toUpperCase()
+      const normFact = (g.factura || '').trim()
+      const isGenericNoFact = !normFact || ['sin doc', 'sin factura', 's/d', 's/f', 'sd', 'sf'].includes(normFact.toLowerCase())
+      const isNA = ['na', 'n/a', 's/n', 'sn'].includes(normFact.toLowerCase())
+
+      let key
+      if (isGenericNoFact) {
+        key = `INDIVIDUAL_${g.id}`
+      } else if (isNA) {
+        // Para facturas gen�ricas como "NA", agrupar por fecha y proveedor para no mezclar compras distintas
+        key = `NA_${normFact.toUpperCase()}_${g.fecha || ''}_${(g.proveedor || '').trim().toUpperCase()}`
+      } else {
+        key = normFact.toUpperCase()
+      }
       
       if (!groups[key]) {
         groups[key] = {
           facturaKey: key,
-          facturaLabel: isNoFact ? 'Gastos sin Factura' : g.factura,
-          facturaRaw: isNoFact ? '' : g.factura,
+          facturaLabel: isGenericNoFact ? 'Gastos sin Factura' : normFact,
+          facturaRaw: isGenericNoFact ? '' : normFact,
           proveedor: g.proveedor || '',
           proveedor_ruc: g.proveedor_ruc || '',
-          isIndividual: isNoFact,
+          isIndividual: isGenericNoFact,
           fecha: g.fecha,
           forma_pago: g.forma_pago,
           cuenta: g.cuenta,

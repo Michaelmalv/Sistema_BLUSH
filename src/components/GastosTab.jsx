@@ -1921,10 +1921,10 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                     <option value="Insumos">Insumos (Uñas, Cremas, Algodón)</option>
                     <option value="Venta al por menor">Venta al por menor</option>
                     <option value="Alquiler">Alquiler del Local</option>
-                    <option value="Servicios Básicos">Servicios Básicos</option>
-                    <option value="Nómina / Comisiones">Nómina / Comisiones</option>
-                    <option value="Marketing / Publicidad">Marketing / Publicidad</option>
-                    <option value="Equipos / Mobiliario">Equipos / Mobiliario</option>
+                    <option value="Servicios Básicos">Servicios Básicos (Agua, Luz, Internet)</option>
+                    <option value="Nómina / Comisiones">Nómina / Comisiones de Personal</option>
+                    <option value="Marketing / Publicidad">Marketing y Publicidad</option>
+                    <option value="Equipos / Mobiliario">Equipos o Mobiliario</option>
                     <option value="Otros">Otros Egresos</option>
                   </select>
                 </div>
@@ -2257,15 +2257,14 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                   onChange={(e) => handleNewInvoiceItemFieldChange('categoria', e.target.value)}
                   className="w-full px-3 py-2.5 bg-gray-50 border border-gray-250 rounded-xl outline-none focus:border-blush-palmLeaf font-semibold text-xs cursor-pointer"
                 >
-                  <option value="Insumos">Insumos</option>
+                  <option value="Insumos">Insumos (Uñas, Cremas, Algodón)</option>
                   <option value="Venta al por menor">Venta al por menor</option>
-                  <option value="Servicios">Servicios</option>
-                  <option value="Mantenimiento">Mantenimiento</option>
-                  <option value="Alquiler">Alquiler</option>
-                  <option value="Servicios Básicos">Servicios Básicos</option>
-                  <option value="Nómina">Nómina</option>
-                  <option value="Marketing">Marketing</option>
-                  <option value="Otros">Otros</option>
+                  <option value="Alquiler">Alquiler del Local</option>
+                  <option value="Servicios Básicos">Servicios Básicos (Agua, Luz, Internet)</option>
+                  <option value="Nómina / Comisiones">Nómina / Comisiones de Personal</option>
+                  <option value="Marketing / Publicidad">Marketing y Publicidad</option>
+                  <option value="Equipos / Mobiliario">Equipos o Mobiliario</option>
+                  <option value="Otros">Otros Egresos</option>
                 </select>
               </div>
 

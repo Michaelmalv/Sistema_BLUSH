@@ -18,7 +18,8 @@ import {
   TrendingUp,
   Receipt,
   UserCheck,
-  Filter
+  Filter,
+  X
 } from 'lucide-react'
 import { dataService } from '../dataService'
 import ClientHistoryModal from './ClientHistoryModal'
@@ -49,6 +50,11 @@ export default function SeguimientoTab({ activeTab, selectedBranchId, subTab: co
   const [searchHistorial, setSearchHistorial] = useState('')
 
   // Filtros
+  // Filtros de fecha para recontacto
+  const [filterMonth, setFilterMonth] = useState('todos')
+  const [filterYear, setFilterYear] = useState('todos')
+  const [filterDateType, setFilterDateType] = useState('recontacto') // 'recontacto' | 'servicio'
+
   const [filterRecontacto, setFilterRecontacto] = useState('todos')
   const [filterHistorial, setFilterHistorial] = useState('todos') // 'todos', 'con_visitas', 'frecuentes', 'nuevas', 'sin_visitas'
   const [birthdayMonth, setBirthdayMonth] = useState(new Date().getMonth() + 1) // 1-12
@@ -157,9 +163,56 @@ export default function SeguimientoTab({ activeTab, selectedBranchId, subTab: co
     window.open(url, '_blank')
   }
 
-  // Filtrado de recontactos
-  const filteredRecontacts = useMemo(() => {
+  const getYearMonth = (dateStr) => {
+    if (!dateStr) return { year: null, month: null }
+    try {
+      const clean = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr
+      const parts = clean.split('-')
+      if (parts.length === 3) {
+        return { year: parseInt(parts[0], 10), month: parseInt(parts[1], 10) }
+      }
+    } catch (e) {}
+    return { year: null, month: null }
+  }
+
+  // Años disponibles detectados en los datos de recontacto
+  const availableYears = useMemo(() => {
+    const currentYear = new Date().getFullYear()
+    const yearsSet = new Set([currentYear, currentYear - 1, currentYear + 1])
+    recontactar.forEach(c => {
+      if (c.proxima_cita_sugerida) {
+        const { year } = getYearMonth(c.proxima_cita_sugerida)
+        if (year) yearsSet.add(year)
+      }
+      if (c.ultima_cita_fecha) {
+        const { year } = getYearMonth(c.ultima_cita_fecha)
+        if (year) yearsSet.add(year)
+      }
+    })
+    return Array.from(yearsSet).sort((a, b) => b - a)
+  }, [recontactar])
+
+  // Filtrado de recontactos por mes y año
+  const monthFilteredRecontacts = useMemo(() => {
     return recontactar.filter(crm => {
+      if (filterMonth === 'todos' && filterYear === 'todos') return true
+
+      const dateToCheck = filterDateType === 'servicio' ? crm.ultima_cita_fecha : crm.proxima_cita_sugerida
+      const { year, month } = getYearMonth(dateToCheck)
+
+      if (filterMonth !== 'todos' && month !== parseInt(filterMonth, 10)) {
+        return false
+      }
+      if (filterYear !== 'todos' && year !== parseInt(filterYear, 10)) {
+        return false
+      }
+      return true
+    })
+  }, [recontactar, filterMonth, filterYear, filterDateType])
+
+  // Filtrado final de recontactos (con buscador y estado)
+  const filteredRecontacts = useMemo(() => {
+    return monthFilteredRecontacts.filter(crm => {
       const term = searchRecontacto.toLowerCase()
       const matchesSearch = crm.cliente_nombre.toLowerCase().includes(term) ||
                             crm.servicio_nombre.toLowerCase().includes(term)
@@ -172,7 +225,7 @@ export default function SeguimientoTab({ activeTab, selectedBranchId, subTab: co
       if (filterRecontacto === 'al_dia') return crm.dias_retraso < -1
       return true
     })
-  }, [recontactar, searchRecontacto, filterRecontacto])
+  }, [monthFilteredRecontacts, searchRecontacto, filterRecontacto])
 
   // Filtrado de Cumpleañeros por mes y buscador
   const birthdayList = useMemo(() => {
@@ -311,12 +364,76 @@ export default function SeguimientoTab({ activeTab, selectedBranchId, subTab: co
                 <Search className="absolute left-2.5 top-2.5 text-gray-400" size={13} />
               </div>
 
+              {/* Filtro Tipo de Fecha */}
+              <select
+                value={filterDateType}
+                onChange={(e) => setFilterDateType(e.target.value)}
+                className="px-2.5 py-1.5 rounded-xl bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-700 outline-none cursor-pointer hover:border-gray-300"
+                title="Elegir criterio de fecha para el filtro"
+              >
+                <option value="recontacto">Fecha Recontacto</option>
+                <option value="servicio">Fecha Último Servicio</option>
+              </select>
+
+              {/* Filtro Mes */}
+              <select
+                value={filterMonth}
+                onChange={(e) => setFilterMonth(e.target.value)}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-black outline-none cursor-pointer transition ${
+                  filterMonth !== 'todos'
+                    ? 'bg-rose-50 border-rose-300 text-rose-700 shadow-sm'
+                    : 'bg-gray-50 border-gray-200 text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <option value="todos">Todos los Meses</option>
+                {meses.map((m, idx) => (
+                  <option key={idx + 1} value={String(idx + 1)}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+
+              {/* Filtro Año */}
+              <select
+                value={filterYear}
+                onChange={(e) => setFilterYear(e.target.value)}
+                className={`px-2.5 py-1.5 rounded-xl border text-xs font-black outline-none cursor-pointer transition ${
+                  filterYear !== 'todos'
+                    ? 'bg-rose-50 border-rose-300 text-rose-700 shadow-sm'
+                    : 'bg-gray-50 border-gray-200 text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <option value="todos">Todos los Años</option>
+                {availableYears.map(y => (
+                  <option key={y} value={String(y)}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+
+              {/* Botón Reset Filtro de Fecha */}
+              {(filterMonth !== 'todos' || filterYear !== 'todos') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterMonth('todos')
+                    setFilterYear('todos')
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-bold flex items-center gap-1 transition cursor-pointer"
+                  title="Restablecer filtro de mes y año"
+                >
+                  <X size={12} />
+                  <span>Limpiar mes</span>
+                </button>
+              )}
+
+              {/* Filtro Estado */}
               <select
                 value={filterRecontacto}
                 onChange={(e) => setFilterRecontacto(e.target.value)}
-                className="px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-200 text-xs font-black text-gray-700 outline-none cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-200 text-xs font-black text-gray-700 outline-none cursor-pointer hover:border-gray-300"
               >
-                <option value="todos">Todos los Estados ({recontactar.length})</option>
+                <option value="todos">Todos los Estados ({monthFilteredRecontacts.length})</option>
                 <option value="atrasados">Atrasados (Retoque pendiente)</option>
                 <option value="hoy">Toca Hoy</option>
                 <option value="manana">Toca Mañana</option>
@@ -331,7 +448,25 @@ export default function SeguimientoTab({ activeTab, selectedBranchId, subTab: co
             <div className="flex flex-col items-center justify-center py-20 text-gray-400 text-center space-y-2 bg-gray-50/30 border border-dashed border-gray-200 rounded-3xl">
               <Sparkles className="text-emerald-500 opacity-60" size={48} />
               <p className="font-bold text-gray-600">¡Todo al día!</p>
-              <p className="text-xs text-gray-400">No hay clientes pendientes de recontacto con los filtros seleccionados.</p>
+              <p className="text-xs text-gray-400">
+                {filterMonth !== 'todos' || filterYear !== 'todos' 
+                  ? 'No hay clientes para recontacto en el mes o período seleccionado.'
+                  : 'No hay clientes pendientes de recontacto con los filtros seleccionados.'}
+              </p>
+              {(filterMonth !== 'todos' || filterYear !== 'todos' || filterRecontacto !== 'todos' || searchRecontacto) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterMonth('todos')
+                    setFilterYear('todos')
+                    setFilterRecontacto('todos')
+                    setSearchRecontacto('')
+                  }}
+                  className="mt-2 px-3 py-1.5 bg-blush-palmLeaf text-white text-xs font-bold rounded-xl hover:opacity-90 transition cursor-pointer"
+                >
+                  Restablecer filtros
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

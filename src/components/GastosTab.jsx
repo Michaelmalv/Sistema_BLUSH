@@ -134,7 +134,7 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
         ...prev,
         producto_id: prodId,
         concepto: prod.nombre,
-        categoria: prod.tipo === 'insumo' ? 'Insumos' : 'Otros',
+        categoria: prod.tipo === 'insumo' ? 'Insumos' : 'Venta al por menor',
         valor_unitario: vUnit,
         total: tot
       }))
@@ -1179,6 +1179,7 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                   className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 focus:border-blush-palmLeaf focus:bg-white rounded-2xl outline-none transition-all text-sm font-black text-gray-700 cursor-pointer"
                 >
                   <option value="Insumos">Insumos (Uñas, Cremas, Algodón)</option>
+                  <option value="Venta al por menor">Venta al por menor</option>
                   <option value="Alquiler">Alquiler del Local</option>
                   <option value="Servicios Básicos">Servicios Básicos (Agua, Luz, Internet)</option>
                   <option value="Nómina / Comisiones">Nómina / Comisiones de Personal</option>
@@ -1918,6 +1919,7 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                     className="w-full px-3 py-2 bg-gray-50 border border-gray-250 rounded-xl outline-none text-xs text-gray-700 cursor-pointer"
                   >
                     <option value="Insumos">Insumos (Uñas, Cremas, Algodón)</option>
+                    <option value="Venta al por menor">Venta al por menor</option>
                     <option value="Alquiler">Alquiler del Local</option>
                     <option value="Servicios Básicos">Servicios Básicos</option>
                     <option value="Nómina / Comisiones">Nómina / Comisiones</option>
@@ -2256,6 +2258,7 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                   className="w-full px-3 py-2.5 bg-gray-50 border border-gray-250 rounded-xl outline-none focus:border-blush-palmLeaf font-semibold text-xs cursor-pointer"
                 >
                   <option value="Insumos">Insumos</option>
+                  <option value="Venta al por menor">Venta al por menor</option>
                   <option value="Servicios">Servicios</option>
                   <option value="Mantenimiento">Mantenimiento</option>
                   <option value="Alquiler">Alquiler</option>

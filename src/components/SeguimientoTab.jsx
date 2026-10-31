@@ -133,7 +133,7 @@ export default function SeguimientoTab({ activeTab, selectedBranchId, subTab: co
     }
 
     const nombreCompleto = crm.cliente_nombre.split(' ')[0]
-    const mensaje = 'Hola ' + nombreCompleto + ', te saludamos de Blush Beauty Studio. ✨ Vemos que tu último servicio de ' + crm.servicio_nombre + ' fue el ' + fechaLimpia + '. Como han transcurrido ' + crm.frecuencia_recomendada_dias + ' días, te sugerimos agendar tu cita de retoque o mantenimiento para consentirte de nuevo. ¿Te gustaría reservar un espacio para esta semana? 💖'
+    const mensaje = 'Hola ' + nombreCompleto + ', le saludamos de Blush Beauty Studio. 💅 Vemos que su último servicio fue hace varias semanas, sería un placer volver a atenderles con él mismo cariño de siempre. Le invitamos a agendar su cita de retoque o mantenimiento para consentirle de nuevo.  ¿Le gustaría reservar un espacio? Lindo día🌸 🥰'
     
     const tel = crm.cliente_celular.replace(/\D/g, '')
     let formattedTel = tel

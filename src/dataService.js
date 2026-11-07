@@ -1497,7 +1497,7 @@ export const dataService = {
     const totalIngresos = (citas || [])
       .filter(c => {
         const d = new Date(c.fecha_hora)
-        return d >= start && d <= end && c.forma_pago && c.forma_pago !== 'Pendiente'
+        return d >= start && d <= end
       })
       .reduce((sum, c) => sum + Number(c.valor_pagado || 0), 0)
 

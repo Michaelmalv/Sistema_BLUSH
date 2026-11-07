@@ -22,12 +22,13 @@ import defaultRetenciones from '../retenciones_import.json'
 import * as XLSX from 'xlsx-js-style'
 import { exportExcelJS } from '../excelExporter'
 
-export default function GastosTab({ activeTab, selectedBranchId }) {
+export default function GastosTab({ activeTab, selectedBranchId, onNavigate }) {
   // Sub-pestañas: 'egresos', 'comparativa', 'retenciones'
   const [subTab, setSubTab] = useState('egresos')
 
   const [gastos, setGastos] = useState([])
   const [productos, setProductos] = useState([])
+  const [sueldosMeses, setSueldosMeses] = useState([])
   const [loading, setLoading] = useState(true)
 
   // Buscadores
@@ -324,12 +325,14 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
   const loadData = async (forceRefresh = false) => {
     try {
       setLoading(true)
-      const [g, p] = await Promise.all([
+      const [g, p, sMeses] = await Promise.all([
         dataService.getGastos(forceRefresh),
-        dataService.getProductos(forceRefresh)
+        dataService.getProductos(forceRefresh),
+        dataService.getSueldosPorMeses(forceRefresh)
       ])
       setGastos(g)
       setProductos(p)
+      setSueldosMeses(sMeses || [])
 
       // Cargar Retenciones locales
       const savedRet = localStorage.getItem('blush_retenciones')
@@ -990,7 +993,6 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
       if (isGenericNoFact) {
         key = `INDIVIDUAL_${g.id}`
       } else if (isNA) {
-        // Para facturas gen�ricas como "NA", agrupar por fecha y proveedor para no mezclar compras distintas
         key = `NA_${normFact.toUpperCase()}_${g.fecha || ''}_${(g.proveedor || '').trim().toUpperCase()}`
       } else {
         key = normFact.toUpperCase()
@@ -1018,9 +1020,53 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
       groups[key].items.push(g)
       groups[key].total += Number(g.total)
     })
+
+    // Integrar automáticamente los costos de Sueldos y Comisiones respetando cada mes
+    ;(sueldosMeses || []).forEach(s => {
+      if (s.total_sueldos_comisiones > 0) {
+        const q = (searchGasto || '').toLowerCase().trim()
+        const matchesSearch = !q || 
+          'nómina'.includes(q) || 'nomina'.includes(q) || 
+          'sueldos'.includes(q) || 'comisiones'.includes(q) ||
+          (s.labelMes && s.labelMes.toLowerCase().includes(q)) ||
+          (s.colaboradoras && s.colaboradoras.some(c => c.nombre.toLowerCase().includes(q)))
+
+        if (matchesSearch) {
+          const key = `NOMINA_${s.monthKey}`
+          groups[key] = {
+            facturaKey: key,
+            facturaLabel: `Nómina y Comisiones (${s.labelMes})`,
+            facturaRaw: `NOMINA-${s.monthKey}`,
+            proveedor: 'Colaboradoras / Manicuristas',
+            proveedor_ruc: '',
+            isIndividual: false,
+            isNomina: true,
+            fecha: s.fecha,
+            forma_pago: 'Liquidación Mensual',
+            cuenta: 'Caja Principal / Banco',
+            sucursal_id: null,
+            total: s.total_sueldos_comisiones,
+            monthKey: s.monthKey,
+            labelMes: s.labelMes,
+            colaboradoras: s.colaboradoras,
+            items: (s.colaboradoras || []).map(c => ({
+              id: `nom_${s.monthKey}_${c.id}`,
+              concepto: `Liquidación: ${c.nombre} (${c.servicios_count} servicios [40%] + ${c.productos_count} productos [5%]${c.sueldo_base > 0 ? ' + Base' : ''})`,
+              categoria: 'Sueldos / Comisiones',
+              cantidad: 1,
+              valor_unitario: c.total_costo,
+              total: c.total_costo,
+              fecha: s.fecha,
+              forma_pago: 'Liquidación Mensual',
+              cuenta: 'Caja Principal'
+            }))
+          }
+        }
+      }
+    })
     
     return Object.values(groups).sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
-  }, [filteredGastos])
+  }, [filteredGastos, sueldosMeses, searchGasto])
 
   // Filtrado de comparativa de productos
   const filteredProducts = useMemo(() => {
@@ -1414,6 +1460,53 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
               </div>
             </div>
 
+            {/* Banner de Resumen de Nómina / Comisiones del Mes */}
+            {(() => {
+              const nowKey = new Date().toISOString().substring(0, 7)
+              const curNom = (sueldosMeses || []).find(s => s.monthKey === nowKey)
+              if (!curNom || curNom.total_sueldos_comisiones <= 0) return null
+              return (
+                <div className="mb-4 p-4 rounded-2xl bg-gradient-to-r from-rose-50/90 via-white to-pink-50/70 border border-rose-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center font-bold shrink-0">
+                      <DollarSign size={20} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-rose-950 uppercase tracking-wide">
+                          Costo de Nómina y Comisiones — {curNom.labelMes}
+                        </span>
+                        <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 text-[9px] font-bold rounded">
+                          Mes actual
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-500 font-medium mt-0.5">
+                        Reflejado en egresos según las ventas y comisiones generadas (40% servicios / 5% productos).
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
+                    <div className="text-right">
+                      <span className="text-[10px] font-bold text-gray-400 block uppercase">Total Nómina</span>
+                      <span className="text-base font-black text-rose-700">
+                        ${curNom.total_sueldos_comisiones.toFixed(2)}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onNavigate) onNavigate('sueldos')
+                        else window.dispatchEvent(new CustomEvent('blush_navigate', { detail: { tab: 'sueldos' } }))
+                      }}
+                      className="px-3 py-1.5 bg-blush-palmLeaf hover:bg-blush-palmLeaf-dark text-white text-xs font-bold rounded-xl transition shadow-sm cursor-pointer"
+                    >
+                      Ver en Sueldos
+                    </button>
+                  </div>
+                </div>
+              )
+            })()}
+
             {loading ? (
               <div className="flex flex-col items-center justify-center py-20 text-gray-400 space-y-4">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blush-palmLeaf"></div>
@@ -1436,7 +1529,12 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                           <span className="font-black text-sm text-gray-800 uppercase tracking-wide">
                             {group.isIndividual ? 'Gastos Varios' : `Factura: ${group.facturaLabel}`}
                           </span>
-                          {group.proveedor && (
+                          {group.isNomina ? (
+                            <span className="px-2 py-0.5 bg-rose-50 border border-rose-200 text-rose-700 font-bold text-xs rounded-lg flex items-center gap-1">
+                              <DollarSign size={11} />
+                              Liquidación de Nómina
+                            </span>
+                          ) : group.proveedor && (
                             <span className="px-2 py-0.5 bg-blush-seashell/60 border border-blush-palmLeaf/30 text-blush-palmLeaf font-bold text-xs rounded-lg">
                               Proveedor: {group.proveedor}
                             </span>
@@ -1504,22 +1602,38 @@ export default function GastosTab({ activeTab, selectedBranchId }) {
                                 <td className="py-2.5 px-3 text-right text-gray-800 font-bold">${Number(item.total).toFixed(2)}</td>
                                 <td className="py-2.5 px-2 text-center">
                                   <div className="flex items-center justify-center gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleStartEditGasto(item)}
-                                      className="p-1.5 text-blush-palmLeaf hover:bg-blush-seashell/60 rounded-lg transition-colors cursor-pointer"
-                                      title="Editar este Egreso"
-                                    >
-                                      <Edit3 size={15} />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteGasto(item.id)}
-                                      className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                                      title="Eliminar este Egreso"
-                                    >
-                                      <Trash2 size={15} />
-                                    </button>
+                                    {group.isNomina ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (onNavigate) onNavigate('sueldos')
+                                          else window.dispatchEvent(new CustomEvent('blush_navigate', { detail: { tab: 'sueldos' } }))
+                                        }}
+                                        className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-[10px] font-bold transition cursor-pointer"
+                                        title="Ver desglose completo en Sueldos / Comisiones"
+                                      >
+                                        Detalle
+                                      </button>
+                                    ) : (
+                                      <React.Fragment>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleStartEditGasto(item)}
+                                          className="p-1.5 text-blush-palmLeaf hover:bg-blush-seashell/60 rounded-lg transition-colors cursor-pointer"
+                                          title="Editar este Egreso"
+                                        >
+                                          <Edit3 size={15} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteGasto(item.id)}
+                                          className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                          title="Eliminar este Egreso"
+                                        >
+                                          <Trash2 size={15} />
+                                        </button>
+                                      </React.Fragment>
+                                    )}
                                   </div>
                                 </td>
                               </tr>

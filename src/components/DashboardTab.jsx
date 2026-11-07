@@ -251,15 +251,23 @@ export default function DashboardTab({ onNavigate, activeTab, selectedBranchId }
       pushSectionHeader("INDICADORES FINANCIEROS (CONCILIACIÓN GENERAL)", 2, "4B5563")
       rows.push([
         makeCell("Total Ingresos (Ventas)", 's', null, cardLabelStyle),
-        makeCell(Number(financials.total_ingresos), 'n', '"$"#,##0.00', cardValIngresoStyle)
+        makeCell(Number(financials.total_ingresos || 0), 'n', '"$"#,##0.00', cardValIngresoStyle)
       ])
       rows.push([
-        makeCell("Total Egresos (Gastos)", 's', null, cardLabelStyle),
-        makeCell(-Number(financials.total_egresos), 'n', '"$"#,##0.00', cardValEgresoStyle)
+        makeCell("Total Egresos (Gastos + Sueldos)", 's', null, cardLabelStyle),
+        makeCell(-Number(financials.total_egresos || 0), 'n', '"$"#,##0.00', cardValEgresoStyle)
       ])
       rows.push([
-        makeCell("Utilidad Bruta (Ganancia)", 's', null, { ...cardLabelStyle, fill: { fgColor: { rgb: 'F0F9FF' } } }),
-        makeCell(Number(financials.utilidad_neta), 'n', '"$"#,##0.00', cardValUtilidadStyle)
+        makeCell("   └─ Gastos Operativos (Facturas)", 's', null, cellStyleTextLeft),
+        makeCell(-Number(financials.total_gastos_operativos ?? financials.total_egresos ?? 0), 'n', '"$"#,##0.00', { ...cellStyleTextRight, font: { ...baseFont, color: { rgb: 'B91C1C' } } })
+      ])
+      rows.push([
+        makeCell("   └─ Costos de Sueldos y Comisiones (Nómina)", 's', null, cellStyleTextLeft),
+        makeCell(-Number(financials.total_sueldos_comisiones || 0), 'n', '"$"#,##0.00', { ...cellStyleTextRight, font: { ...baseFont, color: { rgb: 'B91C1C' } } })
+      ])
+      rows.push([
+        makeCell("Utilidad Bruta (Ganancia Neta)", 's', null, { ...cardLabelStyle, fill: { fgColor: { rgb: 'F0F9FF' } } }),
+        makeCell(Number(financials.utilidad_neta || 0), 'n', '"$"#,##0.00', cardValUtilidadStyle)
       ])
 
       rows.push([]) // empty
@@ -376,6 +384,59 @@ export default function DashboardTab({ onNavigate, activeTab, selectedBranchId }
         })
       }
 
+      // 5. Sueldos y Comisiones del Periodo
+      rows.push([]) // empty row
+      pushSectionHeader("LIQUIDACIÓN Y COSTOS DE SUELDOS / COMISIONES DEL PERIODO", 8, "748843")
+      rows.push([
+        makeCell("Colaboradora", 's', null, headerStyle("748843")),
+        makeCell("Cargo", 's', null, headerStyle("748843")),
+        makeCell("Servicios (Cant)", 's', null, headerStyle("748843")),
+        makeCell("Facturado Servicios", 's', null, headerStyle("748843")),
+        makeCell("Comisión Serv (40%)", 's', null, headerStyle("748843")),
+        makeCell("Comisión Prod (5%)", 's', null, headerStyle("748843")),
+        makeCell("Sueldo Base", 's', null, headerStyle("748843")),
+        makeCell("Costo Total Sueldo", 's', null, headerStyle("748843"))
+      ])
+
+      const desgloseSueldos = financials.desglose_sueldos || []
+      if (desgloseSueldos.length === 0) {
+        rows.push([
+          makeCell("Sin liquidaciones o comisiones en este período", 's', null, cellStyleTextCenter),
+          makeCell("", 's', null, cellStyleTextCenter),
+          makeCell(0, 'n', '#,##0', cellStyleTextCenter),
+          makeCell(0, 'n', '"$"#,##0.00', cellStyleTextRight),
+          makeCell(0, 'n', '"$"#,##0.00', cellStyleTextRight),
+          makeCell(0, 'n', '"$"#,##0.00', cellStyleTextRight),
+          makeCell(0, 'n', '"$"#,##0.00', cellStyleTextRight),
+          makeCell(0, 'n', '"$"#,##0.00', cellStyleTextRight)
+        ])
+      } else {
+        desgloseSueldos.forEach(colab => {
+          rows.push([
+            makeCell(colab.nombre, 's', null, cellStyleTextLeft),
+            makeCell(colab.cargo || 'Manicurista', 's', null, cellStyleTextCenter),
+            makeCell(Number(colab.servicios_count || 0), 'n', '#,##0', cellStyleTextCenter),
+            makeCell(Number(colab.ventas_servicios || 0), 'n', '"$"#,##0.00', cellStyleTextRight),
+            makeCell(Number(colab.comision_servicios || 0), 'n', '"$"#,##0.00', cellStyleTextRight),
+            makeCell(Number(colab.comision_productos || 0), 'n', '"$"#,##0.00', cellStyleTextRight),
+            makeCell(Number(colab.sueldo_base || 0), 'n', '"$"#,##0.00', cellStyleTextRight),
+            makeCell(-Number(colab.total_costo || 0), 'n', '"$"#,##0.00', { ...cellStyleTextRight, font: { ...baseFont, bold: true, color: { rgb: 'B91C1C' } } })
+          ])
+        })
+        rows.push([
+          makeCell("TOTAL SUELDOS Y COMISIONES", 's', null, { ...cardLabelStyle, font: { ...baseFont, bold: true } }),
+          makeCell("", 's', null, cardLabelStyle),
+          makeCell("", 's', null, cardLabelStyle),
+          makeCell("", 's', null, cardLabelStyle),
+          makeCell(Number(financials.total_comisiones || 0), 'n', '"$"#,##0.00', { ...cellStyleTextRight, font: { ...baseFont, bold: true } }),
+          makeCell("", 's', null, cardLabelStyle),
+          makeCell(Number(financials.total_sueldos_base || 0), 'n', '"$"#,##0.00', { ...cellStyleTextRight, font: { ...baseFont, bold: true } }),
+          makeCell(-Number(financials.total_sueldos_comisiones || 0), 'n', '"$"#,##0.00', { ...cellStyleTextRight, font: { ...baseFont, bold: true, color: { rgb: 'B91C1C' } } })
+        ])
+      }
+
+      rows.push([]) // empty row
+
       // Watermark footer at the bottom of the worksheet
       const lastRowIdx = rows.length
       merges.push({ s: { r: lastRowIdx, c: 0 }, e: { r: lastRowIdx, c: 7 } })
@@ -473,7 +534,14 @@ export default function DashboardTab({ onNavigate, activeTab, selectedBranchId }
         <div className="p-6 bg-white rounded-3xl shadow-sm border border-gray-100 flex items-center justify-between">
           <div>
             <span className="text-sm font-semibold text-gray-400 block mb-1">Total Egresos (Gastos)</span>
-            <span className="text-3xl font-bold text-rose-600">${financials.total_egresos.toFixed(2)}</span>
+            <span className="text-3xl font-bold text-rose-600">${(financials.total_egresos || 0).toFixed(2)}</span>
+            {financials.total_sueldos_comisiones > 0 && (
+              <div className="text-[11px] font-medium text-gray-400 mt-1.5 flex flex-wrap items-center gap-x-2">
+                <span>Gastos: ${(financials.total_gastos_operativos ?? financials.total_egresos).toFixed(2)}</span>
+                <span>•</span>
+                <span className="text-rose-600 font-bold">Sueldos: ${financials.total_sueldos_comisiones.toFixed(2)}</span>
+              </div>
+            )}
           </div>
           <div className="p-4 bg-rose-50 rounded-2xl text-rose-600">
             <TrendingDown size={28} />
@@ -485,8 +553,11 @@ export default function DashboardTab({ onNavigate, activeTab, selectedBranchId }
           <div>
             <span className="text-sm font-semibold text-gray-400 block mb-1">Utilidad Bruta</span>
             <span className={`text-3xl font-bold ${financials.utilidad_neta >= 0 ? 'text-blush-palmLeaf' : 'text-rose-600'}`}>
-              ${financials.utilidad_neta.toFixed(2)}
+              ${(financials.utilidad_neta || 0).toFixed(2)}
             </span>
+            <div className="text-[11px] font-medium text-gray-400 mt-1.5">
+              Ingresos - Egresos (incluye Sueldos)
+            </div>
           </div>
           <div className={`p-4 rounded-2xl ${financials.utilidad_neta >= 0 ? 'bg-blush-palmLeaf/10 text-blush-palmLeaf' : 'bg-rose-100 text-rose-600'}`}>
             <DollarSign size={28} />

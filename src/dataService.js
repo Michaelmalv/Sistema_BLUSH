@@ -1336,32 +1336,194 @@ export const dataService = {
   // CÁLCULOS FINANCIEROS Y CRM (0ms NETWORK RETRIES)
   // ============================================================================
 
-  // Conciliación Financiera (Ingresos - Egresos = Utilidad)
-  async getConciliacionFinanciera(fechaInicio, fechaFin, forceRefresh = false) {
-    const citas = await this.getCitasVentas(forceRefresh)
-    const gastos = await this.getGastos(forceRefresh)
+  // Resumen de Sueldos y Comisiones para cualquier rango de fechas o mes
+  async getResumenSueldosYComisiones(fechaInicio, fechaFin, forceRefresh = false) {
+    const [citas, personal] = await Promise.all([
+      this.getCitasVentas(forceRefresh),
+      this.getPersonal(forceRefresh)
+    ])
 
     const start = new Date(fechaInicio + 'T00:00:00')
     const end = new Date(fechaFin + 'T23:59:59')
 
-    const totalIngresos = citas
+    const personalManicuristas = (personal || []).filter(p => !p.nombre || p.nombre.toLowerCase() !== 'blush')
+    if (!personalManicuristas.length) {
+      return {
+        total_comisiones: 0,
+        total_comisiones_servicios: 0,
+        total_comisiones_productos: 0,
+        total_sueldos_base: 0,
+        total_sueldos_comisiones: 0,
+        colaboradoras: []
+      }
+    }
+
+    // Filtrar citas del período que no estén pendientes
+    const periodVentas = (citas || []).filter(v => {
+      const d = new Date(v.fecha_hora)
+      return d >= start && d <= end && v.forma_pago && v.forma_pago !== 'Pendiente'
+    })
+
+    // Calcular proporción de meses para sueldos base
+    const daysCovered = Math.max(1, Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1)
+    const monthsRatio = daysCovered >= 28 ? Math.max(1, Math.round(daysCovered / 30)) : (daysCovered / 30)
+
+    let totalComisionesServicios = 0
+    let totalComisionesProductos = 0
+    let totalSueldosBase = 0
+    const colaboradoras = []
+
+    personalManicuristas.forEach(p => {
+      // 1. Servicios directos realizados por la manicurista (40% comisión)
+      const pServicios = periodVentas.filter(v => 
+        v.personal && v.personal.id === p.id && !v.es_venta_blush && (v.personal.nombre && v.personal.nombre.toLowerCase() !== 'blush')
+      )
+      const totalVentasServicios = pServicios.reduce((sum, v) => sum + Number(v.valor_pagado || 0), 0)
+      const comisionServicios = totalVentasServicios * 0.40
+
+      // 2. Ventas de productos Blush realizadas por esta colaboradora (5% comisión)
+      const pProductos = periodVentas.filter(v => 
+        (v.vendedora_id === p.id) || 
+        (v.tipo && v.tipo === `venta_blush:${p.id}`) ||
+        (v.tipo && typeof v.tipo === 'string' && v.tipo.includes(p.id)) ||
+        (v.no_transferencia_raw && typeof v.no_transferencia_raw === 'string' && v.no_transferencia_raw.includes(`[vendedora:${p.id}]`)) ||
+        (v.no_transferencia && typeof v.no_transferencia === 'string' && v.no_transferencia.includes(`[vendedora:${p.id}]`))
+      )
+      const totalVentasProductos = pProductos.reduce((sum, v) => sum + Number(v.valor_pagado || 0), 0)
+      const comisionProductos = totalVentasProductos * 0.05
+
+      const totalComision = comisionServicios + comisionProductos
+      
+      const sBaseNum = Number(p.sueldo_base || 0)
+      const sueldoBasePeriodo = p.activo && sBaseNum > 0 ? (sBaseNum * monthsRatio) : 0
+      const totalCosto = totalComision + sueldoBasePeriodo
+
+      totalComisionesServicios += comisionServicios
+      totalComisionesProductos += comisionProductos
+      totalSueldosBase += sueldoBasePeriodo
+
+      if (totalCosto > 0 || pServicios.length > 0 || pProductos.length > 0) {
+        colaboradoras.push({
+          id: p.id,
+          nombre: p.nombre,
+          cargo: p.cargo || 'Manicurista',
+          servicios_count: pServicios.length,
+          ventas_servicios: totalVentasServicios,
+          comision_servicios: comisionServicios,
+          productos_count: pProductos.length,
+          ventas_productos: totalVentasProductos,
+          comision_productos: comisionProductos,
+          total_comision: totalComision,
+          sueldo_base: sueldoBasePeriodo,
+          total_costo: totalCosto
+        })
+      }
+    })
+
+    const totalComisiones = totalComisionesServicios + totalComisionesProductos
+    const totalSueldosComisiones = totalComisiones + totalSueldosBase
+
+    return {
+      total_comisiones: totalComisiones,
+      total_comisiones_servicios: totalComisionesServicios,
+      total_comisiones_productos: totalComisionesProductos,
+      total_sueldos_base: totalSueldosBase,
+      total_sueldos_comisiones: totalSueldosComisiones,
+      colaboradoras: colaboradoras.sort((a, b) => b.total_costo - a.total_costo)
+    }
+  },
+
+  // Agrupado mensual de sueldos y comisiones para visualización en Egresos / Gastos
+  async getSueldosPorMeses(forceRefresh = false) {
+    const [citas, personal] = await Promise.all([
+      this.getCitasVentas(forceRefresh),
+      this.getPersonal(forceRefresh)
+    ])
+
+    const mesesMap = {}
+    ;(citas || []).forEach(c => {
+      if (!c.fecha_hora || c.forma_pago === 'Pendiente') return
+      const monthKey = c.fecha_hora.substring(0, 7)
+      if (monthKey && monthKey.length === 7) {
+        mesesMap[monthKey] = true
+      }
+    })
+
+    const nowKey = new Date().toISOString().substring(0, 7)
+    mesesMap[nowKey] = true
+
+    const sortedMonthKeys = Object.keys(mesesMap).sort((a, b) => b.localeCompare(a))
+    const results = []
+
+    for (const mKey of sortedMonthKeys) {
+      const [yearStr, monthStr] = mKey.split('-')
+      const year = parseInt(yearStr, 10)
+      const monthIndex = parseInt(monthStr, 10) - 1
+      const startDate = `${mKey}-01`
+      const lastDay = new Date(year, monthIndex + 1, 0).getDate()
+      const endDate = `${mKey}-${String(lastDay).padStart(2, '0')}`
+
+      const resumen = await this.getResumenSueldosYComisiones(startDate, endDate, forceRefresh)
+      if (resumen.total_sueldos_comisiones > 0 || mKey === nowKey) {
+        const nombresMeses = [
+          'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+        ]
+        const labelMes = `${nombresMeses[monthIndex]} ${year}`
+        results.push({
+          monthKey: mKey,
+          labelMes: labelMes,
+          fecha: endDate,
+          ...resumen
+        })
+      }
+    }
+
+    return results
+  },
+
+  // Conciliación Financiera (Ingresos - Egresos = Utilidad)
+  // Ahora refleja íntegramente los costos de Sueldos y Comisiones del período respetando el mes
+  async getConciliacionFinanciera(fechaInicio, fechaFin, forceRefresh = false) {
+    const [citas, gastos, sueldosInfo] = await Promise.all([
+      this.getCitasVentas(forceRefresh),
+      this.getGastos(forceRefresh),
+      this.getResumenSueldosYComisiones(fechaInicio, fechaFin, forceRefresh)
+    ])
+
+    const start = new Date(fechaInicio + 'T00:00:00')
+    const end = new Date(fechaFin + 'T23:59:59')
+
+    const totalIngresos = (citas || [])
       .filter(c => {
         const d = new Date(c.fecha_hora)
-        return d >= start && d <= end
+        return d >= start && d <= end && c.forma_pago && c.forma_pago !== 'Pendiente'
       })
-      .reduce((sum, c) => sum + Number(c.valor_pagado), 0)
+      .reduce((sum, c) => sum + Number(c.valor_pagado || 0), 0)
 
-    const totalEgresos = gastos
+    // Egresos operativos: gastos registrados en compras/proveedores excluyendo registros de ANTICIPO
+    // (para no duplicar el costo laboral, ya que sueldosInfo incluye el costo completo de nómina)
+    const gastosOperativos = (gastos || [])
       .filter(g => {
         const d = new Date(g.fecha + 'T00:00:00')
-        return d >= start && d <= end
+        const inPeriod = d >= start && d <= end
+        const isAnticipo = g.factura === 'ANTICIPO' || (g.concepto && g.concepto.includes('[colab:'))
+        return inPeriod && !isAnticipo
       })
-      .reduce((sum, g) => sum + Number(g.total), 0)
+      .reduce((sum, g) => sum + Number(g.total || 0), 0)
+
+    const totalSueldosComisiones = sueldosInfo.total_sueldos_comisiones || 0
+    const totalEgresos = gastosOperativos + totalSueldosComisiones
 
     return {
       total_ingresos: totalIngresos,
       total_egresos: totalEgresos,
-      utilidad_neta: totalIngresos - totalEgresos
+      total_gastos_operativos: gastosOperativos,
+      total_sueldos_comisiones: totalSueldosComisiones,
+      total_comisiones: sueldosInfo.total_comisiones || 0,
+      total_sueldos_base: sueldosInfo.total_sueldos_base || 0,
+      utilidad_neta: totalIngresos - totalEgresos,
+      desglose_sueldos: sueldosInfo.colaboradoras || []
     }
   },
 

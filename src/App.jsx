@@ -82,6 +82,19 @@ export default function App() {
     }
   }, [])
 
+  useEffect(() => {
+    const handleNavigate = (e) => {
+      if (e.detail?.tab) {
+        setActiveTab(e.detail.tab)
+        if (e.detail.subTab) {
+          setSeguimientoSubTab(e.detail.subTab)
+        }
+      }
+    }
+    window.addEventListener('blush_navigate', handleNavigate)
+    return () => window.removeEventListener('blush_navigate', handleNavigate)
+  }, [])
+
   // Login form state
   const [usernameInput, setUsernameInput] = useState('')
   const [passwordInput, setPasswordInput] = useState('')
@@ -381,7 +394,7 @@ export default function App() {
       case 'servicios':
         return <ServiciosTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} />
       case 'gastos':
-        return <GastosTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} />
+        return <GastosTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} onNavigate={(tab) => setActiveTab(tab)} />
       case 'sueldos':
         return <SueldosTab key={tabKey} activeTab={activeTab} selectedBranchId={selectedBranchId} />
       case 'usuarios':
@@ -1103,7 +1116,7 @@ export default function App() {
               <ServiciosTab activeTab={activeTab} />
             </div>
             <div className={activeTab === 'gastos' ? 'animate-tab-active' : ''} style={{ display: activeTab === 'gastos' ? 'block' : 'none' }}>
-              <GastosTab activeTab={activeTab} selectedBranchId={selectedBranchId} />
+              <GastosTab activeTab={activeTab} selectedBranchId={selectedBranchId} onNavigate={(tab) => setActiveTab(tab)} />
             </div>
             <div className={activeTab === 'usuarios' ? 'animate-tab-active' : ''} style={{ display: activeTab === 'usuarios' ? 'block' : 'none' }}>
               <UsuariosTab />

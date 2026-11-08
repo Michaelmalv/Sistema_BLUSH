@@ -1,0 +1,1575 @@
+{
+  "2025-12": {
+    "monthKey": "2025-12",
+    "labelMes": "Diciembre 2025",
+    "fecha": "2025-12-31",
+    "colaboradoras": [
+      {
+        "nombre": "Eli",
+        "sueldo_base": 0,
+        "comision": 683.8,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2025-12-10",
+            "monto": 160.4,
+            "motivo": "del 29-11 al 10-12",
+            "forma_pago": "Transferencia"
+          },
+          {
+            "fecha": "2025-12-30",
+            "monto": 523.4,
+            "motivo": "del 12 al 30 de diciembre",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "c53b86f1-73b8-4f37-8842-d8d4cfed9c89",
+        "cargo": "Manicurista",
+        "activo": false,
+        "servicios_count": 57,
+        "productos_count": 0,
+        "total_costo": 683.8,
+        "total_pagar": 683.8,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Angelita",
+        "sueldo_base": 540,
+        "comision": 0,
+        "anticipo": 40,
+        "pagos_historial": [
+          {
+            "fecha": "2025-12-31",
+            "monto": 40,
+            "motivo": "Mami adelanto",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-01-02",
+            "monto": 500,
+            "motivo": "mes",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 540,
+        "total_pagar": 500,
+        "anticipos_historial": [
+          {
+            "id": "ant_2025-12_96de1157-64a6-4378-ab04-e6d06bfb0d14_20251231",
+            "colab_id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+            "colab_nombre": "Angelita",
+            "fecha": "2025-12-31",
+            "monto": 40,
+            "motivo": "Mami adelanto",
+            "forma_pago": "Transferencia",
+            "created_at": "2025-12-31T12:00:00Z"
+          }
+        ]
+      },
+      {
+        "nombre": "Luci",
+        "sueldo_base": 0,
+        "comision": 428.12,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-01-02",
+            "monto": 428.12,
+            "motivo": "del 12 al 31 de diciembre",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "7f4fb8c6-5455-44d8-a1b6-f99d0aed32a1",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 36,
+        "productos_count": 0,
+        "total_costo": 428.12,
+        "total_pagar": 428.12,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Santiago Redes",
+        "sueldo_base": 100,
+        "comision": 0,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2025-12-31",
+            "monto": 100,
+            "motivo": "Servicios de redes sociales Diciembre 2025",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "fe2fbe34-7dc1-488f-a5d5-60edd6be982e",
+        "cargo": "Marketing / Redes",
+        "activo": false,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 100,
+        "total_pagar": 100,
+        "anticipos_historial": []
+      }
+    ],
+    "total_sueldos_base": 640,
+    "total_comisiones": 1111.92,
+    "total_sueldos_comisiones": 1751.92
+  },
+  "2026-01": {
+    "monthKey": "2026-01",
+    "labelMes": "Enero 2026",
+    "fecha": "2026-01-31",
+    "colaboradoras": [
+      {
+        "nombre": "Caro",
+        "sueldo_base": 0,
+        "comision": 526.4,
+        "anticipo": 30,
+        "pagos_historial": [
+          {
+            "fecha": "2026-01-15",
+            "monto": 60,
+            "motivo": "del 02 al 14 de enero",
+            "forma_pago": "Transferencia"
+          },
+          {
+            "fecha": "2026-01-24",
+            "monto": 30,
+            "motivo": "adelanto",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-01-31",
+            "monto": 436.4,
+            "motivo": "Del 30 al 31 de enero 2026",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "3a4c9773-b461-441c-aed2-f9ee284ef966",
+        "cargo": "Manicurista",
+        "activo": false,
+        "servicios_count": 44,
+        "productos_count": 0,
+        "total_costo": 526.4,
+        "total_pagar": 496.4,
+        "anticipos_historial": [
+          {
+            "id": "ant_2026-01_3a4c9773-b461-441c-aed2-f9ee284ef966_20260124",
+            "colab_id": "3a4c9773-b461-441c-aed2-f9ee284ef966",
+            "colab_nombre": "Caro",
+            "fecha": "2026-01-24",
+            "monto": 30,
+            "motivo": "adelanto",
+            "forma_pago": "Transferencia",
+            "created_at": "2026-01-24T12:00:00Z"
+          }
+        ]
+      },
+      {
+        "nombre": "Angelita",
+        "sueldo_base": 400,
+        "comision": 0,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-01-30",
+            "monto": 400,
+            "motivo": "mes",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 400,
+        "total_pagar": 400,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Luci",
+        "sueldo_base": 0,
+        "comision": 388,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-01-31",
+            "monto": 388,
+            "motivo": "Del 02 al 31 de enero 2026",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "7f4fb8c6-5455-44d8-a1b6-f99d0aed32a1",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 32,
+        "productos_count": 0,
+        "total_costo": 388,
+        "total_pagar": 388,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Eli",
+        "sueldo_base": 0,
+        "comision": 114.4,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-01-10",
+            "monto": 114.4,
+            "motivo": "del 31 al 9 de enero 2026",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "c53b86f1-73b8-4f37-8842-d8d4cfed9c89",
+        "cargo": "Manicurista",
+        "activo": false,
+        "servicios_count": 10,
+        "productos_count": 0,
+        "total_costo": 114.4,
+        "total_pagar": 114.4,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Santiago Redes",
+        "sueldo_base": 100,
+        "comision": 0,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-01-31",
+            "monto": 100,
+            "motivo": "Servicios de redes sociales Enero 2026",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "fe2fbe34-7dc1-488f-a5d5-60edd6be982e",
+        "cargo": "Marketing / Redes",
+        "activo": false,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 100,
+        "total_pagar": 100,
+        "anticipos_historial": []
+      }
+    ],
+    "total_sueldos_base": 500,
+    "total_comisiones": 1028.8,
+    "total_sueldos_comisiones": 1528.8
+  },
+  "2026-02": {
+    "monthKey": "2026-02",
+    "labelMes": "Febrero 2026",
+    "fecha": "2026-02-28",
+    "colaboradoras": [
+      {
+        "nombre": "Caro",
+        "sueldo_base": 0,
+        "comision": 400,
+        "anticipo": 100,
+        "pagos_historial": [
+          {
+            "fecha": "2026-02-14",
+            "monto": 100,
+            "motivo": "adelanto",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-02-28",
+            "monto": 300,
+            "motivo": "Del 01 de febrero al 28-02",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "3a4c9773-b461-441c-aed2-f9ee284ef966",
+        "cargo": "Manicurista",
+        "activo": false,
+        "servicios_count": 33,
+        "productos_count": 0,
+        "total_costo": 400,
+        "total_pagar": 300,
+        "anticipos_historial": [
+          {
+            "id": "ant_2026-02_3a4c9773-b461-441c-aed2-f9ee284ef966_20260214",
+            "colab_id": "3a4c9773-b461-441c-aed2-f9ee284ef966",
+            "colab_nombre": "Caro",
+            "fecha": "2026-02-14",
+            "monto": 100,
+            "motivo": "adelanto",
+            "forma_pago": "Transferencia",
+            "created_at": "2026-02-14T12:00:00Z"
+          }
+        ]
+      },
+      {
+        "nombre": "Angelita",
+        "sueldo_base": 400,
+        "comision": 0,
+        "anticipo": 20,
+        "pagos_historial": [
+          {
+            "fecha": "2026-02-14",
+            "monto": 20,
+            "motivo": "adelanto",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-03-01",
+            "monto": 380,
+            "motivo": "Del 01 de febrero al 28-02",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 400,
+        "total_pagar": 380,
+        "anticipos_historial": [
+          {
+            "id": "ant_2026-02_96de1157-64a6-4378-ab04-e6d06bfb0d14_20260214",
+            "colab_id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+            "colab_nombre": "Angelita",
+            "fecha": "2026-02-14",
+            "monto": 20,
+            "motivo": "adelanto",
+            "forma_pago": "Transferencia",
+            "created_at": "2026-02-14T12:00:00Z"
+          }
+        ]
+      },
+      {
+        "nombre": "Luci",
+        "sueldo_base": 0,
+        "comision": 373.6,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-02-28",
+            "monto": 373.6,
+            "motivo": "Del 01 de febrero al 28-02",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "7f4fb8c6-5455-44d8-a1b6-f99d0aed32a1",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 31,
+        "productos_count": 0,
+        "total_costo": 373.6,
+        "total_pagar": 373.6,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Santiago Redes",
+        "sueldo_base": 100,
+        "comision": 0,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-02-28",
+            "monto": 100,
+            "motivo": "Servicios de redes sociales Febrero 2026",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "fe2fbe34-7dc1-488f-a5d5-60edd6be982e",
+        "cargo": "Marketing / Redes",
+        "activo": false,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 100,
+        "total_pagar": 100,
+        "anticipos_historial": []
+      }
+    ],
+    "total_sueldos_base": 500,
+    "total_comisiones": 773.6,
+    "total_sueldos_comisiones": 1273.6
+  },
+  "2026-03": {
+    "monthKey": "2026-03",
+    "labelMes": "Marzo 2026",
+    "fecha": "2026-03-31",
+    "colaboradoras": [
+      {
+        "nombre": "Caro",
+        "sueldo_base": 0,
+        "comision": 427,
+        "anticipo": 61,
+        "pagos_historial": [
+          {
+            "fecha": "2026-03-16",
+            "monto": 61,
+            "motivo": "Adelanto Carito",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-04-01",
+            "monto": 366,
+            "motivo": "Marzo",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "3a4c9773-b461-441c-aed2-f9ee284ef966",
+        "cargo": "Manicurista",
+        "activo": false,
+        "servicios_count": 36,
+        "productos_count": 0,
+        "total_costo": 427,
+        "total_pagar": 366,
+        "anticipos_historial": [
+          {
+            "id": "ant_2026-03_3a4c9773-b461-441c-aed2-f9ee284ef966_20260316",
+            "colab_id": "3a4c9773-b461-441c-aed2-f9ee284ef966",
+            "colab_nombre": "Caro",
+            "fecha": "2026-03-16",
+            "monto": 61,
+            "motivo": "Adelanto Carito",
+            "forma_pago": "Transferencia",
+            "created_at": "2026-03-16T12:00:00Z"
+          }
+        ]
+      },
+      {
+        "nombre": "Angelita",
+        "sueldo_base": 400,
+        "comision": 0,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-03-02",
+            "monto": 400,
+            "motivo": "Sueldo mami Marzo",
+            "forma_pago": "Efectivo- transferencia"
+          }
+        ],
+        "id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 400,
+        "total_pagar": 400,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Luci",
+        "sueldo_base": 0,
+        "comision": 315.4,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-04-01",
+            "monto": 315.4,
+            "motivo": "Marzo",
+            "forma_pago": "Efectivo"
+          }
+        ],
+        "id": "7f4fb8c6-5455-44d8-a1b6-f99d0aed32a1",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 26,
+        "productos_count": 0,
+        "total_costo": 315.4,
+        "total_pagar": 315.4,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Sebastian Redes",
+        "sueldo_base": 130,
+        "comision": 0,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-04-01",
+            "monto": 60,
+            "motivo": "Redes",
+            "forma_pago": "Transferencia"
+          },
+          {
+            "fecha": "2026-04-05",
+            "monto": 70,
+            "motivo": "Redes saldo marzo",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "5db024e5-bab9-4b38-8169-e7970db09f85",
+        "cargo": "Marketing / Redes",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 130,
+        "total_pagar": 130,
+        "anticipos_historial": []
+      }
+    ],
+    "total_sueldos_base": 530,
+    "total_comisiones": 742.4,
+    "total_sueldos_comisiones": 1272.4
+  },
+  "2026-04": {
+    "monthKey": "2026-04",
+    "labelMes": "Abril 2026",
+    "fecha": "2026-04-30",
+    "colaboradoras": [
+      {
+        "nombre": "Luci",
+        "sueldo_base": 0,
+        "comision": 488,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-04-30",
+            "monto": 488,
+            "motivo": "Del 01-04 al 30 -04",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "7f4fb8c6-5455-44d8-a1b6-f99d0aed32a1",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 41,
+        "productos_count": 0,
+        "total_costo": 488,
+        "total_pagar": 488,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Angelita",
+        "sueldo_base": 400,
+        "comision": 0,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-04-30",
+            "monto": 400,
+            "motivo": "Sueldo mami Abril",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 400,
+        "total_pagar": 400,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Mary",
+        "sueldo_base": 0,
+        "comision": 186,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-05-07",
+            "monto": 186,
+            "motivo": "De abril al 07 de mayo",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "5f78352d-e1d7-4f17-ac19-25734e2da789",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 16,
+        "productos_count": 0,
+        "total_costo": 186,
+        "total_pagar": 186,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Sebastian Redes",
+        "sueldo_base": 130,
+        "comision": 0,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-05-04",
+            "monto": 130,
+            "motivo": "Redes",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "5db024e5-bab9-4b38-8169-e7970db09f85",
+        "cargo": "Marketing / Redes",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 130,
+        "total_pagar": 130,
+        "anticipos_historial": []
+      }
+    ],
+    "total_sueldos_base": 530,
+    "total_comisiones": 674,
+    "total_sueldos_comisiones": 1204
+  },
+  "2026-05": {
+    "monthKey": "2026-05",
+    "labelMes": "Mayo 2026",
+    "fecha": "2026-05-31",
+    "colaboradoras": [
+      {
+        "nombre": "Mary",
+        "sueldo_base": 0,
+        "comision": 411.56,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-06-01",
+            "monto": 411.56,
+            "motivo": "Del 7 de mayo al 31 de mayo",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "5f78352d-e1d7-4f17-ac19-25734e2da789",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 34,
+        "productos_count": 0,
+        "total_costo": 411.56,
+        "total_pagar": 411.56,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Angelita",
+        "sueldo_base": 400,
+        "comision": 0,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-06-01",
+            "monto": 265,
+            "motivo": "Sueldo mami mayo",
+            "forma_pago": "Transferencia"
+          },
+          {
+            "fecha": "2026-06-01",
+            "monto": 135,
+            "motivo": "Sueldo mami mayo en efectivo",
+            "forma_pago": "Efectivo"
+          }
+        ],
+        "id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 400,
+        "total_pagar": 400,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Luci",
+        "sueldo_base": 0,
+        "comision": 373.4,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-06-01",
+            "monto": 373.4,
+            "motivo": "Del 2 de mayo al 31 de mayo",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "7f4fb8c6-5455-44d8-a1b6-f99d0aed32a1",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 31,
+        "productos_count": 0,
+        "total_costo": 373.4,
+        "total_pagar": 373.4,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Sebastian Redes",
+        "sueldo_base": 130,
+        "comision": 0,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-06-02",
+            "monto": 130,
+            "motivo": "Redes",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "5db024e5-bab9-4b38-8169-e7970db09f85",
+        "cargo": "Marketing / Redes",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 130,
+        "total_pagar": 130,
+        "anticipos_historial": []
+      }
+    ],
+    "total_sueldos_base": 530,
+    "total_comisiones": 784.96,
+    "total_sueldos_comisiones": 1314.96
+  },
+  "2026-06": {
+    "monthKey": "2026-06",
+    "labelMes": "Junio 2026",
+    "fecha": "2026-06-30",
+    "colaboradoras": [
+      {
+        "nombre": "Mary",
+        "sueldo_base": 0,
+        "comision": 566.4,
+        "anticipo": 190,
+        "pagos_historial": [
+          {
+            "fecha": "2026-06-09",
+            "monto": 140,
+            "motivo": "Adelanto Mary Junio",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-07-01",
+            "monto": 50,
+            "motivo": "Adelanto Mary Junio",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-07-01",
+            "monto": 376.4,
+            "motivo": "Del 01 al 30 de junio",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "5f78352d-e1d7-4f17-ac19-25734e2da789",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 47,
+        "productos_count": 0,
+        "total_costo": 566.4,
+        "total_pagar": 376.4,
+        "anticipos_historial": [
+          {
+            "id": "ant_2026-06_5f78352d-e1d7-4f17-ac19-25734e2da789_20260609",
+            "colab_id": "5f78352d-e1d7-4f17-ac19-25734e2da789",
+            "colab_nombre": "Mary",
+            "fecha": "2026-06-09",
+            "monto": 140,
+            "motivo": "Adelanto Mary Junio",
+            "forma_pago": "Transferencia",
+            "created_at": "2026-06-09T12:00:00Z"
+          },
+          {
+            "id": "ant_2026-06_5f78352d-e1d7-4f17-ac19-25734e2da789_20260701",
+            "colab_id": "5f78352d-e1d7-4f17-ac19-25734e2da789",
+            "colab_nombre": "Mary",
+            "fecha": "2026-07-01",
+            "monto": 50,
+            "motivo": "Adelanto Mary Junio",
+            "forma_pago": "Transferencia",
+            "created_at": "2026-07-01T12:00:00Z"
+          }
+        ]
+      },
+      {
+        "nombre": "Luci",
+        "sueldo_base": 0,
+        "comision": 517.53,
+        "anticipo": 136,
+        "pagos_historial": [
+          {
+            "fecha": "2026-06-24",
+            "monto": 136,
+            "motivo": "Adelanto Luci Junio",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-07-01",
+            "monto": 381.53,
+            "motivo": "Del 01 al 30 de junio",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "7f4fb8c6-5455-44d8-a1b6-f99d0aed32a1",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 43,
+        "productos_count": 0,
+        "total_costo": 517.53,
+        "total_pagar": 381.53,
+        "anticipos_historial": [
+          {
+            "id": "ant_2026-06_7f4fb8c6-5455-44d8-a1b6-f99d0aed32a1_20260624",
+            "colab_id": "7f4fb8c6-5455-44d8-a1b6-f99d0aed32a1",
+            "colab_nombre": "Luci",
+            "fecha": "2026-06-24",
+            "monto": 136,
+            "motivo": "Adelanto Luci Junio",
+            "forma_pago": "Transferencia",
+            "created_at": "2026-06-24T12:00:00Z"
+          }
+        ]
+      },
+      {
+        "nombre": "Angelita",
+        "sueldo_base": 400,
+        "comision": 0,
+        "anticipo": 390,
+        "pagos_historial": [
+          {
+            "fecha": "2026-06-11",
+            "monto": 250,
+            "motivo": "Adelanto mami Junio",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-06-16",
+            "monto": 40,
+            "motivo": "Adelanto mami Junio",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-07-01",
+            "monto": 100,
+            "motivo": "Adelanto mami Junio para pago de 1era cuota mamita",
+            "forma_pago": "Efectivo",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-07-01",
+            "monto": 10,
+            "motivo": "Sueldo mami junio",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 400,
+        "total_pagar": 10,
+        "anticipos_historial": [
+          {
+            "id": "ant_2026-06_96de1157-64a6-4378-ab04-e6d06bfb0d14_20260611",
+            "colab_id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+            "colab_nombre": "Angelita",
+            "fecha": "2026-06-11",
+            "monto": 250,
+            "motivo": "Adelanto mami Junio",
+            "forma_pago": "Transferencia",
+            "created_at": "2026-06-11T12:00:00Z"
+          },
+          {
+            "id": "ant_2026-06_96de1157-64a6-4378-ab04-e6d06bfb0d14_20260616",
+            "colab_id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+            "colab_nombre": "Angelita",
+            "fecha": "2026-06-16",
+            "monto": 40,
+            "motivo": "Adelanto mami Junio",
+            "forma_pago": "Transferencia",
+            "created_at": "2026-06-16T12:00:00Z"
+          },
+          {
+            "id": "ant_2026-06_96de1157-64a6-4378-ab04-e6d06bfb0d14_20260701",
+            "colab_id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+            "colab_nombre": "Angelita",
+            "fecha": "2026-07-01",
+            "monto": 100,
+            "motivo": "Adelanto mami Junio para pago de 1era cuota mamita",
+            "forma_pago": "Efectivo",
+            "created_at": "2026-07-01T12:00:00Z"
+          }
+        ]
+      },
+      {
+        "nombre": "Sebastian Redes",
+        "sueldo_base": 130,
+        "comision": 0,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-07-02",
+            "monto": 130,
+            "motivo": "Del 01 al 30 de junio",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "5db024e5-bab9-4b38-8169-e7970db09f85",
+        "cargo": "Marketing / Redes",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 130,
+        "total_pagar": 130,
+        "anticipos_historial": []
+      }
+    ],
+    "total_sueldos_base": 530,
+    "total_comisiones": 1083.93,
+    "total_sueldos_comisiones": 1613.93
+  },
+  "2026-07": {
+    "monthKey": "2026-07",
+    "labelMes": "Julio 2026",
+    "fecha": "2026-07-31",
+    "colaboradoras": [
+      {
+        "nombre": "Luci",
+        "sueldo_base": 0,
+        "comision": 492.79,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-08-03",
+            "monto": 492.79,
+            "motivo": "Sueldo Julio",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "7f4fb8c6-5455-44d8-a1b6-f99d0aed32a1",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 41,
+        "productos_count": 0,
+        "total_costo": 492.79,
+        "total_pagar": 492.79,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Angelita",
+        "sueldo_base": 400,
+        "comision": 0,
+        "anticipo": 250,
+        "pagos_historial": [
+          {
+            "fecha": "2026-07-01",
+            "monto": 200,
+            "motivo": "Adelanto mami Julio",
+            "forma_pago": "Efectivo",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-07-15",
+            "monto": 50,
+            "motivo": "Adelanto mami Julio",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-08-03",
+            "monto": 150,
+            "motivo": "Sueldo Julio",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 400,
+        "total_pagar": 150,
+        "anticipos_historial": [
+          {
+            "id": "ant_2026-07_96de1157-64a6-4378-ab04-e6d06bfb0d14_20260701",
+            "colab_id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+            "colab_nombre": "Angelita",
+            "fecha": "2026-07-01",
+            "monto": 200,
+            "motivo": "Adelanto mami Julio",
+            "forma_pago": "Efectivo",
+            "created_at": "2026-07-01T12:00:00Z"
+          },
+          {
+            "id": "ant_2026-07_96de1157-64a6-4378-ab04-e6d06bfb0d14_20260715",
+            "colab_id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+            "colab_nombre": "Angelita",
+            "fecha": "2026-07-15",
+            "monto": 50,
+            "motivo": "Adelanto mami Julio",
+            "forma_pago": "Transferencia",
+            "created_at": "2026-07-15T12:00:00Z"
+          }
+        ]
+      },
+      {
+        "nombre": "Abigail",
+        "sueldo_base": 0,
+        "comision": 175.85,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-08-03",
+            "monto": 175.85,
+            "motivo": "Sueldo Julio",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "8784cc70-4455-40ea-81d9-ba056f30f3fb",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 15,
+        "productos_count": 0,
+        "total_costo": 175.85,
+        "total_pagar": 175.85,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Mary",
+        "sueldo_base": 0,
+        "comision": 142.35,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-08-03",
+            "monto": 142.35,
+            "motivo": "Del 01 al 30 de julio",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "5f78352d-e1d7-4f17-ac19-25734e2da789",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 12,
+        "productos_count": 0,
+        "total_costo": 142.35,
+        "total_pagar": 142.35,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Sebastian Redes",
+        "sueldo_base": 130,
+        "comision": 0,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-08-03",
+            "monto": 130,
+            "motivo": "Redes",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "5db024e5-bab9-4b38-8169-e7970db09f85",
+        "cargo": "Marketing / Redes",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 130,
+        "total_pagar": 130,
+        "anticipos_historial": []
+      }
+    ],
+    "total_sueldos_base": 530,
+    "total_comisiones": 810.99,
+    "total_sueldos_comisiones": 1340.99
+  },
+  "2026-08": {
+    "monthKey": "2026-08",
+    "labelMes": "Agosto 2026",
+    "fecha": "2026-08-31",
+    "colaboradoras": [
+      {
+        "nombre": "Angelita",
+        "sueldo_base": 400,
+        "comision": 0,
+        "anticipo": 300,
+        "pagos_historial": [
+          {
+            "fecha": "2026-08-13",
+            "monto": 60,
+            "motivo": "Anticipo agosto",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-08-18",
+            "monto": 240,
+            "motivo": "Anticipo agosto",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-08-31",
+            "monto": 100,
+            "motivo": "Sueldo agosto",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 400,
+        "total_pagar": 100,
+        "anticipos_historial": [
+          {
+            "id": "ant_2026-08_96de1157-64a6-4378-ab04-e6d06bfb0d14_20260813",
+            "colab_id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+            "colab_nombre": "Angelita",
+            "fecha": "2026-08-13",
+            "monto": 60,
+            "motivo": "Anticipo agosto",
+            "forma_pago": "Transferencia",
+            "created_at": "2026-08-13T12:00:00Z"
+          },
+          {
+            "id": "ant_2026-08_96de1157-64a6-4378-ab04-e6d06bfb0d14_20260818",
+            "colab_id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+            "colab_nombre": "Angelita",
+            "fecha": "2026-08-18",
+            "monto": 240,
+            "motivo": "Anticipo agosto",
+            "forma_pago": "Transferencia",
+            "created_at": "2026-08-18T12:00:00Z"
+          }
+        ]
+      },
+      {
+        "nombre": "Luci",
+        "sueldo_base": 0,
+        "comision": 389.73,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-09-03",
+            "monto": 389.73,
+            "motivo": "Sueldo agosto",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "7f4fb8c6-5455-44d8-a1b6-f99d0aed32a1",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 32,
+        "productos_count": 0,
+        "total_costo": 389.73,
+        "total_pagar": 389.73,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Mary",
+        "sueldo_base": 0,
+        "comision": 283.45,
+        "anticipo": 175,
+        "pagos_historial": [
+          {
+            "fecha": "2026-08-11",
+            "monto": 25,
+            "motivo": "Anticipo agosto",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-08-24",
+            "monto": 150,
+            "motivo": "Anticipo agosto",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-08-27",
+            "monto": 108.45,
+            "motivo": "Sueldo al 26 de agosto",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "5f78352d-e1d7-4f17-ac19-25734e2da789",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 24,
+        "productos_count": 0,
+        "total_costo": 283.45,
+        "total_pagar": 108.45,
+        "anticipos_historial": [
+          {
+            "id": "ant_2026-08_5f78352d-e1d7-4f17-ac19-25734e2da789_20260811",
+            "colab_id": "5f78352d-e1d7-4f17-ac19-25734e2da789",
+            "colab_nombre": "Mary",
+            "fecha": "2026-08-11",
+            "monto": 25,
+            "motivo": "Anticipo agosto",
+            "forma_pago": "Transferencia",
+            "created_at": "2026-08-11T12:00:00Z"
+          },
+          {
+            "id": "ant_2026-08_5f78352d-e1d7-4f17-ac19-25734e2da789_20260824",
+            "colab_id": "5f78352d-e1d7-4f17-ac19-25734e2da789",
+            "colab_nombre": "Mary",
+            "fecha": "2026-08-24",
+            "monto": 150,
+            "motivo": "Anticipo agosto",
+            "forma_pago": "Transferencia",
+            "created_at": "2026-08-24T12:00:00Z"
+          }
+        ]
+      },
+      {
+        "nombre": "Abigail",
+        "sueldo_base": 0,
+        "comision": 251.52,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-08-24",
+            "monto": 251.52,
+            "motivo": "Sueldo agosto",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "8784cc70-4455-40ea-81d9-ba056f30f3fb",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 21,
+        "productos_count": 0,
+        "total_costo": 251.52,
+        "total_pagar": 251.52,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Sebastian Redes",
+        "sueldo_base": 130,
+        "comision": 0,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-08-31",
+            "monto": 130,
+            "motivo": "Redes agosto",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "5db024e5-bab9-4b38-8169-e7970db09f85",
+        "cargo": "Marketing / Redes",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 130,
+        "total_pagar": 130,
+        "anticipos_historial": []
+      }
+    ],
+    "total_sueldos_base": 530,
+    "total_comisiones": 924.7,
+    "total_sueldos_comisiones": 1454.7
+  },
+  "2026-09": {
+    "monthKey": "2026-09",
+    "labelMes": "Septiembre 2026",
+    "fecha": "2026-09-30",
+    "colaboradoras": [
+      {
+        "nombre": "Angelita",
+        "sueldo_base": 400,
+        "comision": 0,
+        "anticipo": 300,
+        "pagos_historial": [
+          {
+            "fecha": "2026-09-08",
+            "monto": 300,
+            "motivo": "Adelanto septiembre",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-09-30",
+            "monto": 100,
+            "motivo": "Sueldo septiembre",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 400,
+        "total_pagar": 100,
+        "anticipos_historial": [
+          {
+            "id": "ant_2026-09_96de1157-64a6-4378-ab04-e6d06bfb0d14_20260908",
+            "colab_id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+            "colab_nombre": "Angelita",
+            "fecha": "2026-09-08",
+            "monto": 300,
+            "motivo": "Adelanto septiembre",
+            "forma_pago": "Transferencia",
+            "created_at": "2026-09-08T12:00:00Z"
+          }
+        ]
+      },
+      {
+        "nombre": "Luci",
+        "sueldo_base": 0,
+        "comision": 327.87,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-10-01",
+            "monto": 327.87,
+            "motivo": "Sueldo septiembre",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "7f4fb8c6-5455-44d8-a1b6-f99d0aed32a1",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 27,
+        "productos_count": 0,
+        "total_costo": 327.87,
+        "total_pagar": 327.87,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Abigail",
+        "sueldo_base": 0,
+        "comision": 272.96,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-10-01",
+            "monto": 272.96,
+            "motivo": "Sueldo septiembre",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "8784cc70-4455-40ea-81d9-ba056f30f3fb",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 23,
+        "productos_count": 0,
+        "total_costo": 272.96,
+        "total_pagar": 272.96,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Mary",
+        "sueldo_base": 0,
+        "comision": 158.92,
+        "anticipo": 15,
+        "pagos_historial": [
+          {
+            "fecha": "2026-09-28",
+            "monto": 15,
+            "motivo": "Adelanto Mary septiembre",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-10-02",
+            "monto": 143.92,
+            "motivo": "Sueldo septiembre",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "5f78352d-e1d7-4f17-ac19-25734e2da789",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 13,
+        "productos_count": 0,
+        "total_costo": 158.92,
+        "total_pagar": 143.92,
+        "anticipos_historial": [
+          {
+            "id": "ant_2026-09_5f78352d-e1d7-4f17-ac19-25734e2da789_20260928",
+            "colab_id": "5f78352d-e1d7-4f17-ac19-25734e2da789",
+            "colab_nombre": "Mary",
+            "fecha": "2026-09-28",
+            "monto": 15,
+            "motivo": "Adelanto Mary septiembre",
+            "forma_pago": "Transferencia",
+            "created_at": "2026-09-28T12:00:00Z"
+          }
+        ]
+      },
+      {
+        "nombre": "Sebastian Redes",
+        "sueldo_base": 130,
+        "comision": 0,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-09-02",
+            "monto": 130,
+            "motivo": "Redes",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "5db024e5-bab9-4b38-8169-e7970db09f85",
+        "cargo": "Marketing / Redes",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 130,
+        "total_pagar": 130,
+        "anticipos_historial": []
+      }
+    ],
+    "total_sueldos_base": 530,
+    "total_comisiones": 759.75,
+    "total_sueldos_comisiones": 1289.75
+  },
+  "2026-10": {
+    "monthKey": "2026-10",
+    "labelMes": "Octubre 2026",
+    "fecha": "2026-10-31",
+    "colaboradoras": [
+      {
+        "nombre": "Abigail",
+        "sueldo_base": 0,
+        "comision": 464.7,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-10-31",
+            "monto": 464.7,
+            "motivo": "sueldo octubre",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "8784cc70-4455-40ea-81d9-ba056f30f3fb",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 39,
+        "productos_count": 0,
+        "total_costo": 464.7,
+        "total_pagar": 464.7,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Luci",
+        "sueldo_base": 0,
+        "comision": 429.6,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-10-31",
+            "monto": 429.6,
+            "motivo": "sueldo octubre",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "7f4fb8c6-5455-44d8-a1b6-f99d0aed32a1",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 36,
+        "productos_count": 0,
+        "total_costo": 429.6,
+        "total_pagar": 429.6,
+        "anticipos_historial": []
+      },
+      {
+        "nombre": "Angelita",
+        "sueldo_base": 400,
+        "comision": 0,
+        "anticipo": 125,
+        "pagos_historial": [
+          {
+            "fecha": "2026-10-26",
+            "monto": 100,
+            "motivo": "Adelanto mami octubre",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-10-26",
+            "monto": 25,
+            "motivo": "Adelanto mami octubre",
+            "forma_pago": "Transferencia",
+            "isAnticipo": true
+          },
+          {
+            "fecha": "2026-10-31",
+            "monto": 115,
+            "motivo": "sueldo octubre",
+            "forma_pago": "Transferencia"
+          },
+          {
+            "fecha": "2026-10-31",
+            "monto": 100,
+            "motivo": "sueldo octubre",
+            "forma_pago": "Transferencia"
+          },
+          {
+            "fecha": "2026-10-31",
+            "monto": 60,
+            "motivo": "sueldo octubre saldo",
+            "forma_pago": "Efectivo"
+          }
+        ],
+        "id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+        "cargo": "Manicurista",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 400,
+        "total_pagar": 275,
+        "anticipos_historial": [
+          {
+            "id": "ant_2026-10_96de1157-64a6-4378-ab04-e6d06bfb0d14_20261026",
+            "colab_id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+            "colab_nombre": "Angelita",
+            "fecha": "2026-10-26",
+            "monto": 100,
+            "motivo": "Adelanto mami octubre",
+            "forma_pago": "Transferencia",
+            "created_at": "2026-10-26T12:00:00Z"
+          },
+          {
+            "id": "ant_2026-10_96de1157-64a6-4378-ab04-e6d06bfb0d14_20261026",
+            "colab_id": "96de1157-64a6-4378-ab04-e6d06bfb0d14",
+            "colab_nombre": "Angelita",
+            "fecha": "2026-10-26",
+            "monto": 25,
+            "motivo": "Adelanto mami octubre",
+            "forma_pago": "Transferencia",
+            "created_at": "2026-10-26T12:00:00Z"
+          }
+        ]
+      },
+      {
+        "nombre": "Sebastian Redes",
+        "sueldo_base": 130,
+        "comision": 0,
+        "anticipo": 0,
+        "pagos_historial": [
+          {
+            "fecha": "2026-10-05",
+            "monto": 130,
+            "motivo": "Redes",
+            "forma_pago": "Transferencia"
+          }
+        ],
+        "id": "5db024e5-bab9-4b38-8169-e7970db09f85",
+        "cargo": "Marketing / Redes",
+        "activo": true,
+        "servicios_count": 0,
+        "productos_count": 0,
+        "total_costo": 130,
+        "total_pagar": 130,
+        "anticipos_historial": []
+      }
+    ],
+    "total_sueldos_base": 530,
+    "total_comisiones": 894.3,
+    "total_sueldos_comisiones": 1424.3
+  }
+}

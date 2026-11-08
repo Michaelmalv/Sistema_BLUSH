@@ -985,6 +985,14 @@ export default function GastosTab({ activeTab, selectedBranchId, onNavigate }) {
   const groupedGastos = useMemo(() => {
     const groups = {}
     filteredGastos.forEach(g => {
+      // Excluir gastos laborales individuales para no duplicar visualmente con las tarjetas mensuales consolidadas de nómina
+      const isLaboral = g.categoria === 'Nómina' || 
+                        g.categoria === 'Sueldos / Comisiones' || 
+                        g.factura === 'ANTICIPO' || 
+                        g.factura === 'NOMINA' || 
+                        (g.concepto && g.concepto.includes('[colab:'))
+      if (isLaboral) return
+
       const normFact = (g.factura || '').trim()
       const isGenericNoFact = !normFact || ['sin doc', 'sin factura', 's/d', 's/f', 'sd', 'sf'].includes(normFact.toLowerCase())
       const isNA = ['na', 'n/a', 's/n', 'sn'].includes(normFact.toLowerCase())

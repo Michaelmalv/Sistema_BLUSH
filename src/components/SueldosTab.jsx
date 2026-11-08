@@ -23,6 +23,7 @@ import {
 import { dataService } from '../dataService'
 import * as XLSX from 'xlsx-js-style'
 import { exportExcelJS } from '../excelExporter'
+import historialSueldos from '../data/historialSueldos.json'
 
 export default function SueldosTab({ activeTab, selectedBranchId }) {
   // Sub-tabs: 'liquidacion', 'colaboradoras'
@@ -313,6 +314,82 @@ export default function SueldosTab({ activeTab, selectedBranchId }) {
     const personalManicuristas = personal.filter(p => !p.nombre || p.nombre.toLowerCase() !== 'blush')
     if (!personalManicuristas.length) {
       setComisiones([])
+      return
+    }
+
+    const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`
+
+    // Si el mes seleccionado corresponde a un mes del historial oficial verídico
+    if (historialSueldos && historialSueldos[monthKey]) {
+      const histData = historialSueldos[monthKey]
+      const histColabs = (histData.colaboradoras || []).map(c => {
+        const comisionVal = Number(c.comision || 0)
+        const ventasCalculadas = comisionVal > 0 ? (comisionVal / 0.40) : 0
+        return {
+          id: c.id,
+          nombre: c.nombre,
+          activo: c.activo !== undefined ? c.activo : true,
+          cargo: c.cargo || 'Manicurista',
+          sueldo_base: Number(c.sueldo_base || 0),
+          anticipo: Number(c.anticipo || 0),
+          anticipos_historial: c.anticipos_historial || [],
+          total_servicios: c.servicios_count || (comisionVal > 0 ? Math.round(comisionVal / 12) : 0),
+          total_ventas_servicios: ventasCalculadas,
+          comision_servicios: comisionVal,
+          total_productos: 0,
+          total_ventas_productos: 0,
+          comision_productos: 0,
+          total_ventas: ventasCalculadas,
+          comision: comisionVal,
+          total_pagar: c.total_pagar !== undefined ? Number(c.total_pagar) : Number(c.total_costo - c.anticipo),
+          total_costo: Number(c.total_costo),
+          detalles_ventas: (c.pagos_historial || []).map((p, pIdx) => ({
+            id: `hist_${p.fecha}_${c.id}_${pIdx}`,
+            fecha_hora: `${p.fecha}T12:00:00`,
+            servicio_nombre: p.motivo,
+            concepto_comision: p.isAnticipo ? 'Anticipo' : 'Pago de Nómina',
+            valor_pagado: p.monto,
+            forma_pago: p.forma_pago,
+            comision_ganada: p.monto
+          }))
+        }
+      })
+
+      // Agregar colaboradoras registradas en personal que no tuvieron liquidación en ese mes específico con $0
+      const existingIds = new Set(histColabs.map(c => c.id))
+      personalManicuristas.forEach(p => {
+        if (existingIds.has(p.id)) return
+        histColabs.push({
+          id: p.id,
+          nombre: p.nombre,
+          activo: p.activo,
+          cargo: p.cargo || 'Manicurista',
+          sueldo_base: 0,
+          anticipo: 0,
+          anticipos_historial: [],
+          total_servicios: 0,
+          total_ventas_servicios: 0,
+          comision_servicios: 0,
+          total_productos: 0,
+          total_ventas_productos: 0,
+          comision_productos: 0,
+          total_ventas: 0,
+          comision: 0,
+          total_pagar: 0,
+          total_costo: 0,
+          detalles_ventas: []
+        })
+      })
+
+      const sorted = histColabs.sort((a, b) => b.total_pagar - a.total_pagar)
+      setComisiones(sorted)
+
+      if (selectedManicuristaDetail) {
+        const updatedDetail = sorted.find(c => c.id === selectedManicuristaDetail.id)
+        if (updatedDetail) {
+          setSelectedManicuristaDetail(updatedDetail)
+        }
+      }
       return
     }
 

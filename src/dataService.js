@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured as originalIsSupabaseConfigured } from './supabaseClient'
+import historialSueldos from './data/historialSueldos.json'
 
 let isSupabaseConfigured = originalIsSupabaseConfigured;
 
@@ -1338,6 +1339,66 @@ export const dataService = {
 
   // Resumen de Sueldos y Comisiones para cualquier rango de fechas o mes
   async getResumenSueldosYComisiones(fechaInicio, fechaFin, forceRefresh = false) {
+    const startM = (fechaInicio || '').substring(0, 7)
+    const endM = (fechaFin || '').substring(0, 7)
+
+    // Si coincide con un solo mes que está en el historial oficial
+    if (startM === endM && historialSueldos[startM]) {
+      return historialSueldos[startM]
+    }
+
+    // Verificar si el rango solicitado abarca meses históricos
+    const startMDate = new Date(startM + '-01T00:00:00')
+    const endMDate = new Date(endM + '-01T00:00:00')
+    let allHistorical = true
+    let curCheck = new Date(startMDate)
+    while (curCheck <= endMDate) {
+      const k = curCheck.toISOString().substring(0, 7)
+      if (!historialSueldos[k]) {
+        allHistorical = false
+        break
+      }
+      curCheck.setMonth(curCheck.getMonth() + 1)
+    }
+
+    if (allHistorical && !isNaN(startMDate.getTime()) && !isNaN(endMDate.getTime())) {
+      let totalComis = 0
+      let totalBase = 0
+      let totalSueldos = 0
+      const colabMap = {}
+
+      let curAgg = new Date(startMDate)
+      while (curAgg <= endMDate) {
+        const k = curAgg.toISOString().substring(0, 7)
+        const h = historialSueldos[k]
+        if (h) {
+          totalComis += Number(h.total_comisiones || 0)
+          totalBase += Number(h.total_sueldos_base || 0)
+          totalSueldos += Number(h.total_sueldos_comisiones || 0)
+          ;(h.colaboradoras || []).forEach(c => {
+            if (!colabMap[c.nombre]) {
+              colabMap[c.nombre] = { ...c, total_costo: 0, sueldo_base: 0, comision: 0, total_pagar: 0 }
+            }
+            colabMap[c.nombre].total_costo += Number(c.total_costo || 0)
+            colabMap[c.nombre].sueldo_base += Number(c.sueldo_base || 0)
+            colabMap[c.nombre].comision += Number(c.comision || 0)
+            colabMap[c.nombre].total_pagar += Number(c.total_pagar || 0)
+          })
+        }
+        curAgg.setMonth(curAgg.getMonth() + 1)
+      }
+
+      return {
+        total_comisiones: Number(totalComis.toFixed(2)),
+        total_comisiones_servicios: Number(totalComis.toFixed(2)),
+        total_comisiones_productos: 0,
+        total_sueldos_base: Number(totalBase.toFixed(2)),
+        total_sueldos_comisiones: Number(totalSueldos.toFixed(2)),
+        colaboradoras: Object.values(colabMap).sort((a, b) => b.total_costo - a.total_costo)
+      }
+    }
+
+    // Cálculo dinámico para meses vigentes (ej. Noviembre 2026 hacia adelante) o períodos combinados
     const [citas, personal] = await Promise.all([
       this.getCitasVentas(forceRefresh),
       this.getPersonal(forceRefresh)
@@ -1441,6 +1502,12 @@ export const dataService = {
     ])
 
     const mesesMap = {}
+    // Incluir todos los meses del historial oficial de Sueldos y Comisiones
+    Object.keys(historialSueldos).forEach(k => {
+      mesesMap[k] = true
+    })
+
+    // Incluir meses que tengan citas/ventas
     ;(citas || []).forEach(c => {
       if (!c.fecha_hora || c.forma_pago === 'Pendiente') return
       const monthKey = c.fecha_hora.substring(0, 7)
@@ -1463,19 +1530,29 @@ export const dataService = {
       const lastDay = new Date(year, monthIndex + 1, 0).getDate()
       const endDate = `${mKey}-${String(lastDay).padStart(2, '0')}`
 
-      const resumen = await this.getResumenSueldosYComisiones(startDate, endDate, forceRefresh)
-      if (resumen.total_sueldos_comisiones > 0 || mKey === nowKey) {
-        const nombresMeses = [
-          'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-        ]
-        const labelMes = `${nombresMeses[monthIndex]} ${year}`
+      const nombresMeses = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      ]
+      const labelMes = `${nombresMeses[monthIndex]} ${year}`
+
+      if (historialSueldos[mKey]) {
         results.push({
           monthKey: mKey,
           labelMes: labelMes,
           fecha: endDate,
-          ...resumen
+          ...historialSueldos[mKey]
         })
+      } else {
+        const resumen = await this.getResumenSueldosYComisiones(startDate, endDate, forceRefresh)
+        if (resumen.total_sueldos_comisiones > 0 || mKey === nowKey) {
+          results.push({
+            monthKey: mKey,
+            labelMes: labelMes,
+            fecha: endDate,
+            ...resumen
+          })
+        }
       }
     }
 
@@ -1501,14 +1578,18 @@ export const dataService = {
       })
       .reduce((sum, c) => sum + Number(c.valor_pagado || 0), 0)
 
-    // Egresos operativos: gastos registrados en compras/proveedores excluyendo registros de ANTICIPO
-    // (para no duplicar el costo laboral, ya que sueldosInfo incluye el costo completo de nómina)
+    // Egresos operativos: gastos registrados en compras/proveedores excluyendo registros de Nómina/Anticipos
+    // (para no duplicar el costo laboral, ya que sueldosInfo incluye el costo completo verídico de nómina)
     const gastosOperativos = (gastos || [])
       .filter(g => {
         const d = new Date(g.fecha + 'T00:00:00')
         const inPeriod = d >= start && d <= end
-        const isAnticipo = g.factura === 'ANTICIPO' || (g.concepto && g.concepto.includes('[colab:'))
-        return inPeriod && !isAnticipo
+        const isLaboral = g.categoria === 'Nómina' || 
+                          g.categoria === 'Sueldos / Comisiones' || 
+                          g.factura === 'ANTICIPO' || 
+                          g.factura === 'NOMINA' || 
+                          (g.concepto && g.concepto.includes('[colab:'))
+        return inPeriod && !isLaboral
       })
       .reduce((sum, g) => sum + Number(g.total || 0), 0)
 

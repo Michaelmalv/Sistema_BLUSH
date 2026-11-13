@@ -19,7 +19,9 @@ import {
   Receipt,
   UserCheck,
   Filter,
-  X
+  X,
+  Copy,
+  Check
 } from 'lucide-react'
 import { dataService } from '../dataService'
 import ClientHistoryModal from './ClientHistoryModal'
@@ -43,6 +45,7 @@ export default function SeguimientoTab({ activeTab, selectedBranchId, subTab: co
 
   // Modal de Historial de Cliente
   const [selectedClientForHistory, setSelectedClientForHistory] = useState(null)
+  const [copiedId, setCopiedId] = useState(null)
 
   // Buscadores
   const [searchRecontacto, setSearchRecontacto] = useState('')
@@ -112,6 +115,12 @@ export default function SeguimientoTab({ activeTab, selectedBranchId, subTab: co
     return dateStr
   }
 
+  // Generar texto oficial de recontacto
+  const getMensajeRecontacto = (crm) => {
+    const nombreCompleto = (crm.cliente_nombre || 'clienta').split(' ')[0]
+    return 'Hola ' + nombreCompleto + ', le saludamos de Blush Beauty Studio. 💅 Vemos que su último servicio fue hace varias semanas, sería un placer volver a atenderles con él mismo cariño de siempre. Le invitamos a agendar su cita de retoque o mantenimiento para consentirle de nuevo.  ¿Le gustaría reservar un espacio? Lindo día🌸 🥰'
+  }
+
   // Enviar WhatsApp de Recontacto
   const handleWhatsappContact = (crm) => {
     if (!crm.cliente_celular || crm.cliente_celular === 'N/A' || crm.cliente_celular.trim() === '') {
@@ -119,29 +128,50 @@ export default function SeguimientoTab({ activeTab, selectedBranchId, subTab: co
       return
     }
 
-    let fechaLimpia = crm.ultima_cita_fecha
-    try {
-      if (crm.ultima_cita_fecha) {
-        const datePart = crm.ultima_cita_fecha.includes('T') 
-          ? crm.ultima_cita_fecha.split('T')[0] 
-          : crm.ultima_cita_fecha
-        const [year, month, day] = datePart.split('-')
-        fechaLimpia = day + '/' + month + '/' + year
-      }
-    } catch (e) {
-      console.error('Error al formatear fecha de cita:', e)
-    }
-
-    const nombreCompleto = crm.cliente_nombre.split(' ')[0]
-    const mensaje = 'Hola ' + nombreCompleto + ', le saludamos de Blush Beauty Studio. 💅 Vemos que su último servicio fue hace varias semanas, sería un placer volver a atenderles con él mismo cariño de siempre. Le invitamos a agendar su cita de retoque o mantenimiento para consentirle de nuevo.  ¿Le gustaría reservar un espacio? Lindo día🌸 🥰'
+    const mensaje = getMensajeRecontacto(crm)
     
     const tel = crm.cliente_celular.replace(/\D/g, '')
     let formattedTel = tel
     if (tel.startsWith('0')) {
       formattedTel = '593' + tel.substring(1)
     }
-    const url = 'https://wa.me/' + formattedTel + '?text=' + encodeURIComponent(mensaje)
+
+    const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent)
+    // En Desktop abrimos WhatsApp Web directamente para que el navegador decodifique UTF-8 nativo
+    // y no pase por el protocolo shell ANSI de Windows que convierte los emojis en signos de interrogación ()
+    // En Móvil abrimos api.whatsapp.com que lanza la app nativa con soporte UTF-8
+    const url = isMobile
+      ? 'https://api.whatsapp.com/send?phone=' + formattedTel + '&text=' + encodeURIComponent(mensaje)
+      : 'https://web.whatsapp.com/send?phone=' + formattedTel + '&text=' + encodeURIComponent(mensaje)
+
     window.open(url, '_blank')
+  }
+
+  // Copiar mensaje de recontacto al portapapeles con todos los emojis (💅, 🌸, 🥰)
+  const handleCopyRecontacto = (crm) => {
+    const mensaje = getMensajeRecontacto(crm)
+    const onCopied = () => {
+      setCopiedId(crm.cliente_id)
+      setTimeout(() => setCopiedId(null), 2500)
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(mensaje).then(onCopied).catch(err => {
+        console.error('Error al copiar al portapapeles:', err)
+      })
+    } else {
+      const textArea = document.createElement('textarea')
+      textArea.value = mensaje
+      document.body.appendChild(textArea)
+      textArea.select()
+      try {
+        document.execCommand('copy')
+        onCopied()
+      } catch (e) {
+        console.error('Error en fallback de copiado:', e)
+      }
+      document.body.removeChild(textArea)
+    }
   }
 
   // Enviar WhatsApp de Cumpleaños
@@ -159,7 +189,12 @@ export default function SeguimientoTab({ activeTab, selectedBranchId, subTab: co
     if (tel.startsWith('0')) {
       formattedTel = '593' + tel.substring(1)
     }
-    const url = 'https://wa.me/' + formattedTel + '?text=' + encodeURIComponent(mensaje)
+
+    const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent)
+    const url = isMobile
+      ? 'https://api.whatsapp.com/send?phone=' + formattedTel + '&text=' + encodeURIComponent(mensaje)
+      : 'https://web.whatsapp.com/send?phone=' + formattedTel + '&text=' + encodeURIComponent(mensaje)
+
     window.open(url, '_blank')
   }
 
@@ -523,14 +558,38 @@ export default function SeguimientoTab({ activeTab, selectedBranchId, subTab: co
                     </div>
 
                     <div className="flex flex-col gap-2 pt-1">
-                      <button
-                        onClick={() => handleWhatsappContact(crm)}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm"
-                      >
-                        <Phone size={14} />
-                        Enviar Mensaje Recontacto
-                        <ExternalLink size={12} />
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleWhatsappContact(crm)}
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                          title="Abrir chat en WhatsApp con el mensaje listo para enviar"
+                        >
+                          <Phone size={14} />
+                          <span>Enviar WhatsApp</span>
+                          <ExternalLink size={12} />
+                        </button>
+                        <button
+                          onClick={() => handleCopyRecontacto(crm)}
+                          className={`px-3 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer border ${
+                            copiedId === crm.cliente_id
+                              ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                              : 'bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-700'
+                          }`}
+                          title="Copiar mensaje con todos los emojis (💅, 🌸, 🥰) al portapapeles"
+                        >
+                          {copiedId === crm.cliente_id ? (
+                            <>
+                              <Check size={14} className="text-emerald-600" />
+                              <span className="text-emerald-700">¡Copiado!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy size={14} />
+                              <span>Copiar</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
 
                       <button
                         onClick={() => setSelectedClientForHistory({ id: crm.cliente_id, nombre: crm.cliente_nombre, celular: crm.cliente_celular })}

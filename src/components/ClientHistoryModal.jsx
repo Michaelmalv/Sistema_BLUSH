@@ -140,7 +140,10 @@ export default function ClientHistoryModal({ clienteId, clienteData, onClose }) 
     if (tel.startsWith('0')) {
       formattedTel = '593' + tel.substring(1)
     }
-    const url = 'https://wa.me/' + formattedTel + '?text=' + encodeURIComponent(mensaje)
+    const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent)
+    const url = isMobile
+      ? 'https://api.whatsapp.com/send?phone=' + formattedTel + '&text=' + encodeURIComponent(mensaje)
+      : 'https://web.whatsapp.com/send?phone=' + formattedTel + '&text=' + encodeURIComponent(mensaje)
     window.open(url, '_blank')
   }
 
